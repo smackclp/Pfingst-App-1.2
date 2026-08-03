@@ -1,0 +1,206 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A participant, helper, or camp lead in the zeltlager.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "first_name": { "type": "string" },
+        "last_name": { "type": "string" },
+        "display_name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string" },
+        "active": { "type": "boolean" },
+        "notes": { "type": "string" },
+        "is_buyer": { "type": "boolean" }
+      },
+      "required": ["id", "first_name", "last_name", "display_name", "active"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "A camp job/service category (e.g. kitchen duty, stage, night watch).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "location": { "type": "string" },
+        "color": { "type": "string" },
+        "category": { "type": "string" },
+        "default_duration": { "type": "number" },
+        "min_persons": { "type": "number" },
+        "max_persons": { "type": "number" },
+        "responsible_id": { "type": "string" }
+      },
+      "required": ["id", "title", "min_persons", "max_persons"]
+    },
+    "Shift": {
+      "title": "Shift",
+      "description": "A specific planned shift for a service.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "service_id": { "type": "string" },
+        "date": { "type": "string" },
+        "start_time": { "type": "string" },
+        "end_time": { "type": "string" },
+        "notes": { "type": "string" },
+        "camp_id": { "type": "string" },
+        "min_persons": { "type": "number" },
+        "max_persons": { "type": "number" }
+      },
+      "required": ["id", "service_id", "date", "start_time", "end_time"]
+    },
+    "ShiftAssignment": {
+      "title": "ShiftAssignment",
+      "description": "Assigns a user to a specific shift.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shift_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "assigned_at": { "type": "string" },
+        "accepted": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined", "maybe"] },
+        "status_updated_at": { "type": "string" },
+        "decline_reason": { "type": "string" }
+      },
+      "required": ["id", "shift_id", "user_id", "assigned_at"]
+    },
+    "Camp": {
+      "title": "Camp",
+      "description": "A summer camp year with specific start/end dates.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "year": { "type": "number" },
+        "start_date": { "type": "string" },
+        "end_date": { "type": "string" },
+        "title": { "type": "string" }
+      },
+      "required": ["id", "year", "start_date", "end_date", "title"]
+    },
+    "MaterialItem": {
+      "title": "MaterialItem",
+      "description": "A requested camp material/item for purchasing or tracking.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "item_name": { "type": "string" },
+        "url": { "type": "string" },
+        "purpose": { "type": "string" },
+        "quantity": { "type": "number" },
+        "price": { "type": "string" },
+        "created_at": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "ordered", "received"] }
+      },
+      "required": ["id", "user_id", "item_name", "purpose", "created_at"]
+    },
+    "FunctionalRole": {
+      "title": "FunctionalRole",
+      "description": "A specific overarching role like Einkauf or Schichtplanung.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "user_id": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Community": {
+      "title": "Community",
+      "description": "A participant subgroup/community attending the camp.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "participants": { "type": "number" },
+        "camp_id": { "type": "string" }
+      },
+      "required": ["id", "name", "participants", "camp_id"]
+    },
+    "TalentAct": {
+      "title": "TalentAct",
+      "description": "A performance act in the camp's talent show.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "camp_id": { "type": "string" },
+        "community_name": { "type": "string" },
+        "talents_names": { "type": "string" },
+        "act_type": { "type": "string" },
+        "song_title": { "type": "string" },
+        "play_until": { "type": "string" },
+        "fade_out": { "type": "boolean" },
+        "fade_out_desc": { "type": "string" },
+        "microphones_count": { "type": "number" },
+        "instruments": { "type": "string" },
+        "lighting_mood": { "type": "string" },
+        "spotify_link": { "type": "string" },
+        "without_rating": { "type": "boolean" },
+        "order_index": { "type": "number" }
+      },
+      "required": ["id", "camp_id", "community_name", "talents_names", "act_type", "order_index"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A message notification for users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "title", "body", "timestamp", "read"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile collection."
+    },
+    "services/{serviceId}": {
+      "schema": "Service",
+      "description": "Services collection."
+    },
+    "shifts/{shiftId}": {
+      "schema": "Shift",
+      "description": "Camp service shifts."
+    },
+    "assignments/{assignmentId}": {
+      "schema": "ShiftAssignment",
+      "description": "Assignments of users to shifts."
+    },
+    "camps/{campId}": {
+      "schema": "Camp",
+      "description": "Camp years configuration."
+    },
+    "materials/{materialId}": {
+      "schema": "MaterialItem",
+      "description": "Requested materials."
+    },
+    "functionalRoles/{roleId}": {
+      "schema": "FunctionalRole",
+      "description": "Functional roles assignment."
+    },
+    "communities/{communityId}": {
+      "schema": "Community",
+      "description": "Communities attending the camp."
+    },
+    "talentActs/{actId}": {
+      "schema": "TalentAct",
+      "description": "Talent show acts."
+    },
+    "notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Sent notifications."
+    }
+  }
+}

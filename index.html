@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#020617" />
+    <link rel="icon" type="image/jpeg" href="/logo-192.png" />
+    <title>Dienstplan Pfingstlager 🏕️</title>
+    <script>
+      // Early catch-all to suppress benign iframe, cross-origin script, and websocket errors
+      (function() {
+        var suppress = function(message) {
+          var msg = String(message || '').toLowerCase();
+          return msg.includes('script error') || 
+                 msg.includes('websocket') || 
+                 msg.includes('ws://') || 
+                 msg.includes('wss://') || 
+                 msg.includes('opened') || 
+                 msg.includes('closed') ||
+                 msg.includes('serviceworker') || 
+                 msg.includes('service worker') || 
+                 msg.includes('securityerror') || 
+                 msg.includes('pushmanager') || 
+                 msg.includes('permission') ||
+                 msg.includes('failed to register');
+        };
+
+        window.onerror = function (message, source, lineno, colno, error) {
+          if (suppress(message) || !source) {
+            console.log('[Suppressed early onerror]:', message);
+            return true;
+          }
+          return false;
+        };
+
+        window.addEventListener('error', function (event) {
+          if (suppress(event.message) || !event.filename) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            console.log('[Suppressed early error event]:', event.message);
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function (event) {
+          var reason = event.reason;
+          var message = String(reason?.message || reason || '');
+          if (suppress(message)) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            console.log('[Suppressed early rejection]:', message);
+          }
+        }, true);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

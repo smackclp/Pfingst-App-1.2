@@ -1,0 +1,8 @@
+{
+  "name": "Pfingsten App 1.2",
+  "description": "Live-App, noch nicht bei GitHub ",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

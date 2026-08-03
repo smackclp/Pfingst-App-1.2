@@ -1,0 +1,23 @@
+{
+  "name": "Wachdienst & Dienstplan Pfingstlager",
+  "short_name": "Pfingst-Plan",
+  "description": "Dienstplan, Schichteinteilung und Tauschbörse für das Pfingstlager.",
+  "start_url": "/?source=pwa",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "portrait",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    {
+      "src": "/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
