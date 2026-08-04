@@ -1,9 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Public read/write rules for summer camp planner (no authentication yet, as requested)
+    // Direktzugriff für alle Clients gesperrt. Der Browser spricht nie mit
+    // Firestore, sondern ausschließlich mit unserer eigenen /api/*-Route.
+    // Nur der Server (Admin-SDK mit Service-Account) darf zugreifen -
+    // das Admin-SDK umgeht diese Regeln grundsätzlich.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

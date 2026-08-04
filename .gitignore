@@ -5,3 +5,4 @@ db.json
 .env.local
 *.log
 .DS_Store
+firebase-service-account.json

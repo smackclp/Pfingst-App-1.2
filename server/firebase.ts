@@ -1,60 +1,53 @@
 import fs from "fs";
 import path from "path";
-import { initializeApp, getApp, getApps } from "firebase/app";
-import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
-  doc, 
-  setDoc, 
-  deleteDoc, 
-  getDoc,
-  onSnapshot
-} from "firebase/firestore";
+import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { getFirestore, Firestore } from "firebase-admin/firestore";
 import { DB } from "./types";
 import { getDefaultSeedDB } from "./seed";
 
-const CONFIG_FILE = path.join(process.cwd(), "firebase-applet-config.json");
+// Der Server ist die EINZIGE Instanz, die mit Firestore spricht (der Browser
+// ruft ausschließlich unsere eigene /api/* an). Deshalb nutzt der Server das
+// Admin-SDK mit einem Service-Account statt des öffentlichen Client-SDKs -
+// das Admin-SDK umgeht die Firestore Security Rules, die im Gegenzug auf
+// "kompletter Direktzugriff gesperrt" stehen (siehe firestore.rules).
+//
+// Der Service-Account-Schlüssel ist ein Geheimnis und darf NIE ins Repo.
+// Lokal: Pfad per FIREBASE_SERVICE_ACCOUNT_PATH oder Standarddatei
+// "firebase-service-account.json" im Projektroot (in .gitignore).
+// Gehostet: Inhalt der JSON-Datei als Umgebungsvariable FIREBASE_SERVICE_ACCOUNT_JSON.
+const SERVICE_ACCOUNT_PATH = path.join(
+  process.cwd(),
+  process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "firebase-service-account.json"
+);
 
-let app;
-let db: any = null;
+let db: Firestore | null = null;
 let isConfigured = false;
 
 try {
-  if (fs.existsSync(CONFIG_FILE)) {
-    const raw = fs.readFileSync(CONFIG_FILE, "utf-8");
-    const config = JSON.parse(raw);
-    
-    // Construct configuration matching firebase Client SDK expectations
-    const firebaseConfig = {
-      apiKey: config.apiKey,
-      authDomain: config.authDomain,
-      projectId: config.projectId,
-      storageBucket: config.storageBucket,
-      messagingSenderId: config.messagingSenderId,
-      appId: config.appId
-    };
+  let serviceAccount: any = null;
 
-    if (getApps().length === 0) {
-      app = initializeApp(firebaseConfig);
-    } else {
-      app = getApp();
-    }
-    
-    // Retrieve custom databaseId if configured in the firebase blueprint config
-    if (config.firestoreDatabaseId) {
-      db = getFirestore(app, config.firestoreDatabaseId);
-    } else {
-      db = getFirestore(app);
-    }
-    
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  } else if (fs.existsSync(SERVICE_ACCOUNT_PATH)) {
+    serviceAccount = JSON.parse(fs.readFileSync(SERVICE_ACCOUNT_PATH, "utf-8"));
+  }
+
+  if (serviceAccount) {
+    const app = getApps().length === 0
+      ? initializeApp({ credential: cert(serviceAccount) })
+      : getApps()[0];
+
+    db = getFirestore(app);
     isConfigured = true;
-    console.log("Firebase Firestore initialized successfully with Database ID:", config.firestoreDatabaseId || "(default)");
+    console.log("Firebase Admin/Firestore initialized successfully for project:", serviceAccount.project_id);
   } else {
-    console.warn("Firebase config file not found at", CONFIG_FILE);
+    console.warn(
+      "Kein Firebase Service-Account gefunden (weder FIREBASE_SERVICE_ACCOUNT_JSON noch",
+      SERVICE_ACCOUNT_PATH, ") - App läuft im lokalen Fallback-Modus (db.json)."
+    );
   }
 } catch (error) {
-  console.error("Error initializing Firebase:", error);
+  console.error("Error initializing Firebase Admin SDK:", error);
 }
 
 export function isFirebaseEnabled(): boolean {
@@ -146,8 +139,7 @@ export async function getUnifiedDB(forceRefresh = false): Promise<DB> {
     let totalReads = 0;
     await Promise.all(
       collections.map(async (colName) => {
-        const colRef = collection(db, colName);
-        const snapshot = await getDocs(colRef);
+        const snapshot = await db!.collection(colName).get();
         const list: any[] = [];
         snapshot.forEach((docSnap) => {
           list.push(docSnap.data());
@@ -158,12 +150,12 @@ export async function getUnifiedDB(forceRefresh = false): Promise<DB> {
     );
 
     // Fetch settings document (activeCampId, vapidKeys, lastChange)
-    const settingsRef = doc(db, "settings", "global");
-    const settingsSnap = await getDoc(settingsRef);
+    const settingsRef = db!.collection("settings").doc("global");
+    const settingsSnap = await settingsRef.get();
     totalReads += 1;
     recordFirestoreReads(totalReads);
 
-    if (settingsSnap.exists()) {
+    if (settingsSnap.exists) {
       const data = settingsSnap.data();
       dbState.activeCampId = data.activeCampId;
       dbState.vapidKeys = data.vapidKeys;
@@ -237,9 +229,9 @@ export function initFirestoreSync() {
   if (!isFirebaseEnabled()) return;
 
   try {
-    const settingsRef = doc(db, "settings", "global");
-    onSnapshot(settingsRef, async (snapshot) => {
-      if (snapshot.exists()) {
+    const settingsRef = db!.collection("settings").doc("global");
+    settingsRef.onSnapshot(async (snapshot) => {
+      if (snapshot.exists) {
         const data = snapshot.data();
         console.log("Firestore metadata updated, checking for remote sync changes...");
         if (data.lastChange && data.lastChange !== lastChangeTimestamp) {
@@ -279,8 +271,8 @@ export async function writeFirestoreDoc(colName: string, docId: string, docData:
   }
 
   try {
-    const docRef = doc(db, colName, docId);
-    await setDoc(docRef, docData);
+    const docRef = db!.collection(colName).doc(docId);
+    await docRef.set(docData);
     recordFirestoreWrite();
     
     // Update local cache
@@ -315,8 +307,8 @@ export async function deleteFirestoreDoc(colName: string, docId: string) {
   }
 
   try {
-    const docRef = doc(db, colName, docId);
-    await deleteDoc(docRef);
+    const docRef = db!.collection(colName).doc(docId);
+    await docRef.delete();
     recordFirestoreDelete();
     
     // Update local cache
@@ -343,8 +335,8 @@ export async function writeGlobalSettings(settingsData: { activeCampId?: string;
   }
 
   try {
-    const docRef = doc(db, "settings", "global");
-    await setDoc(docRef, {
+    const docRef = db!.collection("settings").doc("global");
+    await docRef.set({
       ...settingsData,
       lastChange: Date.now()
     }, { merge: true });
@@ -392,8 +384,8 @@ function saveLocalDBFallback(data: DB) {
 async function triggerGlobalMetadataUpdate() {
   try {
     const stamp = Date.now();
-    const docRef = doc(db, "settings", "global");
-    await setDoc(docRef, {
+    const docRef = db!.collection("settings").doc("global");
+    await docRef.set({
       lastChange: stamp
     }, { merge: true });
     recordFirestoreWrite();
@@ -418,16 +410,16 @@ async function migrateToFirestore(data: DB) {
         console.log(`Migrating ${items.length} items to Firestore collection "${colName}"...`);
         for (const item of items) {
           if (item && item.id) {
-            const docRef = doc(db, colName, item.id);
-            await setDoc(docRef, item);
+            const docRef = db!.collection(colName).doc(item.id);
+            await docRef.set(item);
           }
         }
       }
     }
 
     // Save global settings doc
-    const settingsRef = doc(db, "settings", "global");
-    await setDoc(settingsRef, {
+    const settingsRef = db!.collection("settings").doc("global");
+    await settingsRef.set({
       activeCampId: data.activeCampId || "camp-2026",
       vapidKeys: data.vapidKeys || null,
       lastChange: Date.now()
