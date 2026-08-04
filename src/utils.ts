@@ -85,6 +85,15 @@ export const PFINGSTEN_DATES: Record<number, { start_date: string; end_date: str
 };
 
 /**
+ * Wandelt "HH:MM" in Minuten seit Mitternacht um, für Sortierung/Vergleich von Uhrzeiten.
+ */
+export function timeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/**
  * Safely adds specified days to a YYYY-MM-DD string
  */
 export function addDays(dateStr: string, days: number): string {
