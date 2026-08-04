@@ -13,6 +13,7 @@
 | 2 | Navigation | **Bottom-Navigation** mit 4 Punkten für Helfer (Start / Mein Plan / Lager / Mitteilungen) + 5. Punkt "Verwaltung" für Bereichsleitung/Lagerleitung, ersetzt die bisherige Sidebar-Liste |
 | 3 | Kalender & Druckansicht | **Werden zusammengelegt** zu einer Seite "Mein Plan"; der Export/Druck wird zu einer Funktion *innerhalb* dieser Seite statt eines eigenen Menüpunkts |
 | 4 | Schichten-Standardansicht | **Rollenabhängig:** Helfer sehen standardmäßig die Kartenansicht (touch-freundlich); Bereichsleitung/Lagerleitung sehen standardmäßig die kompakte Tabellenansicht (besser für Massen-Zuteilung). Beide Ansichten bleiben für alle wählbar. |
+| 5 | Farbpalette | **Smaragdgrün bleibt Akzentfarbe** (`#0F6E56` hell / `#5DCAA5` dunkel) – bereits als Marke etabliert. Hintergrund wechselt zu warmem Off-White (`#FAFAF7`) statt Slate-Blau-Grau. Statusfarben konsequent app-weit: Grün `#0F6E56`/`#EAF3DE` = angenommen, Orange `#633806`/`#FAEEDA` = offen, Rot `#791F1F`/`#FCEBEB` = abgelehnt/Konflikt, Grau `#444441`/`#F1EFE8` = inaktiv. Dark Mode übernimmt dieselbe Struktur (Hintergrund `#1C1E1B`/`#26241C`), kein zweites Farbsystem. |
 
 Die folgenden Kapitel sind die ursprüngliche Analyse und weitere, noch offene Vorschläge – Kapitel 4 (Informationsarchitektur) und 5 (Dashboard) unten sind bereits im Sinne der obigen Entscheidungen zu lesen.
 
