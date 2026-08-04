@@ -11,6 +11,8 @@ import AlertsView from "./AlertsView";
 import MaterialsView from "./MaterialsView";
 import CommunitiesView from "./CommunitiesView";
 import ProgramView from "./ProgramView";
+import LagerHubView from "./LagerHubView";
+import VerwaltungHubView from "./VerwaltungHubView";
 
 interface TabContentManagerProps {
   currentTab: string;
@@ -320,6 +322,12 @@ export default function TabContentManager({
           onReorderTalentActs={onReorderTalentActs}
           onClearTalentActs={onClearTalentActs}
         />
+      )}
+
+      {currentTab === "lager" && <LagerHubView setCurrentTab={setCurrentTab} />}
+
+      {currentTab === "verwaltung" && (
+        <VerwaltungHubView setCurrentTab={setCurrentTab} accessRole={accessRole} />
       )}
     </div>
   );

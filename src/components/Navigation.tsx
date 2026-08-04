@@ -5,14 +5,11 @@ import {
   Briefcase, 
   Users, 
   Clock, 
-  Menu,
-  X,
   Compass,
   Sun,
   Moon,
   Printer,
   Bell,
-  Zap,
   ShoppingBag,
   Church,
   Sparkles
@@ -42,7 +39,6 @@ export default function Navigation({
   accessRole = "helfer",
   currentUserId = null
 }: NavigationProps) {
-  const [mobileOpen, setMobileOpen] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
   const [unreadCount, setUnreadCount] = React.useState(0);
 
@@ -109,7 +105,6 @@ export default function Navigation({
 
   const handleTabChange = (tabId: string) => {
     setCurrentTab(tabId);
-    setMobileOpen(false);
   };
 
   const handleExport = async (e: React.MouseEvent) => {
@@ -166,97 +161,25 @@ export default function Navigation({
 
   return (
     <>
-      {/* Mobile Header */}
+      {/* Mobile: schlanke Kopfzeile (Navigation läuft über die Bottom-Nav) */}
       <header className="lg:hidden bg-slate-900 text-white flex items-center justify-between px-4 py-3 sticky top-0 z-40 border-b border-emerald-500/10 print:hidden">
         <div className="flex items-center space-x-2">
-          <Compass className="h-6 w-6 text-emerald-400 animate-pulse" />
-          <span className="font-display font-bold text-lg tracking-tight text-white">DIENSTPLAN_v2.0</span>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          {onToggleTheme && (
-            <Tooltip content={theme === "dark" ? "Hellen Modus aktivieren" : "Dunklen Modus aktivieren"} position="bottom" delay={300}>
-              <button
-                onClick={onToggleTheme}
-                className="text-emerald-400 hover:text-emerald-300 p-2 hover:bg-slate-800 rounded-xl transition cursor-pointer"
-              >
-                {theme === "dark" ? <Sun className="h-4.5 w-4.5 text-amber-400" /> : <Moon className="h-4.5 w-4.5 text-slate-400" />}
-              </button>
-            </Tooltip>
-          )}
-
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="text-emerald-400 hover:text-emerald-300 p-1 rounded-md focus:outline-none"
-            id="mobile-menu-toggle"
-          >
-            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
-        </div>
-      </header>
-
-      {/* Mobile Drawer Backdrop */}
-      {mobileOpen && (
-        <div 
-          className="fixed inset-0 bg-black/70 z-30 lg:hidden transition-opacity duration-300" 
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      {/* Mobile Menu Drawer */}
-      <div className={`fixed top-0 bottom-0 left-0 w-72 bg-slate-900 border-r border-emerald-500/10 text-white z-30 lg:hidden transform transition-transform duration-300 ease-in-out ${mobileOpen ? "translate-x-0" : "-translate-x-full"} flex flex-col pt-16 print:hidden`}>
-        <div className="px-4 py-3 bg-slate-950 border-b border-emerald-500/10 absolute top-0 left-0 right-0 flex items-center space-x-2">
-          <Compass className="h-5 w-5 text-emerald-400" />
-          <span className="font-display font-semibold text-slate-200">Hauptmenü</span>
+          <Compass className="h-6 w-6 text-emerald-400" />
+          <span className="font-display font-bold text-lg tracking-tight text-white">Pfingstlager</span>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const active = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleTabChange(item.id)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-xs transition-all duration-150 border ${
-                  active 
-                  ? "bg-emerald-950/60 border-emerald-500/30 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.1)] font-bold" 
-                  : "border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-100"
-                }`}
-                id={`mobile-nav-${item.id}`}
-              >
-                <Icon className={`h-4.5 w-4.5 shrink-0 ${active ? "text-emerald-400" : "text-slate-400"}`} />
-                <span className="flex-1 text-left text-sm">{item.label}</span>
-                {item.id === "dashboard" && conflictCount > 0 && (
-                  <span className="bg-rose-500/20 border border-rose-500/50 text-rose-350 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
-                    {conflictCount}
-                  </span>
-                )}
-                {item.id === "alerts" && unreadCount > 0 && (
-                  <span className="bg-emerald-500 border border-emerald-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full font-mono animate-pulse">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-        {canExport && (
-          <div className="px-4 pb-4 mt-auto">
+        {onToggleTheme && (
+          <Tooltip content={theme === "dark" ? "Helles Design aktivieren" : "Dunkles Design aktivieren"} position="bottom" delay={300}>
             <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 text-white font-bold rounded-xl text-xs text-center flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 shadow-emerald-600/15 cursor-pointer block"
+              onClick={onToggleTheme}
+              className="text-emerald-400 hover:text-emerald-300 p-2 hover:bg-slate-800 rounded-xl transition cursor-pointer"
+              id="mobile-theme-toggle"
             >
-              <span>{exporting ? "⏳ Bereite vor..." : "📲 Für WhatsApp herunterladen (.html)"}</span>
+              {theme === "dark" ? <Sun className="h-4.5 w-4.5 text-amber-400" /> : <Moon className="h-4.5 w-4.5 text-slate-400" />}
             </button>
-          </div>
+          </Tooltip>
         )}
-        <div className="p-4 border-t border-emerald-500/10 bg-slate-950 text-slate-400 text-xs">
-          <p className="font-semibold text-emerald-400">Pfingstlager Pfadfinder</p>
-          <p className="mt-0.5 text-[10px] text-slate-500">Dienstplan-Software für das Zeltlager</p>
-        </div>
-      </div>
+      </header>
 
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-slate-900 border-r border-emerald-500/10 text-white shrink-0 sticky top-0 h-screen print:hidden">
@@ -307,15 +230,9 @@ export default function Navigation({
 
         <div className="px-4 pb-4 space-y-2">
           {onToggleTheme && (
-            <Tooltip 
-              content={
-                theme === "dark" 
-                  ? "Wechselt auf den AMOLED True-Black Modus (maximaler Akkuschutz)" 
-                  : theme === "amoled"
-                  ? "Wechselt auf das helle, augenfreundliche Design"
-                  : "Wechselt auf das Standard-Dunkel Design"
-              } 
-              position="top" 
+            <Tooltip
+              content={theme === "dark" ? "Wechselt auf das helle Design" : "Wechselt auf das dunkle Design"}
+              position="top"
               delay={300}
             >
               <button
@@ -323,11 +240,6 @@ export default function Navigation({
                 className="w-full px-4 py-2 bg-slate-950 border border-slate-800 text-slate-350 hover:text-white font-medium rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer hover:bg-slate-800"
               >
                 {theme === "dark" ? (
-                  <>
-                    <Zap className="h-4 w-4 text-emerald-400 animate-pulse" />
-                    <span>AMOLED Schwarz</span>
-                  </>
-                ) : theme === "amoled" ? (
                   <>
                     <Sun className="h-4 w-4 text-amber-500" />
                     <span>Helles Design</span>

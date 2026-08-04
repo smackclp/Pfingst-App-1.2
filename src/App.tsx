@@ -1,5 +1,6 @@
 import React from "react";
 import Navigation from "./components/Navigation";
+import BottomNav from "./components/BottomNav";
 import Header from "./components/Header";
 import TabContentManager from "./components/TabContentManager";
 import ModalManager from "./components/ModalManager";
@@ -293,6 +294,13 @@ export default function App() {
           currentUserId={currentUserId}
         />
 
+        <BottomNav
+          currentTab={currentTab}
+          setCurrentTab={setCurrentTab}
+          accessRole={accessRole}
+          currentUserId={currentUserId}
+        />
+
         <div className="flex-1 flex flex-col min-w-0">
           {!isOnline && (
             <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white px-4 py-2.5 text-xs font-bold text-center flex items-center justify-center gap-2 animate-pulse border-b border-amber-500/30 shadow-md shrink-0">
@@ -319,7 +327,7 @@ export default function App() {
             onOpenPwaOnboarding={() => setShowPwaSetupModal(true)}
           />
 
-          <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 lg:pb-8 max-w-7xl w-full mx-auto">
             <TabContentManager
               currentTab={currentTab}
               loading={loading}
