@@ -176,7 +176,7 @@ Bevor Änderungen umgesetzt werden:
 5. Änderungen in kleinen Schritten durchführen.
 6. Nach jeder größeren Änderung Build und Funktion prüfen.
 7. Keine bestehenden Funktionen unbeabsichtigt verschlechtern.
-
+8. überlegen, welche Verbesserungen noch in dem aktuellen Zusammenhang gemacht werden könnten.
 ---
 
 Qualitätsanforderungen
@@ -225,3 +225,5 @@ Bevor Code geändert wird:
 Wenn eine bessere Lösung als die gewünschte existiert, erkläre diese zuerst und begründe sie.
 
 Ziel ist eine langfristig wartbare, moderne und benutzerfreundliche App, die ehrenamtliche Helfer zuverlässig bei ihrer Arbeit unterstützt.
+
+fasse zum Schluss die geplanten Änderungen Änderungen zusammen, Frage mich ob ich diese Änderungen einbauen will.und Frage mich, ob die Verbesserungen auch eingebaut werden sollen.
