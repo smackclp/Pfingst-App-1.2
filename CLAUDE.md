@@ -1,284 +1,445 @@
+CLAUDE.md
 
-
-Pfingstfestival-App
-Projektvision
-
-Diese App unterstützt ehrenamtliche Helfer eines mehrtägigen Pfingstfestivals.
-
-Das wichtigste Ziel ist eine extrem einfache, schnelle und intuitive Bedienung, auch für Nutzer mit wenig technischer Erfahrung.
-
-Die App wird überwiegend auf Smartphones verwendet – häufig unter Zeitdruck, im Freien, bei schlechter Internetverbindung und in heller Sonneneinstrahlung.
-
-Jede Entscheidung soll sich daran orientieren, den Helfern die Arbeit zu erleichtern und organisatorischen Aufwand für Bereichsleitungen zu reduzieren.
+Pfingstfestival App – Entwicklungsrichtlinie
 
 ---
 
-Grundprinzipien
+1. Projektvision
 
-Bei jeder Änderung gelten folgende Prioritäten:
+Diese Anwendung ist eine mobile Helfer-App für ein mehrtägiges Pfingstfestival.
 
-1. Einfachheit vor Funktionsvielfalt.
-2. Möglichst wenige Klicks.
-3. Möglichst wenig Texteingabe.
-4. Große Buttons und große Touchflächen.
-5. Gute Lesbarkeit.
-6. Hohe Geschwindigkeit.
-7. Mobile First.
-8. Offlinefähigkeit.
-9. Hohe Stabilität.
-10. Wiederverwendbarer und sauber strukturierter Code.
+Die App unterstützt ehrenamtliche Helfer, Bereichsleitungen und Organisationsteams bei:
 
-Wenn zwischen einer technisch eleganten Lösung und einer einfacheren Bedienung gewählt werden muss, hat die Benutzerfreundlichkeit Vorrang.
+- Schichtplanung
+- Kommunikation
+- Aufgabenverwaltung
+- Materialorganisation
+- Informationen vor und während des Festivals
+
+Das wichtigste Ziel:
+
+Eine extrem einfache, schnelle und zuverlässige Anwendung, die auch von technisch unerfahrenen Nutzern problemlos verwendet werden kann.
+
+Die App wird hauptsächlich unter realen Festivalbedingungen genutzt:
+
+- Smartphone
+- Zeitdruck
+- draußen
+- wechselnde Internetverbindung
+- schlechte Netzabdeckung
+- helle Sonneneinstrahlung
+
+Jede technische Entscheidung muss dieses Ziel unterstützen.
 
 ---
 
-Zielgruppe
+2. Grundprinzipien
 
-Die Nutzer sind überwiegend ehrenamtliche Helfer.
+Bei jeder Entwicklung gelten folgende Prioritäten:
 
-Viele besitzen nur durchschnittliche technische Kenntnisse.
+1. Benutzerfreundlichkeit vor technischer Komplexität
+2. Wenige Klicks statt komplizierter Abläufe
+3. Wenig Texteingabe
+4. Mobile First
+5. Offline First
+6. Hohe Geschwindigkeit
+7. Stabilität
+8. Wartbarkeit
+9. Skalierbarkeit
+10. Saubere Architektur
 
-Die App muss daher auch ohne Einweisung möglichst intuitiv bedienbar sein.
+Wenn eine technische Lösung kompliziert ist, aber keinen echten Mehrwert für Helfer bietet, ist eine einfachere Lösung zu bevorzugen.
 
 ---
 
-UX-Richtlinien
+3. Zielgruppe und UX-Anforderungen
 
-Vor jeder Änderung überlegen:
+Die Nutzer sind hauptsächlich ehrenamtliche Helfer mit unterschiedlichen technischen Kenntnissen.
 
-Kann ein neuer Nutzer diese Funktion innerhalb weniger Sekunden verstehen?
+Die App muss ohne lange Erklärung verständlich sein.
 
 Bevorzuge:
 
-- große Karten statt Tabellen
-- große Schaltflächen
-- eindeutige Symbole
+- große Buttons
+- große Touch-Flächen
+- klare Symbole
 - kurze Texte
-- klare Navigation
-- wenig verschachtelte Menüs
-- möglichst keine komplizierten Einstellungen
-
-Jede Funktion sollte mit möglichst wenigen Schritten erreichbar sein.
-
----
-
-Designprinzipien
-
-Das Design soll modern, freundlich und ruhig wirken.
+- Kartenlayouts
+- eindeutige Aktionen
+- schnelle Navigation
 
 Vermeide:
 
-- technische Oberflächen
-- überladene Dashboards
+- technische Begriffe
+- komplizierte Menüs
+- unnötige Formulare
 - kleine Schriften
-- kleine Buttons
-- unnötige Dialoge
+- überfüllte Oberflächen
 
-Bevorzuge:
-
-- Kartenlayout
-- großzügige Abstände
-- klare Farben
-- konsistente Icons
-- gute Animationen
-- deutliche Rückmeldungen nach Benutzeraktionen
+Jede wichtige Aktion sollte möglichst mit wenigen Klicks erreichbar sein.
 
 ---
 
-Mobile First
+4. Mobile First und Outdoor-Nutzung
 
 Die Smartphone-Version hat höchste Priorität.
 
-Desktop ist zweitrangig.
+Berücksichtige:
 
-Alle Funktionen müssen problemlos mit dem Daumen bedienbar sein.
+- Bedienung mit einer Hand
+- kleine Displays
+- langsame Internetverbindungen
+- Nutzung im Freien
+- direkte Sonneneinstrahlung
 
----
+Die App benötigt einen speziellen Sonnenlicht-Modus:
 
-Offline First
-
-Offlinefähigkeit ist ein Kernbestandteil der App.
-
-Benutzeraktionen dürfen möglichst nicht verloren gehen.
-
-Wenn keine Internetverbindung vorhanden ist:
-
-- Aktionen lokal speichern
-- Benutzer informieren
-- automatisch synchronisieren sobald wieder Internet verfügbar ist
+- hoher Kontrast
+- größere Schrift
+- deutlich erkennbare Elemente
+- optimiert für Außenbereiche
 
 ---
 
-Benachrichtigungen
+5. Entwicklungsprozess vor jeder Änderung
 
-Benachrichtigungen sollen hilfreich sein und niemals störend wirken.
+WICHTIG:
+
+Beginne niemals direkt mit der Programmierung.
+
+Vor jeder neuen Funktion oder größeren Änderung muss zuerst eine Analyse erfolgen.
+
+---
+
+Schritt 1: Anforderung analysieren
+
+Prüfe:
+
+- Ist die gewünschte Funktion sinnvoll?
+- Welches eigentliche Problem soll gelöst werden?
+- Ist die vorgeschlagene Lösung die beste Lösung?
+- Gibt es eine einfachere oder bessere Alternative?
+- Ist die Funktion langfristig wartbar?
+
+---
+
+Schritt 2: Bestehenden Projektstand analysieren
+
+Vor Änderungen prüfen:
+
+- vorhandene Komponenten
+- bestehende Funktionen
+- Datenmodelle
+- APIs
+- Datenbankstruktur
+- Authentifizierung
+- Benutzerrollen
+- bestehende Workflows
+
+Neue Funktionen sollen bevorzugt integriert oder erweitert werden.
+
+Keine parallelen Lösungen entwickeln.
+
+---
+
+Schritt 3: Verbesserungsvorschläge erstellen
+
+Vor der Umsetzung prüfen:
+
+- UX-Verbesserungen
+- Performance
+- Sicherheit
+- Wartbarkeit
+- Skalierbarkeit
+- zukünftige Erweiterungen
+
+Wenn sinnvolle Verbesserungen existieren, zuerst vorschlagen.
+
+---
+
+Schritt 4: Implementierungsplan erstellen
+
+Vor dem Programmieren beschreiben:
+
+- Was wird geändert?
+- Welche Dateien sind betroffen?
+- Welche Komponenten werden angepasst?
+- Welche Datenbankänderungen sind notwendig?
+- Welche Auswirkungen gibt es auf bestehende Funktionen?
+- Welche Alternativen wurden geprüft?
+
+---
+
+Schritt 5: Freigabe abwarten
+
+Erst nach ausdrücklicher Bestätigung mit der Umsetzung beginnen.
+
+Antwortformat:
+
+Analyse
+
+...
+
+Mögliche Verbesserungen
+
+...
+
+Auswirkungen auf bestehende Funktionen
+
+...
+
+Empfohlener Umsetzungsweg
+
+...
+
+Rückfrage / Freigabe erforderlich
+
+"Soll ich die Funktion wie beschrieben umsetzen oder möchtest du eine der vorgeschlagenen Erweiterungen integrieren?"
+
+---
+
+6. Architekturregeln
+
+Vorhandene Architektur verstehen, bevor Änderungen erfolgen.
+
+Regeln:
+
+- Bestehende Komponenten bevorzugt erweitern
+- Keine unnötigen neuen Abhängigkeiten
+- Keine doppelten Funktionen
+- Wiederverwendbare Komponenten erstellen
+- Klare Trennung von UI, Logik und Daten
+- Saubere Ordnerstruktur erhalten
+
+Große Dateien bevorzugt in kleinere Komponenten aufteilen.
+
+---
+
+7. Coding Standards
+
+Der Code muss:
+
+- verständlich
+- wartbar
+- sauber strukturiert
+- performant
+- erweiterbar
+
+sein.
+
+Vermeide:
+
+- unnötige Komplexität
+- Copy & Paste
+- kurzfristige Hacks
+- unklare Variablennamen
+
+Bestehende Coding-Konventionen des Projekts einhalten.
+
+---
+
+8. Offline First Anforderungen
+
+Offline-Fähigkeit ist eine zentrale Funktion.
+
+Die App soll auch ohne Internet möglichst vollständig nutzbar sein.
 
 Beispiele:
 
+- Schicht annehmen
+- Schicht absagen
+- Informationen ansehen
+- Aktionen speichern
+
+Wenn keine Verbindung besteht:
+
+- Daten lokal speichern
+- Nutzer informieren
+- Änderungen automatisch synchronisieren sobald Verbindung besteht
+
+Beispiel:
+
+"Wird synchronisiert, sobald du wieder online bist."
+
+---
+
+9. Benachrichtigungen
+
+Benachrichtigungen sollen hilfreich und nicht störend sein.
+
+Unterstützen:
+
 - Erinnerung vor Schichtbeginn
-- Erinnerung bei fehlender Zusage
-- wichtige organisatorische Hinweise
+- fehlende Rückmeldungen
+- wichtige Festivalinformationen
+
+Beispiel:
+
+"Deine Küchendienst-Schicht beginnt in 30 Minuten."
 
 ---
 
-Barrierefreiheit
+10. Geplante Kernfunktionen
 
-Berücksichtige:
+Langfristig berücksichtigen:
 
-- große Schrift
-- hohen Kontrast
-- Sonnenlicht-Modus
-- gute Lesbarkeit
-- verständliche Sprache
+Onboarding
 
----
+Neue Nutzer erhalten beim ersten Login:
 
-Architekturregeln
-
-Vor jeder Änderung zuerst die vorhandene Architektur verstehen.
-
-Bestehende Komponenten möglichst wiederverwenden.
-
-Keine doppelten Funktionen entwickeln.
-
-Keine unnötigen Bibliotheken hinzufügen.
-
-Code modular halten.
-
-Kleine Komponenten bevorzugen.
-
-Vermeide Copy & Paste.
+- 3–4 kurze Einführungsschritte
+- Erklärung der wichtigsten Funktionen
 
 ---
 
-Coding Standards
+Globale Suche
 
-Schreibe wartbaren Code.
+Eine zentrale Suche für:
 
-Nutze bestehende Patterns.
-
-Kommentare nur dort, wo sie wirklich helfen.
-
-Keine unnötige Komplexität.
-
-Bevorzuge klare und verständliche Lösungen.
+- Schichten
+- Personen
+- Aufgaben
+- Informationen
+- Material
 
 ---
 
-Arbeitsweise
+Materialbestellung per Foto
 
-Bevor Änderungen umgesetzt werden:
+Materialanforderungen sollen möglichst einfach sein:
 
-1. Projekt analysieren.
-2. Bestehende Lösung verstehen.
-3. Auswirkungen abschätzen.
-4. Umsetzung planen.
-5. Änderungen in kleinen Schritten durchführen.
-6. Nach jeder größeren Änderung Build und Funktion prüfen.
-7. Keine bestehenden Funktionen unbeabsichtigt verschlechtern.
-8. überlegen, welche Verbesserungen noch in dem aktuellen Zusammenhang gemacht werden könnten.
----
+- Foto aufnehmen
+- hochladen
+- kurze Beschreibung hinzufügen
 
-Qualitätsanforderungen
-
-Jede neue Funktion soll:
-
-- intuitiv sein
-- performant sein
-- mobil funktionieren
-- wartbar sein
-- möglichst offline funktionieren
-- gut getestet werden können
+Keine langen Formulare.
 
 ---
 
-Langfristige Funktionen
+Automatische Erinnerungen
 
-Diese Funktionen sollen langfristig unterstützt werden:
+Wenn ein Helfer eine Schicht lange nicht bestätigt:
 
-- Offlinebetrieb
-- automatische Synchronisation
-- Push-Benachrichtigungen
-- globale Suche
-- Onboarding für neue Nutzer
-- Materialbestellung per Foto
-- Sonnenlicht-Modus
-- einfache Schichtverwaltung
-- Schwarzes Brett
-- Nachrichten
-- Materialverwaltung
-- Bereichsleiterfunktionen
+Automatische freundliche Erinnerung senden.
+
+Ziel:
+Bereichsleitungen entlasten.
 
 ---
 
-Verhalten von Claude
+11. Git-Workflow
 
-Bevor Code geändert wird:
-
-- zuerst analysieren
-- niemals vorschnell große Teile neu schreiben
-- vorhandene Komponenten bevorzugt erweitern
-- Architektur möglichst beibehalten
-- Verbesserungen begründen
-- Änderungen möglichst klein halten
-
-Wenn eine bessere Lösung als die gewünschte existiert, erkläre diese zuerst und begründe sie.
-
-Ziel ist eine langfristig wartbare, moderne und benutzerfreundliche App, die ehrenamtliche Helfer zuverlässig bei ihrer Arbeit unterstützt.
-
-fasse zum Schluss die geplanten Änderungen Änderungen zusammen, Frage mich ob ich diese Änderungen einbauen will.und Frage mich, ob die Verbesserungen auch eingebaut werden sollen.
-
-# Git Workflow
-
-## Branches
+Branch-Struktur
 
 main
-- Produktionsbranch
-- Muss jederzeit lauffähig sein.
-- Darf niemals direkt verändert werden.
+
+Produktionsversion.
+
+Regeln:
+
+- Immer stabil
+- Keine direkten Entwicklungsänderungen
+- Nur getestete Versionen
+
+---
 
 beta
-- Entwicklungsbranch.
-- Alle Änderungen von Claude erfolgen ausschließlich hier.
-- Neue Funktionen werden zuerst in beta implementiert.
-- Fehler werden zuerst in beta behoben.
 
-## Regeln
+Entwicklungs- und Testversion.
+
+Alle Änderungen erfolgen zuerst hier.
 
 Claude darf niemals direkt auf main arbeiten.
 
+---
+
 Vor jeder Änderung:
 
-1. Prüfen, auf welchem Branch gearbeitet wird.
-2. Falls nicht auf beta:
-   - zu beta wechseln
-   - oder den Benutzer darauf hinweisen.
+Prüfen:
 
-Während der Entwicklung:
+- Welcher Branch ist aktiv?
+- Ist es beta?
 
-- Änderungen nur in beta durchführen.
-- Kleine, nachvollziehbare Commits erstellen.
-- Nach jeder größeren Änderung:
-  - Projekt bauen
-  - Tests ausführen
-  - Fehler beheben
+Falls nicht:
 
-Erst wenn ich ausdrücklich zustimme:
+Auf beta wechseln oder darauf hinweisen.
 
-- beta nach main mergen.
+---
 
-Claude darf niemals eigenständig Änderungen nach main übernehmen.
+Nach Änderungen:
 
-Vor jedem Commit:
+Immer:
 
-- Prüfen, welche Dateien geändert wurden.
-- Keine unbeabsichtigten Änderungen committen.
-- Commit-Nachricht aussagekräftig formulieren.
+- Änderungen prüfen
+- Build ausführen
+- Fehler beheben
+- Aussagekräftigen Commit erstellen
 
-Vor jedem Merge:
+---
 
-- Build erfolgreich
-- Keine TypeScript-Fehler
-- Keine ESLint-Fehler
-- Keine offensichtlichen UI-Probleme
-- Alle neuen Funktionen getestet
+Veröffentlichung
+
+Eine Änderung darf erst nach Freigabe:
+
+beta → main
+
+übernommen werden.
+
+---
+
+12. Qualitätskontrolle
+
+Nach größeren Änderungen prüfen:
+
+- Funktioniert die App weiterhin?
+- Erfolgreicher Build?
+- Keine TypeScript-Fehler?
+- Keine offensichtlichen UX-Probleme?
+- Mobile Darstellung geprüft?
+- Bestehende Funktionen unverändert?
+
+---
+
+13. Änderungsdokumentation
+
+Nach jeder größeren Änderung berichten:
+
+Zusammenfassung
+
+Was wurde geändert?
+
+Technische Änderungen
+
+Welche Dateien und Komponenten wurden verändert?
+
+Auswirkungen
+
+Welche bestehenden Funktionen sind betroffen?
+
+Teststatus
+
+Was wurde geprüft?
+
+Empfehlung
+
+Gibt es weitere sinnvolle Verbesserungen?
+
+---
+
+14. Verhalten von Claude
+
+Arbeite wie ein erfahrener Senior Software Architect.
+
+Regeln:
+
+- Erst verstehen, dann ändern.
+- Erst analysieren, dann programmieren.
+- Bestehende Lösungen respektieren.
+- Kleine Schritte bevorzugen.
+- Risiken erklären.
+- Keine unnötigen Komplettumbauten.
+- Bei Unsicherheit nachfragen.
+
+Ziel ist nicht nur funktionierender Code.
+
+Ziel ist eine langfristig stabile, einfache und zuverlässige Helfer-App für ein echtes Festival.
