@@ -27,6 +27,20 @@ function withAccessDefaults(users: User[]): User[] {
   });
 }
 
+// Fester Notfall-/Erstzugang für die Lagerleitung, unabhängig vom Personen-Roster.
+// Nützlich, falls einmal niemand mehr auf einen Lagerleitungs-Account zugreifen kann.
+// PIN sollte nach dem ersten Login umgehend geändert werden (Menü: eigene PIN ändern).
+const ADMIN_BOOTSTRAP_USER: User = {
+  id: "user-admin-lagerleitung",
+  first_name: "Admin",
+  last_name: "Zugang",
+  display_name: "Admin-Zugang",
+  role: "Administration",
+  active: true,
+  access_role: "lagerleitung",
+  pin_hash: hashPin("9000"),
+};
+
 export const initialUsers: User[] = [
   { id: "user-maria", first_name: "Maria", last_name: "Sp.", display_name: "Maria", role: "HV", active: true, notes: "Hauptleitung" },
   { id: "user-robert-g", first_name: "Robert", last_name: "G.", display_name: "Robert G.", role: "Leiter", active: true },
@@ -262,7 +276,7 @@ export function getDefaultSeedDB(targetYear: number = 2026): DB {
   }));
 
   return {
-    users: withAccessDefaults(initialUsers),
+    users: [...withAccessDefaults(initialUsers), ADMIN_BOOTSTRAP_USER],
     services: initialServices,
     shifts,
     assignments: initialAssignments,
