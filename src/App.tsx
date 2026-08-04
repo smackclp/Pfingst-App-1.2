@@ -35,6 +35,7 @@ export default function App() {
     loadDatabase,
     handleAddUser,
     handleUpdateUser,
+    handleUpdateAccessRole,
     handleDeleteUser,
     handleAddService,
     handleUpdateService,
@@ -336,6 +337,7 @@ export default function App() {
               openStatusModal={openStatusModal}
               onAddUser={handleAddUser}
               onUpdateUser={handleUpdateUser}
+              onUpdateAccessRole={handleUpdateAccessRole}
               onDeleteUser={handleDeleteUser}
               onAddService={handleAddService}
               onUpdateService={handleUpdateService}

@@ -210,6 +210,20 @@ export function useZeltlagerData() {
     await loadDatabase(true);
   };
 
+  // Nur Lagerleitung: Zugriffsrolle einer Person ändern (Helfer/Bereichsleiter/Lagerleitung)
+  const handleUpdateAccessRole = async (id: string, role: AccessRole) => {
+    const res = await fetch(`/api/auth/admin/access-role/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_role: role }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Rolle konnte nicht geändert werden.");
+    }
+    await loadDatabase(true);
+  };
+
   // Services
   const handleAddService = async (servicePayload: Omit<Service, "id">) => {
     const res = await fetch("/api/services", {
@@ -540,6 +554,7 @@ export function useZeltlagerData() {
     loadDatabase,
     handleAddUser,
     handleUpdateUser,
+    handleUpdateAccessRole,
     handleDeleteUser,
     handleAddService,
     handleUpdateService,

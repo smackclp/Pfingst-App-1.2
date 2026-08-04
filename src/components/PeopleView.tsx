@@ -14,11 +14,13 @@ import {
 import { User, FunctionalRole } from "../types";
 import PersonCard from "./PersonCard";
 import PersonFormModal from "./PersonFormModal";
+import AccessRoleManager from "./AccessRoleManager";
 
 interface PeopleViewProps {
   users: User[];
   onAddUser: (user: Omit<User, "id">) => Promise<void>;
   onUpdateUser: (id: string, user: Partial<User>) => Promise<void>;
+  onUpdateAccessRole: (id: string, role: "helfer" | "bereichsleiter" | "lagerleitung") => Promise<void>;
   onDeleteUser: (id: string) => Promise<void>;
   isAdmin: boolean;
   functionalRoles: FunctionalRole[];
@@ -31,6 +33,7 @@ export default function PeopleView({
   users,
   onAddUser,
   onUpdateUser,
+  onUpdateAccessRole,
   onDeleteUser,
   isAdmin,
   functionalRoles,
@@ -39,7 +42,7 @@ export default function PeopleView({
   onDeleteRole,
 }: PeopleViewProps) {
   // Navigation tabs
-  const [subTab, setSubTab] = React.useState<"list" | "roles">("list");
+  const [subTab, setSubTab] = React.useState<"list" | "roles" | "access">("list");
 
   // Filtering states
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -176,10 +179,21 @@ export default function PeopleView({
           >
             🛡️ Lager-Rollen ({(functionalRoles || []).length})
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => setSubTab("access")}
+              className={`pb-3 font-mono font-bold text-xs uppercase tracking-wider transition ${subTab === "access" ? "border-b-2 border-emerald-500 text-emerald-400" : "text-slate-400 hover:text-slate-200"}`}
+              id="subtab-access"
+            >
+              🔑 Admin-Verwaltung
+            </button>
+          )}
         </div>
       </div>
 
-      {subTab === "list" ? (
+      {subTab === "access" ? (
+        <AccessRoleManager users={users} onUpdateAccessRole={onUpdateAccessRole} />
+      ) : subTab === "list" ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800/40">
             {/* Quick Search */}

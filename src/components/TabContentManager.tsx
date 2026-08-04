@@ -34,6 +34,7 @@ interface TabContentManagerProps {
   // Data update handlers from useZeltlagerData
   onAddUser: (user: Partial<User>) => Promise<void>;
   onUpdateUser: (id: string, user: Partial<User>) => Promise<void>;
+  onUpdateAccessRole: (id: string, role: "helfer" | "bereichsleiter" | "lagerleitung") => Promise<void>;
   onDeleteUser: (id: string) => Promise<void>;
   
   onAddService: (service: Partial<Service>) => Promise<void>;
@@ -102,6 +103,7 @@ export default function TabContentManager({
   openStatusModal,
   onAddUser,
   onUpdateUser,
+  onUpdateAccessRole,
   onDeleteUser,
   onAddService,
   onUpdateService,
@@ -201,6 +203,7 @@ export default function TabContentManager({
           users={users}
           onAddUser={onAddUser}
           onUpdateUser={onUpdateUser}
+          onUpdateAccessRole={onUpdateAccessRole}
           onDeleteUser={onDeleteUser}
           isAdmin={isAdmin}
           functionalRoles={functionalRoles}
