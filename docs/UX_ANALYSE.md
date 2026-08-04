@@ -5,6 +5,19 @@
 
 ---
 
+## Bestätigte Entscheidungen (Stand: gemeinsame Abstimmung nach Erstanalyse)
+
+| # | Thema | Entscheidung |
+|---|---|---|
+| 1 | Farbschema | **Helles Theme als Standard**, dunkles Theme bleibt als optionaler Dark Mode wählbar (kein Zwang zu nur einer Variante) |
+| 2 | Navigation | **Bottom-Navigation** mit 4 Punkten für Helfer (Start / Mein Plan / Lager / Mitteilungen) + 5. Punkt "Verwaltung" für Bereichsleitung/Lagerleitung, ersetzt die bisherige Sidebar-Liste |
+| 3 | Kalender & Druckansicht | **Werden zusammengelegt** zu einer Seite "Mein Plan"; der Export/Druck wird zu einer Funktion *innerhalb* dieser Seite statt eines eigenen Menüpunkts |
+| 4 | Schichten-Standardansicht | **Rollenabhängig:** Helfer sehen standardmäßig die Kartenansicht (touch-freundlich); Bereichsleitung/Lagerleitung sehen standardmäßig die kompakte Tabellenansicht (besser für Massen-Zuteilung). Beide Ansichten bleiben für alle wählbar. |
+
+Die folgenden Kapitel sind die ursprüngliche Analyse und weitere, noch offene Vorschläge – Kapitel 4 (Informationsarchitektur) und 5 (Dashboard) unten sind bereits im Sinne der obigen Entscheidungen zu lesen.
+
+---
+
 ## Zusammenfassung
 
 Die App hat ein solides fachliches Fundament (Rollen, Datenmodell, Firebase-Sync, PWA-Grundgerüst) und deckt bereits sehr viele Bedürfnisse eines Zeltlagers ab. Das größte UX-Problem ist nicht das, was fehlt, sondern **wie viel gleichzeitig sichtbar ist**: Eine Desktop-Sidebar mit bis zu 11 Menüpunkten, ein dunkles "Technik/Terminal"-Erscheinungsbild (`PFINGSTLAGER.SYS_2026`, monospaced Schrift, "System Aktiv") und mehrere Ansichten, die denselben Inhalt (den Dienstplan) auf unterschiedliche Weise zeigen. Für eine Zielgruppe, die die App nur wenige Tage im Jahr nutzt und größtenteils nicht technikaffin ist, ist das kognitiv anstrengend. Das Redesign-Ziel ist daher: **ein Hauptweg pro Aufgabe, große Touch-Ziele, ruhige Optik, und alles Seltene aus dem direkten Sichtfeld verbannen.**
