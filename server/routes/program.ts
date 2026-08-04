@@ -120,7 +120,9 @@ router.get("/talent-acts", (req, res) => {
   res.json(db.talentActs || []);
 });
 
-router.post("/talent-acts", requireMinRole("bereichsleiter"), (req, res) => {
+// Programmbereich (Talentshow/Bunter Abend) ist bewusst für ALLE angemeldeten Helfer
+// voll bearbeitbar - dort organisieren oft Helfer:innen selbst (Absprache mit Lagerleitung).
+router.post("/talent-acts", (req, res) => {
   const db = readDB();
   const {
     community_name,
@@ -166,7 +168,7 @@ router.post("/talent-acts", requireMinRole("bereichsleiter"), (req, res) => {
   res.status(201).json(newAct);
 });
 
-router.put("/talent-acts/:id", requireMinRole("bereichsleiter"), (req, res) => {
+router.put("/talent-acts/:id", (req, res) => {
   const db = readDB();
   if (!db.talentActs) db.talentActs = [];
   const index = db.talentActs.findIndex((a) => a.id === req.params.id);
@@ -211,7 +213,7 @@ router.put("/talent-acts/:id", requireMinRole("bereichsleiter"), (req, res) => {
   res.json(db.talentActs[index]);
 });
 
-router.post("/talent-acts/reorder", requireMinRole("bereichsleiter"), (req, res) => {
+router.post("/talent-acts/reorder", (req, res) => {
   const db = readDB();
   const { orders } = req.body;
   if (!orders || typeof orders !== "object") {
@@ -230,7 +232,7 @@ router.post("/talent-acts/reorder", requireMinRole("bereichsleiter"), (req, res)
   res.json({ success: true, count: db.talentActs.length });
 });
 
-router.delete("/talent-acts/:id", requireMinRole("bereichsleiter"), (req, res) => {
+router.delete("/talent-acts/:id", (req, res) => {
   const db = readDB();
   if (!db.talentActs) db.talentActs = [];
   const index = db.talentActs.findIndex((a) => a.id === req.params.id);

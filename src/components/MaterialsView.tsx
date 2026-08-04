@@ -539,7 +539,10 @@ export default function MaterialsView({
               sortedAndFilteredMaterials.map((item) => {
                 const creator = users.find((u) => u.id === item.user_id);
                 const isItemOwner = item.user_id === currentUserId;
-                const canModify = isAdmin || isItemOwner;
+                const currentUser = users.find((u) => u.id === currentUserId);
+                // Bestellliste bearbeiten dürfen: die eigene Bestellung, die von der
+                // Lagerleitung benannte(n) Einkäufer*in(nen) (is_buyer), oder Bereichsleitung+.
+                const canModify = isAdmin || isItemOwner || !!currentUser?.is_buyer;
 
                 return (
                   <div

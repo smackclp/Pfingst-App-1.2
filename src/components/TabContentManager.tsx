@@ -23,6 +23,7 @@ interface TabContentManagerProps {
   activeCampId: string | null;
   camps: Camp[];
   isAdmin: boolean;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
   currentUserId: string | null;
   selectShiftId: string | null;
   
@@ -96,6 +97,7 @@ export default function TabContentManager({
   activeCampId,
   camps,
   isAdmin,
+  accessRole = "helfer",
   currentUserId,
   selectShiftId,
   setCurrentTab,
@@ -141,6 +143,12 @@ export default function TabContentManager({
   onClearTalentActs,
   onResetDatabase,
 }: TabContentManagerProps) {
+  // "isAdmin" ist bewusst nur Lagerleitung (Personen/Lager-Verwaltung).
+  // "canManage" (Bereichsleitung ODER Lagerleitung) gilt für alle operativen Planungs-
+  // aufgaben, die laut Backend bereits Bereichsleitung erlaubt sind (Schichten, Dienste,
+  // Dashboard-Auswertungen) - hier wird das jetzt auch in der Oberfläche konsistent gemacht.
+  const canManage = accessRole !== "helfer";
+
   const activeCamp = React.useMemo(() => {
     return camps.find((c) => c.id === activeCampId);
   }, [camps, activeCampId]);
@@ -171,7 +179,7 @@ export default function TabContentManager({
           onAddAssignment={onAddAssignment}
           onRemoveAssignment={onRemoveAssignment}
           activeCamp={activeCamp}
-          isAdmin={isAdmin}
+          isAdmin={canManage}
           currentUserId={currentUserId}
           pwaInstallable={pwaInstallable}
           onTriggerPwaInstall={onTriggerPwaInstall}
@@ -187,7 +195,7 @@ export default function TabContentManager({
           assignments={assignments}
           conflicts={conflicts}
           currentUserId={currentUserId}
-          isAdmin={isAdmin}
+          isAdmin={canManage}
           onAddAssignment={onAddAssignment}
           onRemoveAssignment={onRemoveAssignment}
           onToggleAssignmentAccepted={openStatusModal}
@@ -223,7 +231,7 @@ export default function TabContentManager({
           onDeleteService={onDeleteService}
           onAddShift={onAddShift}
           onDeleteShift={onDeleteShift}
-          isAdmin={isAdmin}
+          isAdmin={canManage}
           activeCamp={activeCamp}
         />
       )}
@@ -240,7 +248,7 @@ export default function TabContentManager({
           onAddAssignment={onAddAssignment}
           onRemoveAssignment={onRemoveAssignment}
           onToggleAssignmentAccepted={openStatusModal}
-          isAdmin={isAdmin}
+          isAdmin={canManage}
           activeCamp={activeCamp}
           currentUserId={currentUserId}
         />
@@ -280,7 +288,7 @@ export default function TabContentManager({
           materials={materials}
           users={users}
           currentUserId={currentUserId}
-          isAdmin={isAdmin}
+          isAdmin={canManage}
           onAddMaterial={onAddMaterial}
           onUpdateMaterial={onUpdateMaterial}
           onDeleteMaterial={onDeleteMaterial}
@@ -290,7 +298,7 @@ export default function TabContentManager({
       {currentTab === "communities" && (
         <CommunitiesView
           communities={communities}
-          isAdmin={isAdmin}
+          isAdmin={canManage}
           onAddCommunity={onAddCommunity}
           onUpdateCommunity={onUpdateCommunity}
           onDeleteCommunity={onDeleteCommunity}
@@ -305,7 +313,7 @@ export default function TabContentManager({
           communities={communities}
           users={users}
           currentUserId={currentUserId}
-          isAdmin={isAdmin}
+          isAdmin={true}
           onAddTalentAct={onAddTalentAct}
           onUpdateTalentAct={onUpdateTalentAct}
           onDeleteTalentAct={onDeleteTalentAct}
