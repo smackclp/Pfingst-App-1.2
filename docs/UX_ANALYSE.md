@@ -28,6 +28,21 @@ Die App hat ein solides fachliches Fundament (Rollen, Datenmodell, Firebase-Sync
 
 ---
 
+## Umsetzungsstatus
+
+| # | Entscheidung | Status |
+|---|---|---|
+| 1 | Helles Theme als Standard | Offen |
+| 2 | Bottom-Navigation | Offen |
+| 3 | Kalender & Druckansicht zusammenlegen | Offen |
+| 4 | Schichten-Standardansicht rollenabhängig | Offen |
+| 5 | Farbpalette | Offen |
+| 6 | Dashboard-Aufteilung nach Rolle | ✅ Umgesetzt (Bereichsleitung sieht jetzt auch Konflikt-/Statistik-/Rückmeldungs-Kacheln, nicht mehr nur Lagerleitung) |
+| 7 | Berechtigungsmodell vereinfacht | ✅ Umgesetzt (Programm/Talentshow für alle Helfer offen; Bereichsleitung-Rechte für Schichten/Dienste/Dashboard in der Oberfläche korrigiert; Bestellliste nutzt jetzt is_buyer korrekt) |
+| 8 | Admin-Oberfläche für Rollen | ✅ Umgesetzt (Unterpunkt "🔑 Admin-Verwaltung" in Helfer\*innen & Personen) |
+
+---
+
 ## Schritt 1 – Vollständige Funktionsanalyse
 
 ### 1.1 Seiten / Tabs (aktueller Stand)
