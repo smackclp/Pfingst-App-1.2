@@ -8,7 +8,6 @@ import {
   Compass,
   Sun,
   Moon,
-  Printer,
   Bell,
   ShoppingBag,
   Church,
@@ -75,11 +74,10 @@ export default function Navigation({
   const menuItems = React.useMemo(() => {
     const helferItems = [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { id: "calendar", label: "Gesamtplan & Filter", icon: Calendar },
+      { id: "calendar", label: "Mein Plan", icon: Calendar },
       { id: "program", label: "Programm ✨", icon: Sparkles },
       { id: "materials", label: "Bestellliste 📦", icon: ShoppingBag },
       { id: "alerts", label: "Benachrichtigungen 🔔", icon: Bell },
-      { id: "print", label: "Druckansicht 🖨️", icon: Printer },
     ];
     if (accessRole === "helfer") {
       return helferItems;

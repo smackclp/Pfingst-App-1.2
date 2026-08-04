@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, ShoppingBag, Church, Printer, ChevronRight } from "lucide-react";
+import { Sparkles, ShoppingBag, Church, ChevronRight } from "lucide-react";
 
 interface LagerHubViewProps {
   setCurrentTab: (tab: string) => void;
@@ -9,7 +9,6 @@ const TILES = [
   { id: "program", label: "Programm", description: "Talentshow, Bunter Abend & Spiel ohne Grenzen", icon: Sparkles, emoji: "✨" },
   { id: "materials", label: "Bestellliste", description: "Material anfragen und Bestellstatus verfolgen", icon: ShoppingBag, emoji: "📦" },
   { id: "communities", label: "Gemeinden", description: "Teilnehmende Gemeinden und Teilnehmerzahlen", icon: Church, emoji: "⛪" },
-  { id: "print", label: "Druckansicht", description: "Plan zum Ausdrucken oder fürs Schwarze Brett", icon: Printer, emoji: "🖨️" },
 ];
 
 export default function LagerHubView({ setCurrentTab }: LagerHubViewProps) {

@@ -6,7 +6,6 @@ import PeopleView from "./PeopleView";
 import ServicesView from "./ServicesView";
 import ShiftsView from "./ShiftsView";
 import CampsView from "./CampsView";
-import PrintView from "./PrintView";
 import AlertsView from "./AlertsView";
 import MaterialsView from "./MaterialsView";
 import CommunitiesView from "./CommunitiesView";
@@ -263,17 +262,6 @@ export default function TabContentManager({
           onSetActiveCamp={onSetActiveCamp}
           onCreateCamp={onCreateCamp}
           onResetDatabase={onResetDatabase}
-        />
-      )}
-
-      {currentTab === "print" && (
-        <PrintView
-          shifts={shifts}
-          services={services}
-          users={users}
-          assignments={assignments}
-          activeCamp={activeCamp}
-          onBackToDashboard={() => setCurrentTab("dashboard")}
         />
       )}
 

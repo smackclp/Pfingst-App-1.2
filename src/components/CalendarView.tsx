@@ -19,6 +19,7 @@ import { addDays, formatDateGerman, getDayName, formatDateWithDayPrefix } from "
 import CalendarCard from "./CalendarCard";
 import CalendarPersonStats from "./CalendarPersonStats";
 import CalendarTableView from "./CalendarTableView";
+import PrintView from "./PrintView";
 
 interface CalendarViewProps {
   users: UserType[];
@@ -63,7 +64,11 @@ export default function CalendarView({
   const [showOnlyConflicts, setShowOnlyConflicts] = React.useState<boolean>(false);
   const [showOnlyPending, setShowOnlyPending] = React.useState<boolean>(false);
   const [selectedDay, setSelectedDay] = React.useState<string>("All"); // "All", "startDate", "sunDate", "endDate"
-  const [viewMode, setViewMode] = React.useState<"list" | "days" | "admin">("list");
+  // Rollenabhängige Standardansicht (Entscheidung #4): Helfer sehen die
+  // touch-freundlichen Karten, Bereichsleitung/Lagerleitung die kompaktere
+  // Tabelle (praktischer für Massen-Zuteilung). "isAdmin" bedeutet hier
+  // bereits "Bereichsleitung oder höher" (siehe TabContentManager).
+  const [viewMode, setViewMode] = React.useState<"list" | "days" | "print">(isAdmin ? "list" : "days");
   const [searchTerm, setSearchTerm] = React.useState<string>("");
   const [assignPopoverShiftId, setAssignPopoverShiftId] = React.useState<string | null>(null);
   const [expandedShifts, setExpandedShifts] = React.useState<Record<string, boolean>>({});
@@ -263,6 +268,21 @@ export default function CalendarView({
     };
   }, [selectedPersonId, users, assignments, shifts, startDate, sunDate, endDate]);
 
+  // Druck-/Export-Modus (Entscheidung #3): eigenständige Ansicht ohne den
+  // Kalender-Filter-Rahmen drumherum, "Zurück" springt in den vorherigen Modus.
+  if (viewMode === "print") {
+    return (
+      <PrintView
+        shifts={shifts}
+        services={services}
+        users={users}
+        assignments={assignments}
+        activeCamp={activeCamp}
+        onBackToDashboard={() => setViewMode(isAdmin ? "list" : "days")}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Search & Statistics Banner */}
@@ -403,6 +423,17 @@ export default function CalendarView({
                 }`}
               >
                 Kompakte Liste
+              </button>
+              <button
+                onClick={() => setViewMode("print")}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  viewMode === "print"
+                    ? "bg-slate-900 border border-emerald-500/15 text-emerald-400 font-bold"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+                id="calendar-print-toggle"
+              >
+                🖨️ Drucken / Export
               </button>
               {isAdmin && (
                 <button
