@@ -331,6 +331,11 @@ Bereichsleitungen entlasten.
 
 Branch-Struktur
 
+
+main = stabile Version
+beta = Entwicklungszweig
+
+
 main
 
 Produktionsversion.
