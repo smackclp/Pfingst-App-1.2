@@ -227,3 +227,58 @@ Wenn eine bessere Lösung als die gewünschte existiert, erkläre diese zuerst u
 Ziel ist eine langfristig wartbare, moderne und benutzerfreundliche App, die ehrenamtliche Helfer zuverlässig bei ihrer Arbeit unterstützt.
 
 fasse zum Schluss die geplanten Änderungen Änderungen zusammen, Frage mich ob ich diese Änderungen einbauen will.und Frage mich, ob die Verbesserungen auch eingebaut werden sollen.
+
+# Git Workflow
+
+## Branches
+
+main
+- Produktionsbranch
+- Muss jederzeit lauffähig sein.
+- Darf niemals direkt verändert werden.
+
+beta
+- Entwicklungsbranch.
+- Alle Änderungen von Claude erfolgen ausschließlich hier.
+- Neue Funktionen werden zuerst in beta implementiert.
+- Fehler werden zuerst in beta behoben.
+
+## Regeln
+
+Claude darf niemals direkt auf main arbeiten.
+
+Vor jeder Änderung:
+
+1. Prüfen, auf welchem Branch gearbeitet wird.
+2. Falls nicht auf beta:
+   - zu beta wechseln
+   - oder den Benutzer darauf hinweisen.
+
+Während der Entwicklung:
+
+- Änderungen nur in beta durchführen.
+- Kleine, nachvollziehbare Commits erstellen.
+- Nach jeder größeren Änderung:
+  - Projekt bauen
+  - Tests ausführen
+  - Fehler beheben
+
+Erst wenn ich ausdrücklich zustimme:
+
+- beta nach main mergen.
+
+Claude darf niemals eigenständig Änderungen nach main übernehmen.
+
+Vor jedem Commit:
+
+- Prüfen, welche Dateien geändert wurden.
+- Keine unbeabsichtigten Änderungen committen.
+- Commit-Nachricht aussagekräftig formulieren.
+
+Vor jedem Merge:
+
+- Build erfolgreich
+- Keine TypeScript-Fehler
+- Keine ESLint-Fehler
+- Keine offensichtlichen UI-Probleme
+- Alle neuen Funktionen getestet
