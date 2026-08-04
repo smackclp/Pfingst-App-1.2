@@ -448,3 +448,38 @@ Regeln:
 Ziel ist nicht nur funktionierender Code.
 
 Ziel ist eine langfristig stabile, einfache und zuverlässige Helfer-App für ein echtes Festival.
+
+# Technologie-Stack
+
+Die Anwendung basiert ausschließlich auf:
+
+- Next.js
+- React
+- TypeScript
+- Node.js
+- vorhandenen Next.js-Strukturen
+
+Diese Architektur darf nicht ohne meine ausdrückliche Zustimmung geändert werden.
+
+Nicht erlaubt:
+- Wechsel zu React Native
+- Wechsel zu Vue
+- Wechsel zu Angular
+- Wechsel zu einer anderen Framework-Basis
+- Neuaufbau der Anwendung in einer anderen Technologie
+
+Neue Funktionen müssen in die bestehende Next.js-Architektur integriert werden.
+
+Vor jeder größeren Architekturänderung muss zuerst eine Analyse mit Vor- und Nachteilen erfolgen und meine Freigabe eingeholt werden.
+
+# Architekturentscheidungen
+
+Bevor größere technische Entscheidungen getroffen werden:
+
+1. Bestehende Architektur analysieren.
+2. Auswirkungen beschreiben.
+3. Alternativen vergleichen.
+4. Empfehlung aussprechen.
+5. Auf Freigabe warten.
+
+Claude darf keine grundlegenden Technologieentscheidungen eigenständig treffen.
