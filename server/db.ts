@@ -65,12 +65,18 @@ if (isFirebaseEnabled()) {
   });
 }
 
-// Synchronously serve from server-side memory cache (0ms database latency, 0 Firestore reads)
+// Synchronously serve from server-side memory cache (0ms database latency, 0 Firestore reads).
+// Gibt bewusst eine Kopie zurück (nicht die Live-Referenz): Routen mutieren das
+// zurückgegebene Objekt direkt und rufen danach writeDB() auf. Mit einer Live-
+// Referenz wäre der interne Cache zum Zeitpunkt des writeDB()-Aufrufs bereits
+// mutiert, wodurch dessen "Vorher"-Schnappschuss (für den Firestore-Diff) nie
+// einen Unterschied zum "Nachher"-Stand erkennen würde - Änderungen kämen dann
+// nie in Firestore an, obwohl sie lokal/im Speicher sichtbar sind.
 export function readDB(): DB {
   if (!currentCachedDB) {
     currentCachedDB = getInitialLocalDB();
   }
-  return currentCachedDB;
+  return JSON.parse(JSON.stringify(currentCachedDB));
 }
 
 // Set database state from Firestore on boot
