@@ -39,9 +39,9 @@ export default function DashboardStatsGrid({ stats, communities = [], isAdmin, o
         : "grid-cols-2 max-w-2xl mx-auto lg:max-w-none lg:grid-cols-2"
     }`}>
       {/* Card: Registered Communities (Always Visible!) */}
-      <div 
+      <div
         onClick={() => onNavigateToTab("communities")}
-        className="p-4 rounded-xl border bg-slate-900/60 border-slate-800 text-slate-300 cursor-pointer hover:border-emerald-500/30 hover:bg-slate-900 transition-all shadow-xs hover:shadow-[0_0_15px_rgba(16,185,129,0.08)]"
+        className="p-4 rounded-xl border bg-emerald-950/30 border-emerald-500/30 text-slate-300 cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-950/40 transition-all shadow-xs hover:shadow-[0_0_15px_rgba(16,185,129,0.08)]"
         id="stat-communities"
       >
         <div className="flex items-center justify-between">
@@ -55,9 +55,9 @@ export default function DashboardStatsGrid({ stats, communities = [], isAdmin, o
       </div>
 
       {/* Card: Total Participants (Always Visible!) */}
-      <div 
+      <div
         onClick={() => onNavigateToTab("communities")}
-        className="p-4 rounded-xl border bg-slate-900/60 border-slate-800 text-slate-200 cursor-pointer hover:border-cyan-500/30 hover:bg-slate-900 transition-all shadow-xs hover:shadow-[0_0_15px_rgba(6,182,212,0.08)]"
+        className="p-4 rounded-xl border bg-cyan-950/30 border-cyan-500/30 text-slate-200 cursor-pointer hover:border-cyan-500/50 hover:bg-cyan-950/40 transition-all shadow-xs hover:shadow-[0_0_15px_rgba(6,182,212,0.08)]"
         id="stat-participants"
       >
         <div className="flex items-center justify-between">

@@ -73,9 +73,15 @@ export default function App() {
     handleResetDatabase,
   } = useZeltlagerData();
 
-  const [theme, setTheme] = React.useState<"dark" | "amoled" | "light font-sans">(
+  const [theme, setTheme] = React.useState<"dark" | "amoled" | "light font-sans" | "sunlight">(
     () => (safeStorage.getItem(STORAGE_KEYS.THEME) as any) || "light font-sans"
   );
+
+  // Sonnenlicht-Modus braucht zusätzlich eine größere Basis-Schriftgröße (rem-basiert,
+  // also am <html>-Element, nicht nur an der App-Container-Div - siehe index.css).
+  React.useEffect(() => {
+    document.documentElement.classList.toggle("theme-sunlight", theme === "sunlight");
+  }, [theme]);
 
   const [statusEditingAssignmentId, setStatusEditingAssignmentId] = React.useState<string | null>(null);
   const [isOnline, setIsOnline] = React.useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
@@ -239,12 +245,14 @@ export default function App() {
     setPwaInstallable(false);
   };
 
-  // Vereinfachter Umschalter: Hell (Standard) <-> Dunkel, entsprechend der
-  // abgestimmten Design-Entscheidung #1 ("Hell als Standard, Dark Mode optional").
+  // Umschalter zyklisch: Dunkel -> Hell -> Sonnenlicht -> Dunkel, entsprechend der
+  // abgestimmten Design-Entscheidung #1 ("Hell als Standard, Dark Mode optional"),
+  // erweitert um den Sonnenlicht-Modus für Außennutzung bei praller Sonne.
   // Der frühere dritte "amoled"-Zustand wurde bewusst entfernt, um weniger
-  // Auswahloptionen für die Zielgruppe zu haben.
+  // Auswahloptionen für die Zielgruppe zu haben (Cycle überspringt ihn bewusst).
   const toggleTheme = () => {
-    const nextTheme: "dark" | "light font-sans" = theme === "light font-sans" ? "dark" : "light font-sans";
+    const nextTheme: "dark" | "light font-sans" | "sunlight" =
+      theme === "dark" ? "light font-sans" : theme === "light font-sans" ? "sunlight" : "dark";
     setTheme(nextTheme);
     safeStorage.setItem(STORAGE_KEYS.THEME, nextTheme);
   };
@@ -275,10 +283,12 @@ export default function App() {
     <TooltipProvider>
       <div
         className={`flex flex-col lg:flex-row min-h-screen ${
-          theme === "dark" 
-            ? "bg-slate-950 text-slate-100" 
-            : theme === "amoled" 
-            ? "theme-amoled bg-black text-white selection:bg-emerald-500/30" 
+          theme === "dark"
+            ? "bg-slate-950 text-slate-100"
+            : theme === "amoled"
+            ? "theme-amoled bg-black text-white selection:bg-emerald-500/30"
+            : theme === "sunlight"
+            ? "theme-sunlight"
             : "theme-light"
         } font-sans tech-dot-grid`}
         id="zeltlager-app-container"

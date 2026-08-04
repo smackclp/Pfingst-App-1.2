@@ -8,6 +8,7 @@ import {
   Compass,
   Sun,
   Moon,
+  Contrast,
   Bell,
   ShoppingBag,
   Church,
@@ -40,6 +41,15 @@ export default function Navigation({
 }: NavigationProps) {
   const [exporting, setExporting] = React.useState(false);
   const [unreadCount, setUnreadCount] = React.useState(0);
+
+  // Zeigt an, wohin der nächste Klick auf den Theme-Button wechselt (Zyklus:
+  // Dunkel -> Hell -> Sonnenlicht -> Dunkel), passend zu App.tsx's toggleTheme.
+  const themeToggleInfo =
+    theme === "dark"
+      ? { icon: Sun, iconClass: "text-amber-500", label: "Helles Design", tooltip: "Wechselt auf das helle Design" }
+      : theme === "sunlight"
+      ? { icon: Moon, iconClass: "text-slate-400", label: "Dunkles Design", tooltip: "Wechselt auf das dunkle Design" }
+      : { icon: Contrast, iconClass: "text-amber-500", label: "Sonnenlicht-Modus", tooltip: "Wechselt auf den Sonnenlicht-Modus (hoher Kontrast, größere Schrift für draußen)" };
 
   // Poll for unread notification count
   React.useEffect(() => {
@@ -167,13 +177,13 @@ export default function Navigation({
         </div>
 
         {onToggleTheme && (
-          <Tooltip content={theme === "dark" ? "Helles Design aktivieren" : "Dunkles Design aktivieren"} position="bottom" delay={300}>
+          <Tooltip content={themeToggleInfo.tooltip} position="bottom" delay={300}>
             <button
               onClick={onToggleTheme}
               className="text-emerald-400 hover:text-emerald-300 p-2 hover:bg-slate-800 rounded-xl transition cursor-pointer"
               id="mobile-theme-toggle"
             >
-              {theme === "dark" ? <Sun className="h-4.5 w-4.5 text-amber-400" /> : <Moon className="h-4.5 w-4.5 text-slate-400" />}
+              <themeToggleInfo.icon className={`h-4.5 w-4.5 ${themeToggleInfo.iconClass}`} />
             </button>
           </Tooltip>
         )}
@@ -228,26 +238,13 @@ export default function Navigation({
 
         <div className="px-4 pb-4 space-y-2">
           {onToggleTheme && (
-            <Tooltip
-              content={theme === "dark" ? "Wechselt auf das helle Design" : "Wechselt auf das dunkle Design"}
-              position="top"
-              delay={300}
-            >
+            <Tooltip content={themeToggleInfo.tooltip} position="top" delay={300}>
               <button
                 onClick={onToggleTheme}
                 className="w-full px-4 py-2 bg-slate-950 border border-slate-800 text-slate-350 hover:text-white font-medium rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer hover:bg-slate-800"
               >
-                {theme === "dark" ? (
-                  <>
-                    <Sun className="h-4 w-4 text-amber-500" />
-                    <span>Helles Design</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon className="h-4 w-4 text-slate-400" />
-                    <span>Dunkles Design</span>
-                  </>
-                )}
+                <themeToggleInfo.icon className={`h-4 w-4 ${themeToggleInfo.iconClass}`} />
+                <span>{themeToggleInfo.label}</span>
               </button>
             </Tooltip>
           )}
