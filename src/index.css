@@ -208,26 +208,26 @@ body:has(.theme-amoled),
 /* LIGHT THEME OVERRIDES */
 body:has(.theme-light),
 .theme-light {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+  background-color: #FAFAF7 !important;
+  color: #26241C !important;
 }
 
 .theme-light .text-white,
 .theme-light .text-slate-100,
 .theme-light .text-slate-200,
 .theme-light h1, .theme-light h2, .theme-light h3, .theme-light h4, .theme-light h5, .theme-light h6 {
-  color: #0f172a !important;
+  color: #26241C !important;
 }
 
 .theme-light .text-slate-300,
 .theme-light .text-slate-350,
 .theme-light .text-slate-400,
 .theme-light .text-slate-450 {
-  color: #1e293b !important;
+  color: #4A4940 !important;
 }
 
 .theme-light .text-slate-500 {
-  color: #556070 !important;
+  color: #6B6A63 !important;
 }
 
 /* Background class mappings */
@@ -252,9 +252,9 @@ body:has(.theme-light),
 }
 
 /* Base text contrast adjustments in light theme */
-.theme-light .text-emerald-300 { color: #059669 !important; }
-.theme-light .text-emerald-400 { color: #047857 !important; }
-.theme-light .text-emerald-450 { color: #065f46 !important; }
+.theme-light .text-emerald-300 { color: #0F6E56 !important; }
+.theme-light .text-emerald-400 { color: #0F6E56 !important; }
+.theme-light .text-emerald-450 { color: #085041 !important; }
 .theme-light .text-amber-300 { color: #d97706 !important; }
 .theme-light .text-amber-400 { color: #b45309 !important; }
 .theme-light .text-rose-300 { color: #dc2626 !important; }
@@ -265,26 +265,26 @@ body:has(.theme-light),
 
 /* Stats cards and list custom light override */
 .theme-light #stat-conflicts {
-  background-color: #fff1f2 !important;
-  border-color: #fca5a5 !important;
-  color: #9f1239 !important;
+  background-color: #FCEBEB !important;
+  border-color: #F09595 !important;
+  color: #791F1F !important;
 }
 .theme-light #stat-conflicts p, 
 .theme-light #stat-conflicts span {
-  color: #9f1239 !important;
+  color: #791F1F !important;
 }
 
 .theme-light #stat-open-shifts {
-  background-color: #fffbeb !important;
-  border-color: #fcd34d !important;
+  background-color: #FAEEDA !important;
+  border-color: #EF9F27 !important;
 }
 .theme-light #stat-understaffed {
-  background-color: #fff7ed !important;
-  border-color: #fdba74 !important;
+  background-color: #FAEEDA !important;
+  border-color: #EF9F27 !important;
 }
 .theme-light #stat-total-people {
-  background-color: #f0fdf4 !important;
-  border-color: #86efac !important;
+  background-color: #EAF3DE !important;
+  border-color: #97C459 !important;
 }
 .theme-light #stat-total-shifts {
   background-color: #ecfeff !important;
@@ -296,8 +296,8 @@ body:has(.theme-light),
 .theme-light .hover\:bg-slate-850\/25:hover,
 .theme-light .hover\:bg-slate-800:hover,
 .theme-light .hover\:bg-slate-850\/60:hover {
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
+  background-color: #F1EFE8 !important;
+  color: #26241C !important;
 }
 
 /* Border mappings */
@@ -308,7 +308,7 @@ body:has(.theme-light),
 .theme-light .border-slate-900,
 .theme-light .border-slate-850,
 .theme-light .border-transparent {
-  border-color: #cbd5e1 !important;
+  border-color: #E4E2D8 !important;
 }
 
 /* Table layout adjustments */
@@ -316,15 +316,15 @@ body:has(.theme-light),
   background-color: #ffffff !important;
 }
 .theme-light table thead {
-  background-color: #f1f5f9 !important;
-  border-bottom: 2px solid #cbd5e1 !important;
+  background-color: #F1EFE8 !important;
+  border-bottom: 2px solid #E4E2D8 !important;
 }
 .theme-light table thead th {
-  color: #334155 !important;
+  color: #26241C !important;
   font-weight: 700 !important;
 }
 .theme-light table tbody tr {
-  border-bottom: 1px solid #e2e8f0 !important;
+  border-bottom: 1px solid #E4E2D8 !important;
 }
 
 /* Green and Amber Border adjustments */
@@ -346,8 +346,8 @@ body:has(.theme-light),
 .theme-light input,
 .theme-light textarea {
   background-color: #ffffff !important;
-  color: #0f172a !important;
-  border-color: #cbd5e1 !important;
+  color: #26241C !important;
+  border-color: #E4E2D8 !important;
 }
 
 .theme-light select:focus,
@@ -406,8 +406,8 @@ body:has(.theme-light),
 }
 .theme-light #dashboard-conflicts-section button {
   background-color: #ffffff !important;
-  color: #0f172a !important;
-  border-color: #cbd5e1 !important;
+  color: #26241C !important;
+  border-color: #E4E2D8 !important;
 }
 .theme-light #dashboard-conflicts-section button:hover {
   background-color: #f1f5f9 !important;

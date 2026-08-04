@@ -73,7 +73,7 @@ export default function App() {
   } = useZeltlagerData();
 
   const [theme, setTheme] = React.useState<"dark" | "amoled" | "light font-sans">(
-    () => (safeStorage.getItem(STORAGE_KEYS.THEME) as any) || "dark"
+    () => (safeStorage.getItem(STORAGE_KEYS.THEME) as any) || "light font-sans"
   );
 
   const [statusEditingAssignmentId, setStatusEditingAssignmentId] = React.useState<string | null>(null);
@@ -238,11 +238,12 @@ export default function App() {
     setPwaInstallable(false);
   };
 
+  // Vereinfachter Umschalter: Hell (Standard) <-> Dunkel, entsprechend der
+  // abgestimmten Design-Entscheidung #1 ("Hell als Standard, Dark Mode optional").
+  // Der frühere dritte "amoled"-Zustand wurde bewusst entfernt, um weniger
+  // Auswahloptionen für die Zielgruppe zu haben.
   const toggleTheme = () => {
-    let nextTheme: "dark" | "amoled" | "light font-sans" = "dark";
-    if (theme === "dark") nextTheme = "amoled";
-    else if (theme === "amoled") nextTheme = "light font-sans";
-    else nextTheme = "dark";
+    const nextTheme: "dark" | "light font-sans" = theme === "light font-sans" ? "dark" : "light font-sans";
     setTheme(nextTheme);
     safeStorage.setItem(STORAGE_KEYS.THEME, nextTheme);
   };
