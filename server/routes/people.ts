@@ -1,16 +1,19 @@
 import { Router } from "express";
 import { readDB, writeDB } from "../db";
 import { User, FunctionalRole, Community } from "../types";
+import { requireRole, requireMinRole, sanitizeUsers } from "../auth";
 
 const router = Router();
 
 // --- USERS ---
+// Lesen dürfen alle angemeldeten Personen (z.B. um Namen in Auswahllisten zu sehen),
+// aber NIE die PIN-Hashes anderer Leute.
 router.get("/users", (req, res) => {
   const db = readDB();
-  res.json(db.users);
+  res.json(sanitizeUsers(db.users as any));
 });
 
-router.post("/users", (req, res) => {
+router.post("/users", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
   const { first_name, last_name, display_name, email, phone, role, active, notes, is_buyer } = req.body;
   if (!first_name || !last_name || !display_name) {
@@ -33,22 +36,25 @@ router.post("/users", (req, res) => {
   res.status(201).json(newUser);
 });
 
-router.put("/users/:id", (req, res) => {
+router.put("/users/:id", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
   const index = db.users.findIndex((u) => u.id === req.params.id);
   if (index === -1) {
     return res.status(404).json({ error: "User not found" });
   }
+  // access_role und pin_hash werden hier NICHT über den allgemeinen User-Edit-Endpoint
+  // verändert - dafür gibt es die eigenen /auth/admin/* Endpunkte mit klarer Historie.
+  const { access_role, pin_hash, ...safeBody } = req.body || {};
   db.users[index] = {
     ...db.users[index],
-    ...req.body,
+    ...safeBody,
     id: req.params.id,
   };
   writeDB(db);
   res.json(db.users[index]);
 });
 
-router.delete("/users/:id", (req, res) => {
+router.delete("/users/:id", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
   db.assignments = db.assignments.filter((a) => a.user_id !== req.params.id);
   db.users = db.users.filter((u) => u.id !== req.params.id);
@@ -62,7 +68,7 @@ router.get("/roles", (req, res) => {
   res.json(db.functionalRoles || []);
 });
 
-router.post("/roles", (req, res) => {
+router.post("/roles", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
   const { name, user_id } = req.body;
   if (!name || !name.trim()) {
@@ -79,7 +85,7 @@ router.post("/roles", (req, res) => {
   res.status(201).json(newRole);
 });
 
-router.put("/roles/:id", (req, res) => {
+router.put("/roles/:id", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
   if (!db.functionalRoles) db.functionalRoles = [];
   const index = db.functionalRoles.findIndex((r) => r.id === req.params.id);
@@ -95,7 +101,7 @@ router.put("/roles/:id", (req, res) => {
   res.json(db.functionalRoles[index]);
 });
 
-router.delete("/roles/:id", (req, res) => {
+router.delete("/roles/:id", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
   if (!db.functionalRoles) db.functionalRoles = [];
   db.functionalRoles = db.functionalRoles.filter((r) => r.id !== req.params.id);
@@ -109,7 +115,7 @@ router.get("/communities", (req, res) => {
   res.json(db.communities || []);
 });
 
-router.post("/communities", (req, res) => {
+router.post("/communities", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   const { name, location, participants, camp_id } = req.body;
   if (!name || !name.trim()) {
@@ -128,7 +134,7 @@ router.post("/communities", (req, res) => {
   res.status(201).json(newCommunity);
 });
 
-router.post("/communities/import", (req, res) => {
+router.post("/communities/import", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   const items = req.body;
   if (!Array.isArray(items)) {
@@ -153,7 +159,7 @@ router.post("/communities/import", (req, res) => {
   res.status(201).json({ success: true, count: imported.length, imported });
 });
 
-router.put("/communities/:id", (req, res) => {
+router.put("/communities/:id", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   if (!db.communities) db.communities = [];
   const index = db.communities.findIndex((c) => c.id === req.params.id);
@@ -172,7 +178,7 @@ router.put("/communities/:id", (req, res) => {
   res.json(db.communities[index]);
 });
 
-router.delete("/communities/:id", (req, res) => {
+router.delete("/communities/:id", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   if (!db.communities) db.communities = [];
   db.communities = db.communities.filter((c) => c.id !== req.params.id);
@@ -180,7 +186,7 @@ router.delete("/communities/:id", (req, res) => {
   res.json({ success: true });
 });
 
-router.post("/communities/clear", (req, res) => {
+router.post("/communities/clear", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
   db.communities = [];
   writeDB(db);

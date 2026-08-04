@@ -1,33 +1,81 @@
 import React from "react";
 import { User, Service, Shift, ShiftAssignment, Conflict, Camp, MaterialItem, FunctionalRole, Community, TalentAct } from "../types";
-import { safeStorage } from "../utils";
-import { STORAGE_KEYS } from "../constants";
+import {
+  getAuthToken,
+  setAuthToken,
+  fetchCurrentSession,
+  loginWithPin,
+  logout as apiLogout,
+  setUnauthorizedHandler,
+  type AuthUser,
+  type AccessRole,
+} from "../lib/apiAuth";
+
+export type { AccessRole };
 
 export function useZeltlagerData() {
   const [currentTab, setCurrentTab] = React.useState<string>("dashboard");
-  const [isAdmin, setIsAdmin] = React.useState<boolean>(false); // Defaults to False (Pfingsthelfer*in) for lock security
-  const [currentUserId, setCurrentUserIdState] = React.useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const urlId = params.get("helper") || params.get("user");
-      if (urlId) {
-        safeStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, urlId);
-        try {
-          const newUrl = window.location.pathname;
-          window.history.replaceState({}, document.title, newUrl);
-        } catch (e) {
-          console.error("Url clean in hook failed:", e);
-        }
-        return urlId;
-      }
-    }
-    return safeStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID) || "user-maria";
-  });
 
-  const setCurrentUserId = (id: string) => {
-    safeStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, id);
-    setCurrentUserIdState(id);
-  };
+  // --- Auth-Status: kommt ausschließlich vom Server (kein clientseitiger Bypass mehr) ---
+  const [authStatus, setAuthStatus] = React.useState<"checking" | "unauthenticated" | "authenticated">("checking");
+  const [authUser, setAuthUser] = React.useState<AuthUser | null>(null);
+  const [accessRole, setAccessRole] = React.useState<AccessRole>("helfer");
+
+  const currentUserId = authUser?.id || null;
+  const isAdmin = accessRole === "lagerleitung";
+
+  // Beim Start: vorhandenes Login-Token prüfen (falls jemand die App neu öffnet).
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const token = getAuthToken();
+      if (!token) {
+        if (!cancelled) setAuthStatus("unauthenticated");
+        return;
+      }
+      try {
+        const session = await fetchCurrentSession();
+        if (cancelled) return;
+        if (session) {
+          setAuthUser(session.user);
+          setAccessRole(session.accessRole);
+          setAuthStatus("authenticated");
+        } else {
+          setAuthStatus("unauthenticated");
+        }
+      } catch {
+        if (!cancelled) setAuthStatus("unauthenticated");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Zentrale Reaktion auf abgelaufene/ungültige Session (z.B. Token abgelaufen,
+  // Account deaktiviert): meldet automatisch ab und zeigt den Login-Bildschirm.
+  React.useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setAuthUser(null);
+      setAccessRole("helfer");
+      setAuthStatus("unauthenticated");
+    });
+  }, []);
+
+  const login = React.useCallback(async (userId: string, pin: string) => {
+    const { token, accessRole: role, user } = await loginWithPin(userId, pin);
+    setAuthToken(token);
+    setAuthUser(user);
+    setAccessRole(role);
+    setAuthStatus("authenticated");
+  }, []);
+
+  const logoutUser = React.useCallback(async () => {
+    await apiLogout().catch(() => {});
+    setAuthUser(null);
+    setAccessRole("helfer");
+    setAuthStatus("unauthenticated");
+  }, []);
 
   // API State
   const [users, setUsers] = React.useState<User[]>([]);
@@ -119,7 +167,10 @@ export function useZeltlagerData() {
     }
   };
 
+  // Daten erst laden, sobald eine gültige Session besteht - vorher würden alle
+  // Aufrufe ohnehin 401 zurückbekommen (siehe server/auth.ts).
   React.useEffect(() => {
+    if (authStatus !== "authenticated") return;
     loadDatabase();
 
     // Automatisches Polling alle 5 Minuten (300.000 ms)
@@ -129,7 +180,7 @@ export function useZeltlagerData() {
     }, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [authStatus]);
 
   // --- API Mutators ---
   // Users
@@ -467,10 +518,14 @@ export function useZeltlagerData() {
   return {
     currentTab,
     setCurrentTab,
+    // Auth (echte, serverseitig geprüfte Session statt clientseitigem Bypass)
+    authStatus,
+    authUser,
+    accessRole,
     isAdmin,
-    setIsAdmin,
+    login,
+    logoutUser,
     currentUserId,
-    setCurrentUserId,
     users,
     services,
     shifts,

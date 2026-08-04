@@ -1,97 +1,6 @@
 import React from "react";
-import { ShieldCheck } from "lucide-react";
 import { User as UserType, Service, Shift, ShiftAssignment } from "../types";
 import { formatDateGerman } from "../utils";
-
-// --- ADMIN PASSWORD GATE MODAL ---
-interface AdminPasswordModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-}
-
-function AdminPasswordModal({ isOpen, onClose, onSuccess }: AdminPasswordModalProps) {
-  const [enteredPassword, setEnteredPassword] = React.useState("");
-  const [passwordError, setPasswordError] = React.useState("");
-
-  if (!isOpen) return null;
-
-  const handleSubmit = () => {
-    if (enteredPassword === "Pfingsten") {
-      onSuccess();
-      setEnteredPassword("");
-      setPasswordError("");
-    } else {
-      setPasswordError("Ungültiger Schlüssel. Zugriff verweigert.");
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 print:hidden" id="admin-pass-modal">
-      <div className="bg-slate-900 border border-emerald-500/20 rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-5 text-white animate-scale-up">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/25">
-            <ShieldCheck className="h-6 w-6 text-emerald-400" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold font-display text-white">Camp_Admin Freischalten</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-sans">Passwortgeschützter Systembereich</p>
-          </div>
-        </div>
-
-        <p className="text-xs text-slate-350 leading-relaxed font-sans">
-          Bitte geben Sie das Administrator-Passwort ein, um neue Schichten anzulegen, Verantwortliche zuzuteilen und Lager zu verwalten.
-        </p>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider font-mono">System-Sicherheitsschlüssel:</label>
-          <input
-            type="password"
-            autoFocus
-            placeholder="Passwort eingeben..."
-            value={enteredPassword}
-            onChange={(e) => {
-              setEnteredPassword(e.target.value);
-              setPasswordError("");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleSubmit();
-              }
-            }}
-            className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:border-emerald-500 hover:border-slate-700 outline-none transition text-white font-mono"
-          />
-          {passwordError && (
-            <p className="text-[10px] text-rose-500 font-bold font-mono transition-all">
-              ⚠️ {passwordError}
-            </p>
-          )}
-        </div>
-
-        <div className="flex gap-3 pt-1">
-          <button
-            type="button"
-            onClick={() => {
-              setEnteredPassword("");
-              setPasswordError("");
-              onClose();
-            }}
-            className="flex-1 py-1.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-350 hover:text-white text-xs font-bold rounded-xl transition cursor-pointer"
-          >
-            Abbrechen
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/15 transition cursor-pointer"
-          >
-            Freischalten
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // --- STATUS EDITING MODAL ---
 interface StatusEditingModalProps {
@@ -250,10 +159,11 @@ function StatusEditingModal({
 }
 
 // --- MODAL MANAGER MAIN ---
+// Hinweis: Der frühere client-seitige "Admin-Passwort"-Freischalter wurde entfernt.
+// Die Zugriffsrolle kommt jetzt ausschließlich aus dem serverseitig geprüften Login
+// (siehe src/lib/apiAuth.ts) und kann nicht mehr durch ein im Frontend sichtbares
+// Passwort umgangen werden.
 interface ModalManagerProps {
-  showAdminPasswordModal: boolean;
-  onCloseAdminPasswordModal: () => void;
-  onAdminPasswordSuccess: () => void;
   statusEditingAssignmentId: string | null;
   onCloseStatusEditingModal: () => void;
   assignments: ShiftAssignment[];
@@ -265,13 +175,9 @@ interface ModalManagerProps {
     status: 'pending' | 'accepted' | 'declined' | 'maybe',
     declineReason?: string
   ) => Promise<void>;
-  setIsAdmin: (isAdmin: boolean) => void;
 }
 
 export default function ModalManager({
-  showAdminPasswordModal,
-  onCloseAdminPasswordModal,
-  onAdminPasswordSuccess,
   statusEditingAssignmentId,
   onCloseStatusEditingModal,
   assignments,
@@ -279,7 +185,6 @@ export default function ModalManager({
   users,
   services,
   onUpdateAssignmentStatus,
-  setIsAdmin,
 }: ModalManagerProps) {
   const editingAssignment = React.useMemo(() => {
     return assignments.find((a) => a.id === statusEditingAssignmentId);
@@ -312,18 +217,6 @@ export default function ModalManager({
           }}
         />
       )}
-
-      <AdminPasswordModal
-        isOpen={showAdminPasswordModal}
-        onClose={() => {
-          onCloseAdminPasswordModal();
-          setIsAdmin(false);
-        }}
-        onSuccess={() => {
-          onAdminPasswordSuccess();
-          onCloseAdminPasswordModal();
-        }}
-      />
     </>
   );
 }

@@ -3,8 +3,15 @@ import { readDB, writeDB } from "../db";
 import { getDefaultSeedDB } from "../seed";
 import { getLastChange, getStats } from "../firebase";
 import { sendNotificationToUser } from "../notifications";
+import { requireMinRole, requireRole } from "../auth";
 
 const router = Router();
+
+/** Erlaubt Zugriff auf eigene Notification-/Push-Daten, sonst nur Bereichsleitung+. */
+function requireSelfOrLeitung(req: any, targetUserId: string): boolean {
+  if (req.authUser.id === targetUserId) return true;
+  return req.authUser.accessRole === "bereichsleiter" || req.authUser.accessRole === "lagerleitung";
+}
 
 function calculateShiftHours(start: string, end: string): number {
   if (start === "Dauerhaft" || !start || !end) return 0;
@@ -21,8 +28,8 @@ function calculateShiftHours(start: string, end: string): number {
   }
 }
 
-// --- STATS ---
-router.get("/stats", (req, res) => {
+// --- STATS (enthält Stunden/Schichten ALLER Helfer -> mind. Bereichsleitung) ---
+router.get("/stats", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   const activeCampId = db.activeCampId || "camp-2026";
 
@@ -98,6 +105,9 @@ router.get("/notifications", (req, res) => {
     if (!userId) {
       return res.status(400).json({ error: "Missing userId query parameter" });
     }
+    if (!requireSelfOrLeitung(req, userId)) {
+      return res.status(403).json({ error: "Du darfst nur deine eigenen Benachrichtigungen abrufen." });
+    }
     const notifications = db.notifications || [];
     const userNotifications = notifications
       .filter((n) => n && typeof n === "object" && n.userId === userId)
@@ -119,6 +129,9 @@ router.post("/notifications/test", async (req, res) => {
     if (!userId) {
       return res.status(400).json({ error: "Missing userId" });
     }
+    if (!requireSelfOrLeitung(req, userId)) {
+      return res.status(403).json({ error: "Du darfst nur dir selbst eine Test-Benachrichtigung senden." });
+    }
     const t = title || "Test-Benachrichtigung 🔔";
     const b = body || "Moin! Das ist eine Test-Benachrichtigung von deinem Pfingstlager Dienstplan-Planer. Alles funktioniert super!";
     await sendNotificationToUser(userId, t, b);
@@ -135,6 +148,9 @@ router.post("/notifications/mark-all-read", (req, res) => {
     const { userId } = req.body;
     if (!userId) {
       return res.status(400).json({ error: "Missing userId" });
+    }
+    if (!requireSelfOrLeitung(req, userId)) {
+      return res.status(403).json({ error: "Du darfst das nur für dich selbst tun." });
     }
     if (db.notifications) {
       db.notifications = db.notifications.map((n) => {
@@ -158,6 +174,9 @@ router.post("/notifications/clear", (req, res) => {
     const { userId } = req.body;
     if (!userId) {
       return res.status(400).json({ error: "Missing userId" });
+    }
+    if (!requireSelfOrLeitung(req, userId)) {
+      return res.status(403).json({ error: "Du darfst das nur für dich selbst tun." });
     }
     if (db.notifications) {
       db.notifications = db.notifications.filter((n) => n && typeof n === "object" && n.userId !== userId);
@@ -189,6 +208,9 @@ router.post("/notifications/push-subscribe", (req, res) => {
     if (!userId || !subscription) {
       return res.status(400).json({ error: "Missing userId or subscription details" });
     }
+    if (!requireSelfOrLeitung(req, userId)) {
+      return res.status(403).json({ error: "Du darfst das nur für dich selbst tun." });
+    }
     if (!db.pushSubscriptions) {
       db.pushSubscriptions = [];
     }
@@ -214,6 +236,9 @@ router.post("/notifications/push-unsubscribe", (req, res) => {
     const { userId, endpoint, unsubscribeAll } = req.body;
     if (!userId) {
       return res.status(400).json({ error: "Missing userId" });
+    }
+    if (!requireSelfOrLeitung(req, userId)) {
+      return res.status(403).json({ error: "Du darfst das nur für dich selbst tun." });
     }
     if (!db.pushSubscriptions) {
       db.pushSubscriptions = [];
@@ -246,7 +271,7 @@ router.get("/sync-check", (req, res) => {
 });
 
 // Backup database endpoint
-router.get("/backup", (req, res) => {
+router.get("/backup", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
   res.setHeader("Content-Disposition", `attachment; filename=pfingsten-app-backup-${new Date().toISOString().split('T')[0]}.json`);
   res.setHeader("Content-Type", "application/json");
@@ -254,7 +279,7 @@ router.get("/backup", (req, res) => {
 });
 
 // Seed / reset database endpoint
-router.post("/seed", async (req, res) => {
+router.post("/seed", requireRole("lagerleitung"), async (req, res) => {
   try {
     const { year = 2026, mode = "full" } = req.body || {};
     const targetYear = Number(year) || 2026;

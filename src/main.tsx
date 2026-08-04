@@ -3,6 +3,11 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { hasServiceWorkerSupport } from './utils.ts';
+import { installAuthFetchInterceptor } from './lib/apiAuth.ts';
+
+// Muss vor jedem API-Aufruf laufen: hängt automatisch den Login-Token an alle
+// /api/*-Requests an und meldet bei abgelaufener Session zentral ab.
+installAuthFetchInterceptor();
 
 // Intercept and cleanly suppress benign cross-origin iframe sandbox errors
 if (typeof window !== 'undefined') {

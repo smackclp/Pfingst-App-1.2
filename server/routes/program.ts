@@ -2,8 +2,17 @@ import { Router } from "express";
 import { readDB, writeDB } from "../db";
 import { sendNotificationToUser } from "../notifications";
 import { MaterialItem, TalentAct } from "../types";
+import { requireMinRole, requireRole } from "../auth";
 
 const router = Router();
+
+function canManageMaterial(req: any, materialUserId: string): boolean {
+  if (req.authUser.id === materialUserId) return true;
+  if (req.authUser.accessRole === "bereichsleiter" || req.authUser.accessRole === "lagerleitung") return true;
+  const db = readDB();
+  const me = db.users.find((u) => u.id === req.authUser.id) as any;
+  return !!me?.is_buyer; // Für den Einkauf zuständige Helfer dürfen Status pflegen
+}
 
 // --- MATERIALS ---
 router.get("/materials", (req, res) => {
@@ -16,6 +25,10 @@ router.post("/materials", async (req, res) => {
   const { user_id, item_name, url, purpose, quantity, price, status } = req.body;
   if (!user_id || !item_name || !purpose) {
     return res.status(400).json({ error: "Fehlende Pflichtfelder: Besteller (user_id), Artikel (item_name), Verwendungszweck (purpose)" });
+  }
+  // Jede Person darf nur für sich selbst bestellen; Leitung darf auch für andere eintragen.
+  if (req.authUser!.id !== user_id && req.authUser!.accessRole === "helfer") {
+    return res.status(403).json({ error: "Du kannst nur für dich selbst Materialien bestellen." });
   }
   const newMaterial: MaterialItem = {
     id: `material-${Date.now()}`,
@@ -74,6 +87,9 @@ router.put("/materials/:id", (req, res) => {
   if (index === -1) {
     return res.status(404).json({ error: "Bestellartikel nicht gefunden" });
   }
+  if (!canManageMaterial(req, db.materials[index].user_id)) {
+    return res.status(403).json({ error: "Du darfst diese Bestellung nicht bearbeiten." });
+  }
   db.materials[index] = {
     ...db.materials[index],
     ...req.body,
@@ -86,18 +102,25 @@ router.put("/materials/:id", (req, res) => {
 router.delete("/materials/:id", (req, res) => {
   const db = readDB();
   if (!db.materials) db.materials = [];
+  const item = db.materials.find((m) => m.id === req.params.id);
+  if (!item) {
+    return res.status(404).json({ error: "Bestellartikel nicht gefunden" });
+  }
+  if (!canManageMaterial(req, item.user_id)) {
+    return res.status(403).json({ error: "Du darfst diese Bestellung nicht löschen." });
+  }
   db.materials = db.materials.filter((m) => m.id !== req.params.id);
   writeDB(db);
   res.json({ success: true });
 });
 
-// --- TALENT ACTS ---
+// --- TALENT ACTS (Programm-Verwaltung: mind. Bereichsleiter) ---
 router.get("/talent-acts", (req, res) => {
   const db = readDB();
   res.json(db.talentActs || []);
 });
 
-router.post("/talent-acts", (req, res) => {
+router.post("/talent-acts", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   const {
     community_name,
@@ -143,7 +166,7 @@ router.post("/talent-acts", (req, res) => {
   res.status(201).json(newAct);
 });
 
-router.put("/talent-acts/:id", (req, res) => {
+router.put("/talent-acts/:id", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   if (!db.talentActs) db.talentActs = [];
   const index = db.talentActs.findIndex((a) => a.id === req.params.id);
@@ -188,7 +211,7 @@ router.put("/talent-acts/:id", (req, res) => {
   res.json(db.talentActs[index]);
 });
 
-router.post("/talent-acts/reorder", (req, res) => {
+router.post("/talent-acts/reorder", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   const { orders } = req.body;
   if (!orders || typeof orders !== "object") {
@@ -207,7 +230,7 @@ router.post("/talent-acts/reorder", (req, res) => {
   res.json({ success: true, count: db.talentActs.length });
 });
 
-router.delete("/talent-acts/:id", (req, res) => {
+router.delete("/talent-acts/:id", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   if (!db.talentActs) db.talentActs = [];
   const index = db.talentActs.findIndex((a) => a.id === req.params.id);
@@ -219,7 +242,7 @@ router.delete("/talent-acts/:id", (req, res) => {
   res.json({ success: true, deleted });
 });
 
-router.post("/talent-acts/clear", (req, res) => {
+router.post("/talent-acts/clear", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
   db.talentActs = [];
   writeDB(db);

@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { readDB } from "../db";
 import { Camp, DB } from "../types";
+import { authMiddleware, requireMinRole } from "../auth";
 
 const router = Router();
 
-router.get("/export-html", (req, res) => {
+// Export enthält den kompletten Dienstplan inkl. Namen -> mind. Bereichsleiter-Rechte nötig.
+router.get("/export-html", authMiddleware, requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   const activeCampId = db.activeCampId || "camp-2026";
   const activeCamp = (db.camps || []).find((c) => c.id === activeCampId) || { id: "camp-2026", year: 2026, start_date: "2026-05-23", end_date: "2026-05-25", title: "Pfingstlager 2026" };

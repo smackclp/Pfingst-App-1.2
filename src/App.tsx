@@ -3,7 +3,7 @@ import Navigation from "./components/Navigation";
 import Header from "./components/Header";
 import TabContentManager from "./components/TabContentManager";
 import ModalManager from "./components/ModalManager";
-import WelcomeProfileModal from "./components/modals/WelcomeProfileModal";
+import LoginScreen from "./components/LoginScreen";
 import PwaSetupModal from "./components/modals/PwaSetupModal";
 import { useZeltlagerData } from "./hooks/useZeltlagerData";
 import { TooltipProvider } from "./components/Tooltip";
@@ -14,10 +14,13 @@ export default function App() {
   const {
     currentTab,
     setCurrentTab,
+    authStatus,
+    authUser,
+    accessRole,
     isAdmin,
-    setIsAdmin,
+    login,
+    logoutUser,
     currentUserId,
-    setCurrentUserId,
     users,
     services,
     shifts,
@@ -72,7 +75,6 @@ export default function App() {
     () => (safeStorage.getItem(STORAGE_KEYS.THEME) as any) || "dark"
   );
 
-  const [showAdminPasswordModal, setShowAdminPasswordModal] = React.useState(false);
   const [statusEditingAssignmentId, setStatusEditingAssignmentId] = React.useState<string | null>(null);
   const [isOnline, setIsOnline] = React.useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
 
@@ -87,10 +89,6 @@ export default function App() {
     };
   }, []);
   
-  const [showWelcomeProfileSelector, setShowWelcomeProfileSelector] = React.useState(() => {
-    return safeStorage.getItem(STORAGE_KEYS.WELCOME_CHECKED) !== "true";
-  });
-
   const [showPwaSetupModal, setShowPwaSetupModal] = React.useState(() => {
     if (typeof window !== "undefined") {
       const dismissed = safeStorage.getItem(STORAGE_KEYS.PWA_SETUP_DISMISSED);
@@ -256,6 +254,20 @@ export default function App() {
     setStatusEditingAssignmentId(null);
   }, []);
 
+  // Solange die Session noch geprüft wird: neutraler Ladebildschirm (kein Layout-Flackern).
+  if (authStatus === "checking") {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-sm font-mono">
+        Lade…
+      </div>
+    );
+  }
+
+  // Nicht angemeldet: nur der Login-Bildschirm, keine Daten werden geladen/angezeigt.
+  if (authStatus === "unauthenticated" || !authUser) {
+    return <LoginScreen onLogin={login} />;
+  }
+
   return (
     <TooltipProvider>
       <div
@@ -275,6 +287,7 @@ export default function App() {
           theme={theme}
           onToggleTheme={toggleTheme}
           isAdmin={isAdmin}
+          accessRole={accessRole}
           currentUserId={currentUserId}
         />
 
@@ -291,9 +304,9 @@ export default function App() {
             camps={camps}
             refreshing={refreshing}
             isAdmin={isAdmin}
-            setIsAdmin={setIsAdmin}
+            accessRole={accessRole}
+            onLogout={logoutUser}
             loadDatabase={loadDatabase}
-            onOpenAdminPasswordModal={() => setShowAdminPasswordModal(true)}
             users={users}
             services={services}
             shifts={shifts}
@@ -301,7 +314,6 @@ export default function App() {
             onSelectShift={handleSelectShift}
             setCurrentTab={setCurrentTab}
             currentUserId={currentUserId}
-            onOpenProfileSelector={() => setShowWelcomeProfileSelector(true)}
             onOpenPwaOnboarding={() => setShowPwaSetupModal(true)}
           />
 
@@ -365,9 +377,6 @@ export default function App() {
         </div>
 
         <ModalManager
-          showAdminPasswordModal={showAdminPasswordModal}
-          onCloseAdminPasswordModal={() => setShowAdminPasswordModal(false)}
-          onAdminPasswordSuccess={() => setIsAdmin(true)}
           statusEditingAssignmentId={statusEditingAssignmentId}
           onCloseStatusEditingModal={closeStatusModal}
           assignments={assignments}
@@ -375,18 +384,7 @@ export default function App() {
           users={users}
           services={services}
           onUpdateAssignmentStatus={handleUpdateAssignmentStatus}
-          setIsAdmin={setIsAdmin}
         />
-
-        {showWelcomeProfileSelector && (
-          <WelcomeProfileModal
-            users={users}
-            currentUserId={currentUserId}
-            activeCampId={activeCampId}
-            onSelectUser={setCurrentUserId}
-            onClose={() => setShowWelcomeProfileSelector(false)}
-          />
-        )}
 
         {showPwaSetupModal && (
           <PwaSetupModal

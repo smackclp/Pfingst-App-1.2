@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { readDB, writeDB } from "../db";
 import { Camp } from "../types";
+import { requireRole } from "../auth";
 
 const router = Router();
 
@@ -25,7 +26,7 @@ router.get("/camps", (req, res) => {
   });
 });
 
-router.post("/camps", (req, res) => {
+router.post("/camps", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
   const { year, copyFromCampId } = req.body;
   if (!year) {
@@ -97,7 +98,7 @@ router.post("/camps", (req, res) => {
   res.status(201).json({ camp: newCamp, activeCampId: campId });
 });
 
-router.post("/camps/active", (req, res) => {
+router.post("/camps/active", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
   const { activeCampId } = req.body;
   if (!activeCampId) {

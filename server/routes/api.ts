@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { recordApiHit } from "../firebase";
+import { authMiddleware } from "../auth";
 
+import authRouter from "./auth";
 import peopleRouter from "./people";
 import shiftsRouter from "./shifts";
 import campsRouter from "./camps";
@@ -16,6 +18,13 @@ router.use((req, res, next) => {
   }
   next();
 });
+
+// Öffentliche Auth-Routen (Login-Verzeichnis, Login, Logout, eigenes Profil).
+// MUSS vor dem globalen authMiddleware-Gate stehen.
+router.use(authRouter);
+
+// Ab hier ist für ALLE Routen eine gültige Session erforderlich.
+router.use(authMiddleware);
 
 // Register domain sub-routers
 router.use(peopleRouter);

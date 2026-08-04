@@ -1,3 +1,5 @@
+export type AccessRole = "helfer" | "bereichsleiter" | "lagerleitung";
+
 export interface User {
   id: string;
   first_name: string;
@@ -9,6 +11,10 @@ export interface User {
   active: boolean;
   notes?: string;
   is_buyer?: boolean;
+  /** App-Zugriffsrolle (Berechtigungsstufe), unabhängig vom fachlichen "role"-Feld oben. */
+  access_role?: AccessRole;
+  /** Serverseitig gehashte PIN ("salt:hash"). Wird NIE an den Client gesendet. */
+  pin_hash?: string;
 }
 
 export interface Service {

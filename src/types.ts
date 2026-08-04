@@ -1,3 +1,8 @@
+// App-Zugriffsrolle (Berechtigungsstufe). Steuert, was jemand sehen/tun darf.
+// Unabhängig vom fachlichen "role"-Feld unten (z.B. "HV", "Küche"), das nur die
+// Funktion im Lager beschreibt.
+export type AccessRole = "helfer" | "bereichsleiter" | "lagerleitung";
+
 export interface User {
   id: string;
   first_name: string;
@@ -9,6 +14,7 @@ export interface User {
   active: boolean;
   notes?: string;
   is_buyer?: boolean;
+  access_role?: AccessRole; // Berechtigungsstufe, s.o. (pin_hash bleibt serverseitig, kommt nie zum Client)
 }
 
 export interface Service {

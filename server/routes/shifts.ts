@@ -3,6 +3,7 @@ import { readDB, writeDB, timeToMinutes } from "../db";
 import { computeConflicts } from "../conflicts";
 import { sendNotificationToUser } from "../notifications";
 import { Service, Shift, ShiftAssignment, Camp, DB } from "../types";
+import { requireMinRole } from "../auth";
 
 const router = Router();
 
@@ -12,7 +13,7 @@ router.get("/services", (req, res) => {
   res.json(db.services);
 });
 
-router.post("/services", (req, res) => {
+router.post("/services", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   const { title, description, location, color, category, default_duration, min_persons, max_persons, responsible_id } = req.body;
   if (!title) {
@@ -35,7 +36,7 @@ router.post("/services", (req, res) => {
   res.status(201).json(newService);
 });
 
-router.put("/services/:id", (req, res) => {
+router.put("/services/:id", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   const index = db.services.findIndex((s) => s.id === req.params.id);
   if (index === -1) {
@@ -50,7 +51,7 @@ router.put("/services/:id", (req, res) => {
   res.json(db.services[index]);
 });
 
-router.delete("/services/:id", (req, res) => {
+router.delete("/services/:id", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   const serviceShifts = db.shifts.filter((s) => s.service_id === req.params.id);
   const sids = serviceShifts.map((s) => s.id);
@@ -134,7 +135,7 @@ router.get("/shifts/:id/suggestions", (req, res) => {
   res.json(suggestions);
 });
 
-router.post("/shifts", (req, res) => {
+router.post("/shifts", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   const { service_id, date, start_time, end_time, notes } = req.body;
   if (!service_id || !date || !start_time || !end_time) {
@@ -157,7 +158,7 @@ router.post("/shifts", (req, res) => {
   res.status(201).json(newShift);
 });
 
-router.put("/shifts/:id", (req, res) => {
+router.put("/shifts/:id", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   const index = db.shifts.findIndex((s) => s.id === req.params.id);
   if (index === -1) {
@@ -208,7 +209,7 @@ router.put("/shifts/:id", (req, res) => {
   res.json(newShift);
 });
 
-router.delete("/shifts/:id", (req, res) => {
+router.delete("/shifts/:id", requireMinRole("bereichsleiter"), (req, res) => {
   const db = readDB();
   db.assignments = db.assignments.filter((a) => a.shift_id !== req.params.id);
   db.shifts = db.shifts.filter((s) => s.id !== req.params.id);
@@ -230,6 +231,14 @@ router.post("/assignments", (req, res) => {
   const { shift_id, user_id, force } = req.body;
   if (!shift_id || !user_id) {
     return res.status(400).json({ error: "Missing required fields: shift_id, user_id" });
+  }
+
+  // Jede Person darf sich selbst für eine Schicht eintragen. Andere Personen
+  // einzuteilen ist Sache der Bereichsleitung/Lagerleitung (Schichtplanung).
+  const isSelf = req.authUser!.id === user_id;
+  const canManageOthers = req.authUser!.accessRole === "bereichsleiter" || req.authUser!.accessRole === "lagerleitung";
+  if (!isSelf && !canManageOthers) {
+    return res.status(403).json({ error: "Du kannst nur dich selbst für eine Schicht eintragen." });
   }
 
   const existing = db.assignments.find((a) => a.shift_id === shift_id && a.user_id === user_id);
@@ -309,6 +318,12 @@ router.delete("/assignments", (req, res) => {
     return res.status(400).json({ error: "Missing required fields: shift_id, user_id" });
   }
 
+  const isSelf = req.authUser!.id === user_id;
+  const canManageOthers = req.authUser!.accessRole === "bereichsleiter" || req.authUser!.accessRole === "lagerleitung";
+  if (!isSelf && !canManageOthers) {
+    return res.status(403).json({ error: "Du kannst nur deine eigene Zuordnung austragen." });
+  }
+
   try {
     const activeShift = db.shifts.find((s) => s.id === shift_id);
     if (activeShift) {
@@ -332,6 +347,16 @@ router.delete("/assignments", (req, res) => {
 
 router.delete("/assignments/:id", (req, res) => {
   const db = readDB();
+  const target = db.assignments.find((a) => a.id === req.params.id);
+  if (!target) {
+    return res.status(404).json({ error: "Zuordnung nicht gefunden." });
+  }
+  const isSelf = req.authUser!.id === target.user_id;
+  const canManageOthers = req.authUser!.accessRole === "bereichsleiter" || req.authUser!.accessRole === "lagerleitung";
+  if (!isSelf && !canManageOthers) {
+    return res.status(403).json({ error: "Du kannst nur deine eigene Zuordnung austragen." });
+  }
+
   try {
     const assignment = db.assignments.find((a) => a.id === req.params.id);
     if (assignment) {
@@ -362,6 +387,11 @@ router.put("/assignments/:id/accepted", (req, res) => {
   if (!assignment) {
     return res.status(444).json({ error: "Zuordnung nicht gefunden." });
   }
+  const isSelf = req.authUser!.id === assignment.user_id;
+  const canManageOthers = req.authUser!.accessRole === "bereichsleiter" || req.authUser!.accessRole === "lagerleitung";
+  if (!isSelf && !canManageOthers) {
+    return res.status(403).json({ error: "Du kannst nur deinen eigenen Status ändern." });
+  }
   const isAccepted = !!req.body.accepted;
   assignment.accepted = isAccepted;
   assignment.status = isAccepted ? 'accepted' : 'pending';
@@ -375,6 +405,11 @@ router.put("/assignments/:id/status", (req, res) => {
   const assignment = db.assignments.find((a) => a.id === req.params.id);
   if (!assignment) {
     return res.status(404).json({ error: "Zuordnung nicht gefunden." });
+  }
+  const isSelf = req.authUser!.id === assignment.user_id;
+  const canManageOthers = req.authUser!.accessRole === "bereichsleiter" || req.authUser!.accessRole === "lagerleitung";
+  if (!isSelf && !canManageOthers) {
+    return res.status(403).json({ error: "Du kannst nur deinen eigenen Status ändern." });
   }
   const { status, decline_reason } = req.body;
   if (status) {

@@ -16,15 +16,17 @@ import { Tooltip } from "./Tooltip";
 import { AnimatePresence, motion } from "motion/react";
 import { formatDateGerman, getDayName, getDayNameShort, formatDateWithDayPrefix } from "../utils";
 
+type AccessRole = "helfer" | "bereichsleiter" | "lagerleitung";
+
 interface HeaderProps {
   activeCampId: string | null;
   camps: Camp[];
   refreshing: boolean;
   isAdmin: boolean;
-  setIsAdmin: (isAdmin: boolean) => void;
+  accessRole?: AccessRole;
+  onLogout?: () => void;
   loadDatabase: (force?: boolean) => Promise<void>;
-  onOpenAdminPasswordModal: () => void;
-  
+
   // Global search sources and actions
   users: User[];
   services: Service[];
@@ -33,18 +35,23 @@ interface HeaderProps {
   onSelectShift: (shiftId: string) => void;
   setCurrentTab: (tab: string) => void;
   currentUserId?: string | null;
-  onOpenProfileSelector?: () => void;
   onOpenPwaOnboarding?: () => void;
 }
+
+const ACCESS_ROLE_LABEL: Record<AccessRole, string> = {
+  helfer: "Helfer*in",
+  bereichsleiter: "Bereichsleitung",
+  lagerleitung: "Lagerleitung",
+};
 
 export default function Header({
   activeCampId,
   camps,
   refreshing,
   isAdmin,
-  setIsAdmin,
+  accessRole = "helfer",
+  onLogout,
   loadDatabase,
-  onOpenAdminPasswordModal,
   users,
   services,
   shifts,
@@ -52,7 +59,6 @@ export default function Header({
   onSelectShift,
   setCurrentTab,
   currentUserId,
-  onOpenProfileSelector,
   onOpenPwaOnboarding
 }: HeaderProps) {
   const activeCamp = camps.find((c) => c.id === activeCampId);
@@ -183,22 +189,20 @@ export default function Header({
           📟 PFINGSTLAGER.SYS_{campYear} [STABLE]
         </span>
 
-        {/* Active Helper Profile badge */}
+        {/* Angemeldetes Profil (echte Identität aus dem Login, nicht mehr frei wählbar) */}
         {(() => {
           const actUser = users.find(u => u.id === currentUserId);
           if (!actUser) return null;
           return (
-            <Tooltip content="Klicken, um dein Helfer-Profil zu wechseln" position="bottom" delay={200}>
-              <button
-                onClick={onOpenProfileSelector}
-                className="text-xs font-bold font-mono bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-98 text-emerald-400 py-1.5 px-3 rounded-lg border border-emerald-500/20 shadow-md flex items-center space-x-1.5 transition-all cursor-pointer"
+            <Tooltip content={`Angemeldet als ${ACCESS_ROLE_LABEL[accessRole]}`} position="bottom" delay={200}>
+              <span
+                className="text-xs font-bold font-mono bg-emerald-500/10 text-emerald-400 py-1.5 px-3 rounded-lg border border-emerald-500/20 shadow-md flex items-center space-x-1.5"
                 id="active-acting-profile-badge"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block shrink-0" />
-                <span className="text-slate-400 font-normal">Helfer:</span>
-                <span className="underline decoration-dotted">{actUser.display_name}</span>
-                <span className="text-[10px] text-slate-500">🔄</span>
-              </button>
+                <span className="text-slate-400 font-normal">{ACCESS_ROLE_LABEL[accessRole]}:</span>
+                <span>{actUser.display_name}</span>
+              </span>
             </Tooltip>
           );
         })()}
@@ -399,40 +403,31 @@ export default function Header({
           </button>
         </Tooltip>
 
-        {/* Role switch toggle */}
+        {/* Rollen-Anzeige (kein Umschalter mehr - die Rolle kommt aus dem echten Login) */}
         <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-emerald-500/20 print:hidden">
-          <Tooltip content="Eingeschränkter Lesezugriff & Selbsteinteilung in Schichten" position="bottom" delay={300}>
-            <button
-              onClick={() => setIsAdmin(false)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center space-x-1.5 font-mono cursor-pointer ${
-                !isAdmin
-                  ? "bg-slate-800 text-white font-bold ring-1 ring-slate-750"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-              id="role-btn-user"
-            >
-              <UserIcon className="h-3.5 w-3.5" />
-              <span>Pfingsthelfer*in</span>
-            </button>
-          </Tooltip>
+          <span
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center space-x-1.5 font-mono ${
+              isAdmin
+                ? "bg-emerald-600 text-white font-bold shadow-sm shadow-emerald-500/10"
+                : "bg-slate-800 text-white font-bold ring-1 ring-slate-750"
+            }`}
+            id="role-badge"
+          >
+            {isAdmin ? <ShieldCheck className="h-3.5 w-3.5" /> : <UserIcon className="h-3.5 w-3.5" />}
+            <span>{ACCESS_ROLE_LABEL[accessRole]}</span>
+          </span>
 
-          <Tooltip content="Vollzugriff: Dienste verwalten, Schichten anlegen und Löschrechte" position="bottom" delay={300}>
-            <button
-              onClick={() => {
-                if (isAdmin) return;
-                onOpenAdminPasswordModal();
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center space-x-1.5 font-mono cursor-pointer ${
-                isAdmin
-                  ? "bg-emerald-600 text-white font-bold shadow-sm shadow-emerald-500/10"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-              id="role-btn-admin"
-            >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Camp_Admin</span>
-            </button>
-          </Tooltip>
+          {onLogout && (
+            <Tooltip content="Abmelden" position="bottom" delay={300}>
+              <button
+                onClick={onLogout}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-rose-400 hover:bg-slate-900 font-mono cursor-pointer"
+                id="logout-btn"
+              >
+                Abmelden
+              </button>
+            </Tooltip>
+          )}
         </div>
       </div>
     </header>

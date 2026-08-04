@@ -1,5 +1,31 @@
 import webpush from "web-push";
-import { User, Service, Shift, ShiftAssignment, DB } from "./types";
+import { User, Service, Shift, ShiftAssignment, DB, AccessRole } from "./types";
+import { hashPin } from "./pin";
+
+// Standard-PIN für alle Seed-Nutzer*innen ("1234"). Muss beim ersten produktiven
+// Einsatz von der Lagerleitung geändert werden (Hinweis erscheint im Frontend).
+const DEFAULT_SEED_PIN = "1234";
+
+/**
+ * Weist jedem Seed-Nutzer eine sinnvolle Standard-Zugriffsrolle zu:
+ * - "user-maria" (Hauptleitung laut notes) -> lagerleitung
+ * - fachliche Rolle enthält "HV" (Hauptverantwortliche/r eines Bereichs) -> bereichsleiter
+ * - alle anderen -> helfer
+ * Jede*r bekommt zusätzlich eine gehashte Standard-PIN, damit sich niemand ausgesperrt
+ * findet; die PIN sollte nach dem ersten Login persönlich geändert werden.
+ */
+function withAccessDefaults(users: User[]): User[] {
+  const defaultPinHash = hashPin(DEFAULT_SEED_PIN);
+  return users.map((u) => {
+    let access_role: AccessRole = "helfer";
+    if (u.id === "user-maria") {
+      access_role = "lagerleitung";
+    } else if (u.role && u.role.includes("HV")) {
+      access_role = "bereichsleiter";
+    }
+    return { ...u, access_role, pin_hash: defaultPinHash };
+  });
+}
 
 export const initialUsers: User[] = [
   { id: "user-maria", first_name: "Maria", last_name: "Sp.", display_name: "Maria", role: "HV", active: true, notes: "Hauptleitung" },
@@ -236,7 +262,7 @@ export function getDefaultSeedDB(targetYear: number = 2026): DB {
   }));
 
   return {
-    users: initialUsers,
+    users: withAccessDefaults(initialUsers),
     services: initialServices,
     shifts,
     assignments: initialAssignments,

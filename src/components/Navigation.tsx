@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { Tooltip } from "./Tooltip";
 
+type AccessRole = "helfer" | "bereichsleiter" | "lagerleitung";
+
 interface NavigationProps {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
@@ -26,6 +28,7 @@ interface NavigationProps {
   theme?: string;
   onToggleTheme?: () => void;
   isAdmin: boolean;
+  accessRole?: AccessRole;
   currentUserId?: string | null;
 }
 
@@ -36,6 +39,7 @@ export default function Navigation({
   theme = "dark",
   onToggleTheme,
   isAdmin,
+  accessRole = "helfer",
   currentUserId = null
 }: NavigationProps) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -69,27 +73,39 @@ export default function Navigation({
     return () => clearInterval(interval);
   }, [currentUserId, currentTab]);
 
+  // Helfer sehen nur, was sie für ihren eigenen Einsatz brauchen. Bereichsleiter
+  // bekommen zusätzlich die Planungs-Werkzeuge für ihren Bereich. Nur die
+  // Lagerleitung sieht die vollständige Verwaltung (Personen, Lager-Setup).
   const menuItems = React.useMemo(() => {
-    const baseItems = [
+    const helferItems = [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
       { id: "calendar", label: "Gesamtplan & Filter", icon: Calendar },
       { id: "program", label: "Programm ✨", icon: Sparkles },
-      { id: "communities", label: "Gemeinden ⛪", icon: Church },
       { id: "materials", label: "Bestellliste 📦", icon: ShoppingBag },
       { id: "alerts", label: "Benachrichtigungen 🔔", icon: Bell },
       { id: "print", label: "Druckansicht 🖨️", icon: Printer },
     ];
-    if (isAdmin) {
-      return [
-        ...baseItems,
-        { id: "shifts", label: "Schichten verwalten", icon: Clock },
-        { id: "services", label: "Dienste / Aufgaben", icon: Briefcase },
-        { id: "people", label: "Helfer*innen & Personen", icon: Users },
-        { id: "camps", label: "Lager verwalten", icon: Compass },
-      ];
+    if (accessRole === "helfer") {
+      return helferItems;
     }
-    return baseItems;
-  }, [isAdmin]);
+    const bereichsleiterItems = [
+      ...helferItems,
+      { id: "communities", label: "Gemeinden ⛪", icon: Church },
+      { id: "shifts", label: "Schichten verwalten", icon: Clock },
+      { id: "services", label: "Dienste / Aufgaben", icon: Briefcase },
+    ];
+    if (accessRole === "bereichsleiter") {
+      return bereichsleiterItems;
+    }
+    // lagerleitung: alles
+    return [
+      ...bereichsleiterItems,
+      { id: "people", label: "Helfer*innen & Personen", icon: Users },
+      { id: "camps", label: "Lager verwalten", icon: Compass },
+    ];
+  }, [accessRole]);
+
+  const canExport = accessRole === "bereichsleiter" || accessRole === "lagerleitung";
 
   const handleTabChange = (tabId: string) => {
     setCurrentTab(tabId);
@@ -225,15 +241,17 @@ export default function Navigation({
             );
           })}
         </nav>
-        <div className="px-4 pb-4 mt-auto">
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 text-white font-bold rounded-xl text-xs text-center flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 shadow-emerald-600/15 cursor-pointer block"
-          >
-            <span>{exporting ? "⏳ Bereite vor..." : "📲 Für WhatsApp herunterladen (.html)"}</span>
-          </button>
-        </div>
+        {canExport && (
+          <div className="px-4 pb-4 mt-auto">
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 text-white font-bold rounded-xl text-xs text-center flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 shadow-emerald-600/15 cursor-pointer block"
+            >
+              <span>{exporting ? "⏳ Bereite vor..." : "📲 Für WhatsApp herunterladen (.html)"}</span>
+            </button>
+          </div>
+        )}
         <div className="p-4 border-t border-emerald-500/10 bg-slate-950 text-slate-400 text-xs">
           <p className="font-semibold text-emerald-400">Pfingstlager Pfadfinder</p>
           <p className="mt-0.5 text-[10px] text-slate-500">Dienstplan-Software für das Zeltlager</p>
@@ -324,16 +342,18 @@ export default function Navigation({
             </Tooltip>
           )}
 
-          <Tooltip content="Lädt den ganzen interaktiven Plan als eigenständige, offline-fähige HTML-Datei herunter (für WhatsApp / offline)" position="top" delay={350}>
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 text-white font-bold rounded-xl text-xs text-center flex items-center justify-center gap-1.5 transition-all shadow-md hover:scale-[1.01] active:scale-95 shadow-emerald-600/15 cursor-pointer block"
-              id="desktop-export-btn"
-            >
-              <span>{exporting ? "⏳ Bereite vor..." : "📲 Für WhatsApp herunterladen (.html)"}</span>
-            </button>
-          </Tooltip>
+          {canExport && (
+            <Tooltip content="Lädt den ganzen interaktiven Plan als eigenständige, offline-fähige HTML-Datei herunter (für WhatsApp / offline)" position="top" delay={350}>
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 text-white font-bold rounded-xl text-xs text-center flex items-center justify-center gap-1.5 transition-all shadow-md hover:scale-[1.01] active:scale-95 shadow-emerald-600/15 cursor-pointer block"
+                id="desktop-export-btn"
+              >
+                <span>{exporting ? "⏳ Bereite vor..." : "📲 Für WhatsApp herunterladen (.html)"}</span>
+              </button>
+            </Tooltip>
+          )}
         </div>
 
         <div className="p-4 border-t border-emerald-500/10 bg-slate-950/40 text-slate-405 text-slate-500 text-xs text-center">
