@@ -453,11 +453,11 @@ Ziel ist eine langfristig stabile, einfache und zuverlässige Helfer-App für ei
 
 Die Anwendung basiert ausschließlich auf:
 
-- Next.js
+- Vite
 - React
 - TypeScript
 - Node.js
-- vorhandenen Next.js-Strukturen
+- vorhandenen Vite-Strukturen
 
 Diese Architektur darf nicht ohne meine ausdrückliche Zustimmung geändert werden.
 
@@ -465,10 +465,10 @@ Nicht erlaubt:
 - Wechsel zu React Native
 - Wechsel zu Vue
 - Wechsel zu Angular
-- Wechsel zu einer anderen Framework-Basis
+- Wechsel zu einer anderen Framework-Basis (z.B. Next.js)
 - Neuaufbau der Anwendung in einer anderen Technologie
 
-Neue Funktionen müssen in die bestehende Next.js-Architektur integriert werden.
+Neue Funktionen müssen in die bestehende Vite-Architektur integriert werden.
 
 Vor jeder größeren Architekturänderung muss zuerst eine Analyse mit Vor- und Nachteilen erfolgen und meine Freigabe eingeholt werden.
 
