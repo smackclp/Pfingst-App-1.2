@@ -8,6 +8,7 @@ import shiftsRouter from "./shifts";
 import campsRouter from "./camps";
 import programRouter from "./program";
 import systemRouter from "./system";
+import notificationsRouter from "./notifications";
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use(shiftsRouter);
 router.use(campsRouter);
 router.use(programRouter);
 router.use(systemRouter);
+router.use(notificationsRouter);
 
 export default router;

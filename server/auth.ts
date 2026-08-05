@@ -126,6 +126,17 @@ export function requireMinRole(minimum: AccessRole) {
   };
 }
 
+/**
+ * Erlaubt Zugriff auf die eigenen Daten (z.B. eigene Zuordnung/Benachrichtigungen),
+ * sonst nur Bereichsleitung+. Zentrale Stelle statt vieler identischer
+ * isSelf/canManageOthers-Prüfungen in den Routen.
+ */
+export function isSelfOrManager(req: Request, targetUserId: string): boolean {
+  if (!req.authUser) return false;
+  if (req.authUser.id === targetUserId) return true;
+  return isAtLeast(req.authUser.accessRole, "bereichsleiter");
+}
+
 /** Entfernt sensible Felder (PIN-Hash), bevor ein User-Objekt an den Client geht. */
 export function sanitizeUser<T extends Record<string, any>>(u: T): Omit<T, "pin_hash"> {
   const { pin_hash, ...rest } = u;

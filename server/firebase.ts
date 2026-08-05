@@ -54,6 +54,10 @@ export function isFirebaseEnabled(): boolean {
   return isConfigured && db !== null;
 }
 
+// Alle DB-Arrays, die 1:1 als eigene Firestore-Collection gespiegelt werden
+// (Dokument-ID = item.id). Zentrale Stelle statt 3 identischer Kopien.
+export const FIRESTORE_COLLECTIONS = ["users", "services", "shifts", "assignments", "camps", "materials", "functionalRoles", "communities", "talentActs", "notifications"] as const;
+
 // In-Memory Database Cache to reduce Firestore read costs to absolute zero for client fetches!
 let localCache: DB | null = null;
 let changeListeners: Array<() => void> = [];
@@ -131,14 +135,9 @@ export async function getUnifiedDB(forceRefresh = false): Promise<DB> {
     console.log("Fetching full database state from Firestore...");
     const dbState: Partial<DB> = {};
 
-    const collections = [
-      "users", "services", "shifts", "assignments", "camps", 
-      "materials", "functionalRoles", "communities", "talentActs", "notifications"
-    ];
-
     let totalReads = 0;
     await Promise.all(
-      collections.map(async (colName) => {
+      FIRESTORE_COLLECTIONS.map(async (colName) => {
         const snapshot = await db!.collection(colName).get();
         const list: any[] = [];
         snapshot.forEach((docSnap) => {
@@ -399,12 +398,7 @@ async function triggerGlobalMetadataUpdate() {
 async function migrateToFirestore(data: DB) {
   console.log("Commencing data migration from local JSON file to cloud Firestore...");
   try {
-    const collections = [
-      "users", "services", "shifts", "assignments", "camps", 
-      "materials", "functionalRoles", "communities", "talentActs", "notifications"
-    ];
-
-    for (const colName of collections) {
+    for (const colName of FIRESTORE_COLLECTIONS) {
       const items = (data as any)[colName];
       if (Array.isArray(items)) {
         console.log(`Migrating ${items.length} items to Firestore collection "${colName}"...`);

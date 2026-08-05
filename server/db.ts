@@ -3,13 +3,14 @@ import path from "path";
 import webpush from "web-push";
 import { DB, Camp, Shift, ShiftAssignment } from "./types";
 import { getDefaultSeedDB } from "./seed";
-import { 
-  getUnifiedDB, 
-  isFirebaseEnabled, 
-  writeFirestoreDoc, 
-  deleteFirestoreDoc, 
+import {
+  getUnifiedDB,
+  isFirebaseEnabled,
+  writeFirestoreDoc,
+  deleteFirestoreDoc,
   writeGlobalSettings,
-  registerChangeListener
+  registerChangeListener,
+  FIRESTORE_COLLECTIONS
 } from "./firebase";
 
 const DB_FILE = path.join(process.cwd(), "db.json");
@@ -100,12 +101,7 @@ export function writeDB(newData: DB) {
   if (isFirebaseEnabled()) {
     Promise.resolve().then(async () => {
       try {
-        const collections = [
-          "users", "services", "shifts", "assignments", "camps", 
-          "materials", "functionalRoles", "communities", "talentActs", "notifications"
-        ];
-
-        for (const colName of collections) {
+        for (const colName of FIRESTORE_COLLECTIONS) {
           const oldItems: any[] = (previousDB as any)[colName] || [];
           const newItems: any[] = (newData as any)[colName] || [];
 

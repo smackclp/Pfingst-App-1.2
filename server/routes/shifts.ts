@@ -3,9 +3,14 @@ import { readDB, writeDB, timeToMinutes } from "../db";
 import { computeConflicts } from "../conflicts";
 import { sendNotificationToUser } from "../notifications";
 import { Service, Shift, ShiftAssignment, Camp, DB } from "../types";
-import { requireMinRole } from "../auth";
+import { requireMinRole, isSelfOrManager } from "../auth";
 
 const router = Router();
+
+/** Titel des zu einer Service-ID gehörigen Dienstes, mit Fallback für gelöschte/fehlende Dienste. */
+function getServiceTitle(db: DB, serviceId: string): string {
+  return db.services.find((s) => s.id === serviceId)?.title || "Dienst";
+}
 
 // --- SERVICES ---
 router.get("/services", (req, res) => {
@@ -188,8 +193,7 @@ router.put("/shifts/:id", requireMinRole("bereichsleiter"), (req, res) => {
         .map((a) => a.user_id);
 
       if (assignedUserIds.length > 0) {
-        const srv = db.services.find((s) => s.id === newShift.service_id);
-        const srvTitle = srv?.title || "Dienst";
+        const srvTitle = getServiceTitle(db, newShift.service_id);
         const dateStr = newShift.date === "Haupt" ? "Hauptaufgabe 🏕️" : newShift.date.split("-").reverse().join(".");
         const shiftTime = newShift.date === "Haupt" ? "Dauerhaft" : `${newShift.start_time} - ${newShift.end_time}`;
         
@@ -235,9 +239,7 @@ router.post("/assignments", (req, res) => {
 
   // Jede Person darf sich selbst für eine Schicht eintragen. Andere Personen
   // einzuteilen ist Sache der Bereichsleitung/Lagerleitung (Schichtplanung).
-  const isSelf = req.authUser!.id === user_id;
-  const canManageOthers = req.authUser!.accessRole === "bereichsleiter" || req.authUser!.accessRole === "lagerleitung";
-  if (!isSelf && !canManageOthers) {
+  if (!isSelfOrManager(req, user_id)) {
     return res.status(403).json({ error: "Du kannst nur dich selbst für eine Schicht eintragen." });
   }
 
@@ -269,8 +271,7 @@ router.post("/assignments", (req, res) => {
 
       if (startNew < endExist && startExist < endNew) {
         hasOverlap = true;
-        const svc = db.services.find((sv) => sv.id === s.service_id);
-        overlappingServiceTitle = `${svc?.title || "Dienst"} (${s.start_time}-${s.end_time})`;
+        overlappingServiceTitle = `${getServiceTitle(db, s.service_id)} (${s.start_time}-${s.end_time})`;
         break;
       }
     }
@@ -296,7 +297,7 @@ router.post("/assignments", (req, res) => {
 
   try {
     const srv = db.services.find((s) => s.id === activeShift.service_id);
-    const srvTitle = srv?.title || "Dienst";
+    const srvTitle = getServiceTitle(db, activeShift.service_id);
     const dateStr = activeShift.date === "Haupt" ? "Hauptaufgabe 🏕️" : activeShift.date.split("-").reverse().join(".");
     const shiftTime = activeShift.date === "Haupt" ? "Dauerhaft" : `${activeShift.start_time} - ${activeShift.end_time}`;
     sendNotificationToUser(
@@ -318,17 +319,14 @@ router.delete("/assignments", (req, res) => {
     return res.status(400).json({ error: "Missing required fields: shift_id, user_id" });
   }
 
-  const isSelf = req.authUser!.id === user_id;
-  const canManageOthers = req.authUser!.accessRole === "bereichsleiter" || req.authUser!.accessRole === "lagerleitung";
-  if (!isSelf && !canManageOthers) {
+  if (!isSelfOrManager(req, user_id)) {
     return res.status(403).json({ error: "Du kannst nur deine eigene Zuordnung austragen." });
   }
 
   try {
     const activeShift = db.shifts.find((s) => s.id === shift_id);
     if (activeShift) {
-      const srv = db.services.find((s) => s.id === activeShift.service_id);
-      const srvTitle = srv?.title || "Dienst";
+      const srvTitle = getServiceTitle(db, activeShift.service_id);
       const dateStr = activeShift.date === "Haupt" ? "Campaufgabe 🏕️" : activeShift.date.split("-").reverse().join(".");
       sendNotificationToUser(
         user_id,
@@ -351,9 +349,7 @@ router.delete("/assignments/:id", (req, res) => {
   if (!target) {
     return res.status(404).json({ error: "Zuordnung nicht gefunden." });
   }
-  const isSelf = req.authUser!.id === target.user_id;
-  const canManageOthers = req.authUser!.accessRole === "bereichsleiter" || req.authUser!.accessRole === "lagerleitung";
-  if (!isSelf && !canManageOthers) {
+  if (!isSelfOrManager(req, target.user_id)) {
     return res.status(403).json({ error: "Du kannst nur deine eigene Zuordnung austragen." });
   }
 
@@ -362,8 +358,7 @@ router.delete("/assignments/:id", (req, res) => {
     if (assignment) {
       const activeShift = db.shifts.find((s) => s.id === assignment.shift_id);
       if (activeShift) {
-        const srv = db.services.find((s) => s.id === activeShift.service_id);
-        const srvTitle = srv?.title || "Dienst";
+        const srvTitle = getServiceTitle(db, activeShift.service_id);
         const dateStr = activeShift.date === "Camp" || activeShift.date === "Haupt" ? "Hauptaufgabe" : activeShift.date.split("-").reverse().join(".");
         sendNotificationToUser(
           assignment.user_id,
@@ -387,9 +382,7 @@ router.put("/assignments/:id/accepted", (req, res) => {
   if (!assignment) {
     return res.status(444).json({ error: "Zuordnung nicht gefunden." });
   }
-  const isSelf = req.authUser!.id === assignment.user_id;
-  const canManageOthers = req.authUser!.accessRole === "bereichsleiter" || req.authUser!.accessRole === "lagerleitung";
-  if (!isSelf && !canManageOthers) {
+  if (!isSelfOrManager(req, assignment.user_id)) {
     return res.status(403).json({ error: "Du kannst nur deinen eigenen Status ändern." });
   }
   const isAccepted = !!req.body.accepted;
@@ -406,9 +399,7 @@ router.put("/assignments/:id/status", (req, res) => {
   if (!assignment) {
     return res.status(404).json({ error: "Zuordnung nicht gefunden." });
   }
-  const isSelf = req.authUser!.id === assignment.user_id;
-  const canManageOthers = req.authUser!.accessRole === "bereichsleiter" || req.authUser!.accessRole === "lagerleitung";
-  if (!isSelf && !canManageOthers) {
+  if (!isSelfOrManager(req, assignment.user_id)) {
     return res.status(403).json({ error: "Du kannst nur deinen eigenen Status ändern." });
   }
   const { status, decline_reason } = req.body;
