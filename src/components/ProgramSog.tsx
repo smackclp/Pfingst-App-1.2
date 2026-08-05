@@ -130,7 +130,7 @@ export default function ProgramSog({ communities, users, currentUserId }: Progra
     safeStorage.setItem("zeltlager_sog_stations_v1", JSON.stringify(sorted));
   };
 
-  // Reconcile SOG groups with communities list
+  // Reconcile SOG groups with communities list (reine Berechnung, kein Seiteneffekt)
   const reconciledSogGroups = React.useMemo(() => {
     if (sogGroups.length === 0) return [];
 
@@ -157,15 +157,21 @@ export default function ProgramSog({ communities, users, currentUserId }: Progra
         }
         updated[minIdx].communityIds.push(comm.id);
       });
-
-      setTimeout(() => {
-        setSogGroups(updated);
-        safeStorage.setItem("zeltlager_sog_groups_v1", JSON.stringify(updated));
-      }, 0);
     }
 
     return updated;
   }, [sogGroups, communities]);
+
+  // Persistiert die Reconciliation (neue/entfernte Gemeinden), sobald sie vom
+  // gespeicherten Stand abweicht. Getrennt vom useMemo oben, da das Speichern
+  // ein Seiteneffekt ist und nicht in eine reine Berechnung gehört.
+  React.useEffect(() => {
+    if (sogGroups.length === 0) return;
+    if (JSON.stringify(reconciledSogGroups) === JSON.stringify(sogGroups)) return;
+
+    setSogGroups(reconciledSogGroups);
+    safeStorage.setItem("zeltlager_sog_groups_v1", JSON.stringify(reconciledSogGroups));
+  }, [reconciledSogGroups]);
 
   // Generate balanced teams
   const handleGenerateSogGroups = (count: number) => {
