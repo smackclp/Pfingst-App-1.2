@@ -52,13 +52,26 @@ export default function Header({
   const activeCamp = camps.find((c) => c.id === activeCampId);
   const campYear = activeCamp?.year || 2026;
 
+  // Datum/Uhrzeit des letzten Code-Commits (NICHT der letzten Datenänderung),
+  // zur Build-Zeit von vite.config.ts injiziert.
+  const lastCommitDate = new Date(__LAST_COMMIT_DATE__);
+  const lastCommitLabel = isNaN(lastCommitDate.getTime())
+    ? "unbekannt"
+    : `${lastCommitDate.toLocaleDateString("de-DE")}, ${lastCommitDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`;
+
   return (
     <header className="bg-slate-900 border-b border-emerald-500/10 px-6 py-4 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 sticky top-0 lg:static z-20">
       {/* Platform specifications */}
       <div className="flex flex-wrap items-center gap-2 shrink-0 justify-between md:justify-start">
         <span className="text-xs bg-slate-950 text-emerald-450 text-emerald-400 font-mono py-1.5 px-3 rounded-lg border border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.05)] select-none">
-          📟 PFINGSTLAGER.SYS_{campYear} [STABLE]
+          🏕️ Pfingstlager {campYear}
         </span>
+
+        <Tooltip content={`Letzte Programm-Änderung (Code, nicht Daten) • Commit ${__LAST_COMMIT_HASH__}`} position="bottom" delay={200}>
+          <span className="text-xs bg-slate-950 text-slate-400 font-mono py-1.5 px-3 rounded-lg border border-slate-800 select-none" id="build-version-badge">
+            🛠️ Stand: {lastCommitLabel}
+          </span>
+        </Tooltip>
 
         {/* Angemeldetes Profil (echte Identität aus dem Login, nicht mehr frei wählbar) */}
         {(() => {
