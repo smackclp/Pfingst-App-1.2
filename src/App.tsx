@@ -392,6 +392,7 @@ export default function App() {
               onDeleteTalentAct={handleDeleteTalentAct}
               onReorderTalentActs={handleReorderTalentActs}
               onResetDatabase={handleResetDatabase}
+              onUpdateAssignmentStatus={handleUpdateAssignmentStatus}
             />
           </main>
         </div>

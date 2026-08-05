@@ -21,6 +21,7 @@ interface DashboardPersonalScheduleProps {
   showPersonalSelector: boolean;
   setShowPersonalSelector: (show: boolean) => void;
   showToast: (msg: string) => void;
+  onUpdateAssignmentStatus: (assignmentId: string, status: "pending" | "accepted" | "declined" | "maybe", declineReason?: string) => Promise<void>;
 }
 
 /**
@@ -41,6 +42,7 @@ export default function DashboardPersonalSchedule({
   showPersonalSelector,
   setShowPersonalSelector,
   showToast,
+  onUpdateAssignmentStatus,
 }: DashboardPersonalScheduleProps) {
   const handleCopyPersonalSchedule = (userName: string, details: { assignment: ShiftAssignment; shift: Shift }[]) => {
     if (details.length === 0) return;
@@ -75,20 +77,8 @@ export default function DashboardPersonalSchedule({
 
   const handlePersonalStatusChange = async (assignmentId: string, status: "accepted" | "maybe" | "declined") => {
     try {
-      const res = await fetch(`/api/assignments/${assignmentId}/status`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error("Status API call failed");
-
+      await onUpdateAssignmentStatus(assignmentId, status);
       showToast(`📝 Status erfolgreich auf "${status === "accepted" ? "Zugesagt" : status === "maybe" ? "Vielleicht" : "Abgesagt"}" geändert!`);
-
-      // Persistiert bereits serverseitig; die vollständige App-Aktualisierung
-      // läuft (wie zuvor) über ein kurz verzögertes Neuladen der Seite.
-      setTimeout(() => {
-        window.location.reload();
-      }, 800);
     } catch (err) {
       console.error("Personal status change failed:", err);
       showToast("❌ Status-Änderung fehlgeschlagen.");
@@ -102,17 +92,10 @@ export default function DashboardPersonalSchedule({
       if (pending.length === 0) return;
 
       for (const { assignment } of pending) {
-        await fetch(`/api/assignments/${assignment.id}/status`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "accepted" }),
-        });
+        await onUpdateAssignmentStatus(assignment.id, "accepted");
       }
 
       showToast(`✅ Alle ${pending.length} Schichten erfolgreich bestätigt!`);
-      setTimeout(() => {
-        window.location.reload();
-      }, 600);
     } catch (err) {
       console.error("Bulk accept failed:", err);
       showToast("❌ Zusage konnte nicht für alle Schichten gespeichert werden.");

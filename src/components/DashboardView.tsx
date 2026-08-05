@@ -34,6 +34,7 @@ interface DashboardViewProps {
   pwaInstallable?: boolean;
   onTriggerPwaInstall?: () => void;
   onOpenPwaOnboarding?: () => void;
+  onUpdateAssignmentStatus: (assignmentId: string, status: "pending" | "accepted" | "declined" | "maybe", declineReason?: string) => Promise<void>;
 }
 
 export default function DashboardView({
@@ -53,6 +54,7 @@ export default function DashboardView({
   pwaInstallable = false,
   onTriggerPwaInstall,
   onOpenPwaOnboarding,
+  onUpdateAssignmentStatus,
 }: DashboardViewProps) {
   const isStandalone = typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches;
 
@@ -254,6 +256,7 @@ export default function DashboardView({
         showPersonalSelector={showPersonalSelector}
         setShowPersonalSelector={setShowPersonalSelector}
         showToast={showToast}
+        onUpdateAssignmentStatus={onUpdateAssignmentStatus}
       />
 
       {/* Hauptbereich: Warnungen & Schnellprüfung */}

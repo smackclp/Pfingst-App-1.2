@@ -84,6 +84,7 @@ interface TabContentManagerProps {
   onDeleteTalentAct: (id: string) => Promise<void>;
   onReorderTalentActs: (orders: { [id: string]: number }) => Promise<void>;
   onResetDatabase?: (year?: number, mode?: "full" | "shifts_only" | "clear_assignments") => Promise<string>;
+  onUpdateAssignmentStatus: (assignmentId: string, status: "pending" | "accepted" | "declined" | "maybe", declineReason?: string) => Promise<void>;
 }
 
 export default function TabContentManager({
@@ -141,6 +142,7 @@ export default function TabContentManager({
   onDeleteTalentAct,
   onReorderTalentActs,
   onResetDatabase,
+  onUpdateAssignmentStatus,
 }: TabContentManagerProps) {
   // "isAdmin" ist bewusst nur Lagerleitung (Personen/Lager-Verwaltung).
   // "canManage" (Bereichsleitung ODER Lagerleitung) gilt für alle operativen Planungs-
@@ -183,6 +185,7 @@ export default function TabContentManager({
           pwaInstallable={pwaInstallable}
           onTriggerPwaInstall={onTriggerPwaInstall}
           onOpenPwaOnboarding={onOpenPwaOnboarding}
+          onUpdateAssignmentStatus={onUpdateAssignmentStatus}
         />
       )}
 
