@@ -1,6 +1,7 @@
 import React from "react";
 import { Award, Check, Copy } from "lucide-react";
 import { Community } from "../types";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface TeamGroup {
   id: string;
@@ -40,6 +41,18 @@ export default function ProgramSogGroups({
   onGenerateGroups,
   onMoveCommunity,
 }: ProgramSogGroupsProps) {
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = React.useState(false);
+
+  const handleGenerateClick = () => {
+    // Bei bereits bestehender Einteilung erst nachfragen, da manuell
+    // verschobene Gemeinden (onMoveCommunity) sonst kommentarlos überschrieben würden.
+    if (reconciledSogGroups.length > 0) {
+      setShowRegenerateConfirm(true);
+    } else {
+      onGenerateGroups(sogNumTeams);
+    }
+  };
+
   return (
     <div className="space-y-6 no-print">
       <div className="bg-slate-900/40 p-5 rounded-2xl border border-slate-850 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -88,7 +101,7 @@ export default function ProgramSogGroups({
           </button>
 
           <button
-            onClick={() => onGenerateGroups(sogNumTeams)}
+            onClick={handleGenerateClick}
             className="flex items-center space-x-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl text-xs font-extrabold uppercase font-mono tracking-wider transition active:scale-95 cursor-pointer shadow-lg shadow-emerald-500/20"
           >
             <span>Gruppen automatisch einteilen</span>
@@ -177,6 +190,19 @@ export default function ProgramSogGroups({
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showRegenerateConfirm}
+        variant="danger"
+        title="Gruppen neu einteilen?"
+        message="Die bestehende Gruppeneinteilung wird komplett ersetzt. Manuell verschobene Gemeinden gehen dabei verloren. Wirklich neu einteilen?"
+        confirmLabel="Ja, neu einteilen"
+        onConfirm={() => {
+          onGenerateGroups(sogNumTeams);
+          setShowRegenerateConfirm(false);
+        }}
+        onCancel={() => setShowRegenerateConfirm(false)}
+      />
     </div>
   );
 }

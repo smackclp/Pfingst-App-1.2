@@ -21,11 +21,13 @@ export default function DashboardPwaInstallBanner({
   onTriggerPwaInstall,
   onOpenPwaOnboarding,
 }: DashboardPwaInstallBannerProps) {
-  if (isStandalone || hideInstallBanner) return null;
+  const pushGranted = typeof window !== "undefined" && "Notification" in window && window.Notification.permission === "granted";
+  // Nichts mehr zu tun (App installiert UND Push aktiv) oder manuell ausgeblendet -> Banner weg.
+  if ((isStandalone && pushGranted) || hideInstallBanner) return null;
 
   return (
     <div
-      className="bg-gradient-to-r from-teal-950/40 via-slate-900 to-emerald-950/40 border-2 border-emerald-500/30 p-5 rounded-2xl relative shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-5 animate-fade-in"
+      className="md:hidden bg-gradient-to-r from-teal-950/40 via-slate-900 to-emerald-950/40 border-2 border-emerald-500/30 p-5 rounded-2xl relative shadow-xl overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-5 animate-fade-in"
       id="pwa-install-alert-banner"
     >
       <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
@@ -60,15 +62,9 @@ export default function DashboardPwaInstallBanner({
           </span>
           <span className="px-2 py-1 bg-slate-950/60 rounded border border-slate-800">
             Echtzeit-Push:{" "}
-            <span
-              className={
-                typeof window !== "undefined" && "Notification" in window && window.Notification.permission === "granted"
-                  ? "text-emerald-400 font-bold"
-                  : "text-amber-400 font-bold"
-              }
-            >
+            <span className={pushGranted ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
               {typeof window !== "undefined" && "Notification" in window
-                ? window.Notification.permission === "granted"
+                ? pushGranted
                   ? "✓ Aktiviert"
                   : "🔔 Deaktiviert (Zulassen im Schritt 1)"
                 : "Nicht unterstützt"}
