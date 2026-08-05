@@ -1,5 +1,6 @@
 import React from "react";
 import { User, Service, Shift, ShiftAssignment, Conflict, Camp, MaterialItem, FunctionalRole, Community, TalentAct } from "../types";
+import { safeStorage } from "../utils";
 import {
   getAuthToken,
   setAuthToken,
@@ -353,6 +354,12 @@ export function useZeltlagerData() {
       const data = await res.json();
       throw new Error(data.error || "Creating camp failed");
     }
+    // Spiel-ohne-Grenzen-Daten liegen nur im Browser (LocalStorage), nicht in
+    // der DB - müssen deshalb hier clientseitig zurückgesetzt werden. Gemeinden,
+    // Talentshow-Beiträge und Bestellliste werden bereits serverseitig in
+    // POST /camps für das neue Jahr geleert.
+    safeStorage.removeItem("zeltlager_sog_groups_v1");
+    safeStorage.removeItem("zeltlager_sog_stations_v1");
     await loadDatabase(false);
   };
 

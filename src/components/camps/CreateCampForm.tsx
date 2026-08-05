@@ -57,6 +57,9 @@ export default function CreateCampForm({
         <p className="text-[11px] text-slate-400 mt-1">
           Lege ein neues Zeltlager an. Das System kennt die gesetzlichen Pfingsttermine bis 2035 und berechnet die Wochenenddaten automatisch.
         </p>
+        <p className="text-[11px] text-amber-400/90 mt-2 bg-amber-950/30 border border-amber-500/20 rounded-lg px-2.5 py-2">
+          ⚠️ Gemeinden, Programm (Talentshow & Spiel ohne Grenzen) und die Bestellliste werden für das neue Jahr automatisch geleert. Dienste und Schichten bleiben erhalten bzw. können unten kopiert werden.
+        </p>
       </div>
 
       {availableYears.length > 0 ? (
