@@ -210,7 +210,7 @@ Regeln:
 - Wiederverwendbare Komponenten erstellen
 - Klare Trennung von UI, Logik und Daten
 - Saubere Ordnerstruktur erhalten
-
+- Komponenten und Dateien sollen nach fachlicher Verantwortung aufgeteilt werden. Die Aufteilung dient der Wartbarkeit und Verständlichkeit, nicht der künstlichen Verkleinerung von Dateien. Kleine, eng zusammengehörende Funktionen dürfen in einer Datei bleiben. Neue Dateien sollen nur entstehen, wenn sie einen klaren architektonischen Vorteil bieten.
 Große Dateien bevorzugt in kleinere Komponenten aufteilen.
 
 ---
