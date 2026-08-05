@@ -1,6 +1,5 @@
 import React from "react";
-import { User, Service, Shift, ShiftAssignment, Conflict, Camp, MaterialItem, FunctionalRole, Community, TalentAct } from "../types";
-import { safeStorage } from "../utils";
+import { User, Service, Shift, ShiftAssignment, Conflict, Camp, MaterialItem, FunctionalRole, Community, TalentAct, SogTeamGroup, SogStation, SogSettings } from "../types";
 import {
   getAuthToken,
   setAuthToken,
@@ -92,6 +91,9 @@ export function useZeltlagerData() {
   const [functionalRoles, setFunctionalRoles] = React.useState<FunctionalRole[]>([]);
   const [communities, setCommunities] = React.useState<Community[]>([]);
   const [talentActs, setTalentActs] = React.useState<TalentAct[]>([]);
+  const [sogGroups, setSogGroups] = React.useState<SogTeamGroup[]>([]);
+  const [sogStations, setSogStations] = React.useState<SogStation[]>([]);
+  const [sogSettings, setSogSettings] = React.useState<SogSettings>({ startTime: "10:00", roundDuration: 15, breakDuration: 5 });
 
   // Focus highlighed shift state
   const [selectShiftId, setSelectShiftId] = React.useState<string | null>(null);
@@ -131,7 +133,7 @@ export function useZeltlagerData() {
     else setRefreshing(true);
 
     try {
-      const [rUsers, rServices, rShifts, rAssignments, rConflicts, rCampsInfo, rMaterials, rRoles, rCommunities, rTalentActs, rSync] = await Promise.all([
+      const [rUsers, rServices, rShifts, rAssignments, rConflicts, rCampsInfo, rMaterials, rRoles, rCommunities, rTalentActs, rSogGroups, rSogStations, rSogSettings, rSync] = await Promise.all([
         safeFetchJson("/api/users", []),
         safeFetchJson("/api/services", []),
         safeFetchJson("/api/shifts", []),
@@ -142,6 +144,9 @@ export function useZeltlagerData() {
         safeFetchJson("/api/roles", []),
         safeFetchJson("/api/communities", []),
         safeFetchJson("/api/talent-acts", []),
+        safeFetchJson("/api/sog-groups", []),
+        safeFetchJson("/api/sog-stations", []),
+        safeFetchJson("/api/sog-settings", { startTime: "10:00", roundDuration: 15, breakDuration: 5 }),
         safeFetchJson("/api/sync-check", { lastChange: 0 })
       ]);
 
@@ -156,6 +161,9 @@ export function useZeltlagerData() {
       setFunctionalRoles(rRoles || []);
       setCommunities(rCommunities || []);
       setTalentActs(rTalentActs || []);
+      setSogGroups(rSogGroups || []);
+      setSogStations(rSogStations || []);
+      setSogSettings(rSogSettings || { startTime: "10:00", roundDuration: 15, breakDuration: 5 });
 
       if (rSync && rSync.lastChange) {
         lastChangeRef.current = rSync.lastChange;
@@ -354,12 +362,8 @@ export function useZeltlagerData() {
       const data = await res.json();
       throw new Error(data.error || "Creating camp failed");
     }
-    // Spiel-ohne-Grenzen-Daten liegen nur im Browser (LocalStorage), nicht in
-    // der DB - müssen deshalb hier clientseitig zurückgesetzt werden. Gemeinden,
-    // Talentshow-Beiträge und Bestellliste werden bereits serverseitig in
-    // POST /camps für das neue Jahr geleert.
-    safeStorage.removeItem("zeltlager_sog_groups_v1");
-    safeStorage.removeItem("zeltlager_sog_stations_v1");
+    // Gemeinden, Talentshow-Beiträge, Bestellliste & Spiel-ohne-Grenzen-Daten
+    // werden bereits serverseitig in POST /camps für das neue Jahr geleert.
     await loadDatabase(false);
   };
 
@@ -521,6 +525,38 @@ export function useZeltlagerData() {
     await loadDatabase(true);
   };
 
+  // Spiel ohne Grenzen: Gruppen, Stationen & Rotationszeiten liegen auf dem
+  // Server, damit alle Beteiligten dieselbe Einteilung/Zuordnung sehen.
+  const handleUpdateSogGroups = async (groups: SogTeamGroup[]) => {
+    const res = await fetch("/api/sog-groups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ groups }),
+    });
+    if (!res.ok) throw new Error("Updating SoG groups failed");
+    await loadDatabase(true);
+  };
+
+  const handleUpdateSogStations = async (stations: SogStation[]) => {
+    const res = await fetch("/api/sog-stations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stations }),
+    });
+    if (!res.ok) throw new Error("Updating SoG stations failed");
+    await loadDatabase(true);
+  };
+
+  const handleUpdateSogSettings = async (settings: SogSettings) => {
+    const res = await fetch("/api/sog-settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    });
+    if (!res.ok) throw new Error("Updating SoG settings failed");
+    await loadDatabase(true);
+  };
+
   const handleResetDatabase = async (year: number = 2026, mode: "full" | "shifts_only" | "clear_assignments" = "full") => {
     const res = await fetch("/api/seed", {
       method: "POST",
@@ -600,6 +636,13 @@ export function useZeltlagerData() {
     handleDeleteTalentAct,
     handleReorderTalentActs,
     handleClearTalentActs,
+    // Spiel ohne Grenzen
+    sogGroups,
+    sogStations,
+    sogSettings,
+    handleUpdateSogGroups,
+    handleUpdateSogStations,
+    handleUpdateSogSettings,
     handleResetDatabase,
   };
 }

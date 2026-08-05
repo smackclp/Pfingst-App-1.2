@@ -1,23 +1,22 @@
 import React from "react";
 import { Users, CheckSquare, CalendarDays, Printer } from "lucide-react";
-import { Community, User } from "../types";
-import { safeStorage } from "../utils";
+import { Community, User, SogTeamGroup, SogSettings } from "../types";
 import ProgramSogGroups from "./ProgramSogGroups";
 import ProgramSogStations, { SogStation } from "./ProgramSogStations";
 import ProgramSogLaufplan from "./ProgramSogLaufplan";
 import ProgramSogPrintCards from "./ProgramSogPrintCards";
 import ProgramSogPrintGroups from "./ProgramSogPrintGroups";
 
-interface TeamGroup {
-  id: string;
-  name: string;
-  communityIds: string[];
-}
-
 interface ProgramSogProps {
   communities: Community[];
   users: User[];
   currentUserId?: string;
+  sogGroups: SogTeamGroup[];
+  sogStations: SogStation[];
+  sogSettings: SogSettings;
+  onUpdateSogGroups: (groups: SogTeamGroup[]) => Promise<void>;
+  onUpdateSogStations: (stations: SogStation[]) => Promise<void>;
+  onUpdateSogSettings: (settings: SogSettings) => Promise<void>;
 }
 
 const DEFAULT_SOG_STATIONS: SogStation[] = [
@@ -73,41 +72,29 @@ const DEFAULT_SOG_STATIONS: SogStation[] = [
  * Stationen, Rotationszeiten) und rendert die 5 Subtab-Komponenten.
  * Extrahiert aus ProgramView.tsx.
  */
-export default function ProgramSog({ communities, users, currentUserId }: ProgramSogProps) {
+export default function ProgramSog({
+  communities,
+  users,
+  currentUserId,
+  sogGroups,
+  sogStations: sogStationsProp,
+  sogSettings,
+  onUpdateSogGroups,
+  onUpdateSogStations,
+  onUpdateSogSettings,
+}: ProgramSogProps) {
   const [sogNumTeams, setSogNumTeams] = React.useState<number>(4);
   const [sogActiveSubTab, setSogActiveSubTab] = React.useState<"groups" | "stations" | "laufplan" | "print_cards" | "print_groups">("groups");
 
-  // Teams State
-  const [sogGroups, setSogGroups] = React.useState<TeamGroup[]>(() => {
-    const saved = safeStorage.getItem("zeltlager_sog_groups_v1");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse SOG groups", e);
-      }
-    }
-    return [];
-  });
+  // Solange auf dem Server noch keine Stationen gespeichert sind, dienen die
+  // Standard-Stationen als Vorlage (werden erst bei einer Bearbeitung
+  // tatsächlich persistiert, genau wie zuvor beim LocalStorage-Fallback).
+  const sogStations = sogStationsProp.length > 0 ? sogStationsProp : DEFAULT_SOG_STATIONS;
 
-  // Stations State
-  const [sogStations, setSogStations] = React.useState<SogStation[]>(() => {
-    const saved = safeStorage.getItem("zeltlager_sog_stations_v1");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {
-        console.error("Failed to parse SOG stations", e);
-      }
-    }
-    return DEFAULT_SOG_STATIONS;
-  });
-
-  // Laufplan Rotation Settings
-  const [sogStartTime, setSogStartTime] = React.useState<string>("10:00");
-  const [sogRoundDuration, setSogRoundDuration] = React.useState<number>(15);
-  const [sogBreakDuration, setSogBreakDuration] = React.useState<number>(5);
+  const { startTime: sogStartTime, roundDuration: sogRoundDuration, breakDuration: sogBreakDuration } = sogSettings;
+  const setSogStartTime = (t: string) => { onUpdateSogSettings({ ...sogSettings, startTime: t }); };
+  const setSogRoundDuration = (n: number) => { onUpdateSogSettings({ ...sogSettings, roundDuration: n }); };
+  const setSogBreakDuration = (n: number) => { onUpdateSogSettings({ ...sogSettings, breakDuration: n }); };
 
   const [sogCopySuccess, setSogCopySuccess] = React.useState<boolean>(false);
 
@@ -123,11 +110,11 @@ export default function ProgramSog({ communities, users, currentUserId }: Progra
     return sogStations.filter((st) => st.helperIds && st.helperIds.includes(currentUserId));
   }, [sogStations, currentUserId]);
 
-  // Save SOG Stations to LocalStorage
+  // Speichert die Stationen serverseitig, damit alle Beteiligten dieselbe
+  // Helfer-Zuordnung sehen.
   const updateSogStations = (newList: SogStation[]) => {
     const sorted = [...newList].sort((a, b) => a.number - b.number);
-    setSogStations(sorted);
-    safeStorage.setItem("zeltlager_sog_stations_v1", JSON.stringify(sorted));
+    onUpdateSogStations(sorted);
   };
 
   // Reconcile SOG groups with communities list (reine Berechnung, kein Seiteneffekt)
@@ -162,15 +149,15 @@ export default function ProgramSog({ communities, users, currentUserId }: Progra
     return updated;
   }, [sogGroups, communities]);
 
-  // Persistiert die Reconciliation (neue/entfernte Gemeinden), sobald sie vom
-  // gespeicherten Stand abweicht. Getrennt vom useMemo oben, da das Speichern
-  // ein Seiteneffekt ist und nicht in eine reine Berechnung gehört.
+  // Persistiert die Reconciliation (neue/entfernte Gemeinden) serverseitig,
+  // sobald sie vom gespeicherten Stand abweicht. Getrennt vom useMemo oben,
+  // da das Speichern ein Seiteneffekt ist und nicht in eine reine
+  // Berechnung gehört.
   React.useEffect(() => {
     if (sogGroups.length === 0) return;
     if (JSON.stringify(reconciledSogGroups) === JSON.stringify(sogGroups)) return;
 
-    setSogGroups(reconciledSogGroups);
-    safeStorage.setItem("zeltlager_sog_groups_v1", JSON.stringify(reconciledSogGroups));
+    onUpdateSogGroups(reconciledSogGroups);
   }, [reconciledSogGroups]);
 
   // Generate balanced teams
@@ -181,7 +168,7 @@ export default function ProgramSog({ communities, users, currentUserId }: Progra
     }
 
     const sortedComms = [...communities].sort((a, b) => b.participants - a.participants);
-    const groups: TeamGroup[] = Array.from({ length: count }, (_, i) => ({
+    const groups: SogTeamGroup[] = Array.from({ length: count }, (_, i) => ({
       id: `sog-group-${i + 1}`,
       name: `Gruppe ${i + 1}`,
       communityIds: [],
@@ -208,8 +195,7 @@ export default function ProgramSog({ communities, users, currentUserId }: Progra
       groups[minGroupIdx].communityIds.push(comm.id);
     });
 
-    setSogGroups(groups);
-    safeStorage.setItem("zeltlager_sog_groups_v1", JSON.stringify(groups));
+    onUpdateSogGroups(groups);
   };
 
   const handleMoveSogCommunity = (communityId: string, targetGroupId: string) => {
@@ -227,8 +213,7 @@ export default function ProgramSog({ communities, users, currentUserId }: Progra
       };
     });
 
-    setSogGroups(updated);
-    safeStorage.setItem("zeltlager_sog_groups_v1", JSON.stringify(updated));
+    onUpdateSogGroups(updated);
   };
 
   const sogStats = React.useMemo(() => {

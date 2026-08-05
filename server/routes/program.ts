@@ -251,4 +251,57 @@ router.post("/talent-acts/clear", requireRole("lagerleitung"), (req, res) => {
   res.json({ success: true });
 });
 
+// --- SPIEL OHNE GRENZEN ---
+// Bewusst serverseitig statt LocalStorage: Gruppen-Einteilung und
+// Stationen-Zuordnung müssen alle Beteiligten gleich sehen. Wie bei der
+// Talentshow oben für ALLE angemeldeten Helfer bearbeitbar.
+router.get("/sog-groups", (req, res) => {
+  const db = readDB();
+  res.json(db.sogGroups || []);
+});
+
+router.post("/sog-groups", (req, res) => {
+  const db = readDB();
+  const { groups } = req.body;
+  if (!Array.isArray(groups)) {
+    return res.status(400).json({ error: "groups muss ein Array sein" });
+  }
+  db.sogGroups = groups;
+  writeDB(db);
+  res.json({ success: true });
+});
+
+router.get("/sog-stations", (req, res) => {
+  const db = readDB();
+  res.json(db.sogStations || []);
+});
+
+router.post("/sog-stations", (req, res) => {
+  const db = readDB();
+  const { stations } = req.body;
+  if (!Array.isArray(stations)) {
+    return res.status(400).json({ error: "stations muss ein Array sein" });
+  }
+  db.sogStations = stations;
+  writeDB(db);
+  res.json({ success: true });
+});
+
+router.get("/sog-settings", (req, res) => {
+  const db = readDB();
+  res.json(db.sogSettings || { startTime: "10:00", roundDuration: 15, breakDuration: 5 });
+});
+
+router.post("/sog-settings", (req, res) => {
+  const db = readDB();
+  const { startTime, roundDuration, breakDuration } = req.body;
+  db.sogSettings = {
+    startTime: typeof startTime === "string" ? startTime : "10:00",
+    roundDuration: typeof roundDuration === "number" ? roundDuration : 15,
+    breakDuration: typeof breakDuration === "number" ? breakDuration : 5,
+  };
+  writeDB(db);
+  res.json({ success: true, sogSettings: db.sogSettings });
+});
+
 export default router;

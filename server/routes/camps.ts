@@ -93,14 +93,18 @@ router.post("/camps", requireRole("lagerleitung"), (req, res) => {
     }
   }
 
-  // Gemeinden, Talentshow-Beiträge & Bestellliste sind bewusst nicht
-  // jahresgebunden gespeichert (siehe communities.ts/program.ts) und werden
-  // deshalb bei jedem neuen Lagerjahr geleert, damit sie nicht aus dem
-  // Vorjahr stehen bleiben. Schichten/Dienste bleiben unberührt (werden
-  // oben ggf. über copyFromCampId übernommen).
+  // Gemeinden, Talentshow-Beiträge, Bestellliste & Spiel-ohne-Grenzen-Daten
+  // sind bewusst nicht jahresgebunden gespeichert (siehe
+  // communities.ts/program.ts) und werden deshalb bei jedem neuen
+  // Lagerjahr geleert, damit sie nicht aus dem Vorjahr stehen bleiben.
+  // Schichten/Dienste bleiben unberührt (werden oben ggf. über
+  // copyFromCampId übernommen).
   db.communities = [];
   db.talentActs = [];
   db.materials = [];
+  db.sogGroups = [];
+  db.sogStations = [];
+  db.sogSettings = undefined;
 
   db.activeCampId = campId;
   writeDB(db);

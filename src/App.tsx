@@ -69,6 +69,12 @@ export default function App() {
     handleUpdateTalentAct,
     handleDeleteTalentAct,
     handleReorderTalentActs,
+    sogGroups,
+    sogStations,
+    sogSettings,
+    handleUpdateSogGroups,
+    handleUpdateSogStations,
+    handleUpdateSogSettings,
     handleResetDatabase,
   } = useZeltlagerData();
 
@@ -391,6 +397,12 @@ export default function App() {
               onUpdateTalentAct={handleUpdateTalentAct}
               onDeleteTalentAct={handleDeleteTalentAct}
               onReorderTalentActs={handleReorderTalentActs}
+              sogGroups={sogGroups}
+              sogStations={sogStations}
+              sogSettings={sogSettings}
+              onUpdateSogGroups={handleUpdateSogGroups}
+              onUpdateSogStations={handleUpdateSogStations}
+              onUpdateSogSettings={handleUpdateSogSettings}
               onResetDatabase={handleResetDatabase}
               onUpdateAssignmentStatus={handleUpdateAssignmentStatus}
             />

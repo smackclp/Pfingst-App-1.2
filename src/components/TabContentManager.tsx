@@ -1,5 +1,5 @@
 import React from "react";
-import { User, Service, Shift, ShiftAssignment, Conflict, Camp, MaterialItem, FunctionalRole, Community, TalentAct } from "../types";
+import { User, Service, Shift, ShiftAssignment, Conflict, Camp, MaterialItem, FunctionalRole, Community, TalentAct, SogTeamGroup, SogStation, SogSettings } from "../types";
 import DashboardView from "./DashboardView";
 import CalendarView from "./CalendarView";
 import PeopleView from "./PeopleView";
@@ -85,6 +85,14 @@ interface TabContentManagerProps {
   onReorderTalentActs: (orders: { [id: string]: number }) => Promise<void>;
   onResetDatabase?: (year?: number, mode?: "full" | "shifts_only" | "clear_assignments") => Promise<string>;
   onUpdateAssignmentStatus: (assignmentId: string, status: "pending" | "accepted" | "declined" | "maybe", declineReason?: string) => Promise<void>;
+
+  // Spiel ohne Grenzen props
+  sogGroups: SogTeamGroup[];
+  sogStations: SogStation[];
+  sogSettings: SogSettings;
+  onUpdateSogGroups: (groups: SogTeamGroup[]) => Promise<void>;
+  onUpdateSogStations: (stations: SogStation[]) => Promise<void>;
+  onUpdateSogSettings: (settings: SogSettings) => Promise<void>;
 }
 
 export default function TabContentManager({
@@ -141,6 +149,12 @@ export default function TabContentManager({
   onUpdateTalentAct,
   onDeleteTalentAct,
   onReorderTalentActs,
+  sogGroups,
+  sogStations,
+  sogSettings,
+  onUpdateSogGroups,
+  onUpdateSogStations,
+  onUpdateSogSettings,
   onResetDatabase,
   onUpdateAssignmentStatus,
 }: TabContentManagerProps) {
@@ -309,6 +323,12 @@ export default function TabContentManager({
           onUpdateTalentAct={onUpdateTalentAct}
           onDeleteTalentAct={onDeleteTalentAct}
           onReorderTalentActs={onReorderTalentActs}
+          sogGroups={sogGroups}
+          sogStations={sogStations}
+          sogSettings={sogSettings}
+          onUpdateSogGroups={onUpdateSogGroups}
+          onUpdateSogStations={onUpdateSogStations}
+          onUpdateSogSettings={onUpdateSogSettings}
         />
       )}
 

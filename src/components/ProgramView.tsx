@@ -1,6 +1,6 @@
 import React from "react";
 import { Sparkles, Award } from "lucide-react";
-import { TalentAct, Community, User } from "../types";
+import { TalentAct, Community, User, SogTeamGroup, SogStation, SogSettings } from "../types";
 import ProgramTalentShow from "./ProgramTalentShow";
 import ProgramSog from "./ProgramSog";
 
@@ -14,6 +14,12 @@ interface ProgramViewProps {
   onUpdateTalentAct: (id: string, act: Partial<TalentAct>) => Promise<void>;
   onDeleteTalentAct: (id: string) => Promise<void>;
   onReorderTalentActs: (orders: { [id: string]: number }) => Promise<void>;
+  sogGroups: SogTeamGroup[];
+  sogStations: SogStation[];
+  sogSettings: SogSettings;
+  onUpdateSogGroups: (groups: SogTeamGroup[]) => Promise<void>;
+  onUpdateSogStations: (stations: SogStation[]) => Promise<void>;
+  onUpdateSogSettings: (settings: SogSettings) => Promise<void>;
 }
 
 /**
@@ -31,6 +37,12 @@ export default function ProgramView({
   onUpdateTalentAct,
   onDeleteTalentAct,
   onReorderTalentActs,
+  sogGroups,
+  sogStations,
+  sogSettings,
+  onUpdateSogGroups,
+  onUpdateSogStations,
+  onUpdateSogSettings,
 }: ProgramViewProps) {
   const [activeMainTab, setActiveMainTab] = React.useState<"talentshow" | "spiel_ohne_grenzen">("talentshow");
 
@@ -72,7 +84,17 @@ export default function ProgramView({
           onReorderTalentActs={onReorderTalentActs}
         />
       ) : (
-        <ProgramSog communities={communities} users={users} currentUserId={currentUserId} />
+        <ProgramSog
+          communities={communities}
+          users={users}
+          currentUserId={currentUserId}
+          sogGroups={sogGroups}
+          sogStations={sogStations}
+          sogSettings={sogSettings}
+          onUpdateSogGroups={onUpdateSogGroups}
+          onUpdateSogStations={onUpdateSogStations}
+          onUpdateSogSettings={onUpdateSogSettings}
+        />
       )}
     </div>
   );

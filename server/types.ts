@@ -118,6 +118,9 @@ export interface DB {
   functionalRoles?: FunctionalRole[];
   communities?: Community[];
   talentActs?: TalentAct[];
+  sogGroups?: SogTeamGroup[];
+  sogStations?: SogStation[];
+  sogSettings?: SogSettings;
 }
 
 export interface TalentAct {
@@ -136,6 +139,31 @@ export interface TalentAct {
   spotify_link?: string;
   without_rating: boolean;
   order_index: number;
+}
+
+/** "Spiel ohne Grenzen": Gruppen-Einteilung der Gemeinden. */
+export interface SogTeamGroup {
+  id: string;
+  name: string;
+  communityIds: string[];
+}
+
+/** "Spiel ohne Grenzen": einzelne Spielstation inkl. Helfer-Zuordnung. */
+export interface SogStation {
+  id: string;
+  number: number;
+  title: string;
+  description: string;
+  location: string;
+  materialNeeded: string;
+  helperIds: string[];
+}
+
+/** "Spiel ohne Grenzen": Rotationszeiten für den Laufplan. */
+export interface SogSettings {
+  startTime: string;
+  roundDuration: number;
+  breakDuration: number;
 }
 
 export interface Conflict {
