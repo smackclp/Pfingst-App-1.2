@@ -6,6 +6,7 @@ import TabContentManager from "./components/TabContentManager";
 import ModalManager from "./components/ModalManager";
 import LoginScreen from "./components/LoginScreen";
 import PwaSetupModal from "./components/modals/PwaSetupModal";
+import OnboardingModal from "./components/modals/OnboardingModal";
 import { useZeltlagerData } from "./hooks/useZeltlagerData";
 import { TooltipProvider } from "./components/Tooltip";
 import { sendLocalNotification, registerPushSubscription, safeStorage, hasServiceWorkerSupport } from "./utils";
@@ -115,6 +116,14 @@ export default function App() {
     }
     return false;
   });
+
+  const [showOnboarding, setShowOnboarding] = React.useState(
+    () => safeStorage.getItem(STORAGE_KEYS.ONBOARDING_SEEN) !== "true"
+  );
+  const closeOnboarding = () => {
+    safeStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN, "true");
+    setShowOnboarding(false);
+  };
 
   const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
   const [pwaInstallable, setPwaInstallable] = React.useState(false);
@@ -418,7 +427,9 @@ export default function App() {
           onUpdateAssignmentStatus={handleUpdateAssignmentStatus}
         />
 
-        {showPwaSetupModal && (
+        {showOnboarding && <OnboardingModal onClose={closeOnboarding} />}
+
+        {showPwaSetupModal && !showOnboarding && (
           <PwaSetupModal
             pushPermStatus={pushPermStatus}
             isIOS={isIOS}
