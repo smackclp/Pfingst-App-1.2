@@ -349,6 +349,7 @@ export default function App() {
               activeCampId={activeCampId}
               camps={camps}
               isAdmin={isAdmin}
+              accessRole={accessRole}
               currentUserId={currentUserId}
               selectShiftId={selectShiftId}
               setCurrentTab={setCurrentTab}
