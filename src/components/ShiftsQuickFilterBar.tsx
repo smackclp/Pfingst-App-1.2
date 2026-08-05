@@ -22,7 +22,7 @@ export default function ShiftsQuickFilterBar({
   totalShiftsCount,
 }: ShiftsQuickFilterBarProps) {
   return (
-    <div className="space-y-2.5 pt-2 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/90 shadow-inner">
+    <div className="space-y-2.5 pt-2 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/90 shadow-inner min-w-0">
       <div className="flex items-center justify-between">
         <label className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider font-mono flex items-center space-x-1.5">
           <Sparkles className="h-3.5 w-3.5 text-amber-400" />

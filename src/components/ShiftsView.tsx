@@ -190,7 +190,7 @@ export default function ShiftsView({
   return (
     <div className="space-y-6">
       {/* Search Header and filters */}
-      <div className="bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-emerald-500/10 shadow-xl shadow-black/35 space-y-4">
+      <div className="bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-emerald-500/10 shadow-xl shadow-black/35 space-y-4 min-w-0">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center space-x-2">
             <Clock className="h-6 w-6 text-emerald-400" />

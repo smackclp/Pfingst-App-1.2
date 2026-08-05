@@ -8,6 +8,14 @@
 }
 
 
+html,
+body {
+  /* Sicherheitsnetz gegen horizontales Aufklappen einzelner Layout-Elemente
+     (z.B. Flexbox-Kindelemente ohne min-width:0) - verhindert einen
+     Scrollbalken für die gesamte Seite unabhängig von der Ursache. */
+  overflow-x: hidden;
+}
+
 html {
   font-size: 14px; /* Mobile first / narrow screens */
 }

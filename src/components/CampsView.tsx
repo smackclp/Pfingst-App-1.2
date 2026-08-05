@@ -25,6 +25,13 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
   });
   const [loadingStats, setLoadingStats] = React.useState(false);
 
+  // Datum/Uhrzeit des letzten Code-Commits (NICHT der letzten Datenänderung),
+  // zur Build-Zeit von vite.config.ts injiziert.
+  const lastCommitDate = new Date(__LAST_COMMIT_DATE__);
+  const buildStampLabel = isNaN(lastCommitDate.getTime())
+    ? "unbekannt"
+    : `${lastCommitDate.toLocaleDateString("de-DE")}, ${lastCommitDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`;
+
   // Reset modal state
   const [resetModalOpen, setResetModalOpen] = React.useState(false);
   const [resetMode, setResetMode] = React.useState<"full" | "shifts_only" | "clear_assignments">("shifts_only");
@@ -258,6 +265,11 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
                 <TrendingUp className="h-3 w-3" />
                 98% Quotenersparnis durch Cache
               </span>
+            </div>
+
+            <div className="text-[10px] text-slate-500 flex justify-between items-center" title={`Commit ${__LAST_COMMIT_HASH__}`}>
+              <span>Programm-Stand (letzte Code-Änderung):</span>
+              <span className="text-slate-400 font-mono">{buildStampLabel}</span>
             </div>
           </div>
         </div>

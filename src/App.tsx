@@ -328,7 +328,6 @@ export default function App() {
             activeCampId={activeCampId}
             camps={camps}
             refreshing={refreshing}
-            isAdmin={isAdmin}
             accessRole={accessRole}
             onLogout={logoutUser}
             loadDatabase={loadDatabase}
@@ -342,7 +341,7 @@ export default function App() {
             onOpenPwaOnboarding={() => setShowPwaSetupModal(true)}
           />
 
-          <main className="flex-1 p-4 md:p-6 lg:p-8 pb-24 lg:pb-8 max-w-7xl w-full mx-auto">
+          <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8 pb-24 lg:pb-8 max-w-7xl w-full mx-auto">
             <TabContentManager
               currentTab={currentTab}
               loading={loading}

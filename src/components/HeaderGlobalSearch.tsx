@@ -133,7 +133,7 @@ export default function HeaderGlobalSearch({ users, services, shifts, assignment
   };
 
   return (
-    <div ref={searchContainerRef} className="relative flex-1 max-w-lg w-full" id="global-search-container">
+    <div ref={searchContainerRef} className="relative flex-1 min-w-0 max-w-lg w-full" id="global-search-container">
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
         <input
