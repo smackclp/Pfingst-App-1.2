@@ -83,7 +83,6 @@ interface TabContentManagerProps {
   onUpdateTalentAct: (id: string, act: Partial<TalentAct>) => Promise<void>;
   onDeleteTalentAct: (id: string) => Promise<void>;
   onReorderTalentActs: (orders: { [id: string]: number }) => Promise<void>;
-  onClearTalentActs: () => Promise<void>;
   onResetDatabase?: (year?: number, mode?: "full" | "shifts_only" | "clear_assignments") => Promise<string>;
 }
 
@@ -141,7 +140,6 @@ export default function TabContentManager({
   onUpdateTalentAct,
   onDeleteTalentAct,
   onReorderTalentActs,
-  onClearTalentActs,
   onResetDatabase,
 }: TabContentManagerProps) {
   // "isAdmin" ist bewusst nur Lagerleitung (Personen/Lager-Verwaltung).
@@ -308,7 +306,6 @@ export default function TabContentManager({
           onUpdateTalentAct={onUpdateTalentAct}
           onDeleteTalentAct={onDeleteTalentAct}
           onReorderTalentActs={onReorderTalentActs}
-          onClearTalentActs={onClearTalentActs}
         />
       )}
 

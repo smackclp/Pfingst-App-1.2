@@ -14,7 +14,6 @@ interface ProgramViewProps {
   onUpdateTalentAct: (id: string, act: Partial<TalentAct>) => Promise<void>;
   onDeleteTalentAct: (id: string) => Promise<void>;
   onReorderTalentActs: (orders: { [id: string]: number }) => Promise<void>;
-  onClearTalentActs: () => Promise<void>;
 }
 
 /**
@@ -32,7 +31,6 @@ export default function ProgramView({
   onUpdateTalentAct,
   onDeleteTalentAct,
   onReorderTalentActs,
-  onClearTalentActs,
 }: ProgramViewProps) {
   const [activeMainTab, setActiveMainTab] = React.useState<"talentshow" | "spiel_ohne_grenzen">("talentshow");
 

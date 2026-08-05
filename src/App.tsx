@@ -69,7 +69,6 @@ export default function App() {
     handleUpdateTalentAct,
     handleDeleteTalentAct,
     handleReorderTalentActs,
-    handleClearTalentActs,
     handleResetDatabase,
   } = useZeltlagerData();
 
@@ -392,7 +391,6 @@ export default function App() {
               onUpdateTalentAct={handleUpdateTalentAct}
               onDeleteTalentAct={handleDeleteTalentAct}
               onReorderTalentActs={handleReorderTalentActs}
-              onClearTalentActs={handleClearTalentActs}
               onResetDatabase={handleResetDatabase}
             />
           </main>

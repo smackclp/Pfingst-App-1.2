@@ -58,14 +58,6 @@ export default function ProgramTalentShow({
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingAct, setEditingAct] = React.useState<TalentAct | null>(null);
 
-  // Spotify Integration States
-  const [isSpotifyExpanded, setIsSpotifyExpanded] = React.useState(false);
-  const [spotifyToken, setSpotifyToken] = React.useState("");
-  const [spotifyStep, setSpotifyStep] = React.useState<"idle" | "creating" | "success" | "error">("idle");
-  const [createdPlaylistUrl, setCreatedPlaylistUrl] = React.useState("");
-  const [spotifyError, setSpotifyError] = React.useState("");
-  const [tempPosition, setTempPosition] = React.useState<{ [id: string]: string }>({});
-
   // Talent Show Form States
   const [communityName, setCommunityName] = React.useState("");
   const [talentsNames, setTalentsNames] = React.useState("");
@@ -79,11 +71,6 @@ export default function ProgramTalentShow({
   const [lightingMood, setLightingMood] = React.useState(LIGHT_MOODS[0]);
   const [spotifyLink, setSpotifyLink] = React.useState("");
   const [withoutRating, setWithoutRating] = React.useState(false);
-
-  // Parse details in real-time
-  const parsedAges = React.useMemo(() => {
-    return extractAgesAndAverage(talentsNames);
-  }, [talentsNames]);
 
   const openAddForm = () => {
     setEditingAct(null);

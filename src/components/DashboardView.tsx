@@ -256,11 +256,6 @@ export default function DashboardView({
         showToast={showToast}
       />
 
-      {/* Helper text template helper */}
-      {(() => {
-        return null;
-      })()}
-
       {/* Hauptbereich: Warnungen & Schnellprüfung */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Row 1: Absagen & Unklare Rückmeldungen (die gesamte breite) */}

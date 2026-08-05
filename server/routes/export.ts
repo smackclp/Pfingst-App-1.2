@@ -26,21 +26,6 @@ router.get("/export-html", authMiddleware, requireMinRole("bereichsleiter"), (re
   const campShiftIds = new Set(filteredShifts.map((s) => s.id));
   const filteredAssignments = db.assignments.filter((a) => campShiftIds.has(a.shift_id));
 
-  const addDaysString = (dateStr: string, days: number): string => {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + days);
-    return d.toISOString().split("T")[0];
-  };
-
-  const formatDateShort = (dateStr: string): string => {
-    const parts = dateStr.split("-");
-    if (parts.length !== 3) return dateStr;
-    const months = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
-    const day = parseInt(parts[2], 10);
-    const month = months[parseInt(parts[1], 10) - 1];
-    return `${day}. ${month}`;
-  };
-
   const html = buildExportHtml({ activeCamp, db, filteredShifts, filteredAssignments, clientScript });
 
   res.setHeader("Content-Type", "text/html");
