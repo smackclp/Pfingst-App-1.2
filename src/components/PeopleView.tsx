@@ -1,20 +1,18 @@
 import React from "react";
-import { 
-  Users, 
-  Search, 
-  Plus, 
-  AlertTriangle,
-  Info,
+import {
+  Users,
+  Search,
+  Plus,
   Shield,
   Trash2,
   Calendar,
-  ShoppingBag,
-  UserCheck
+  ShoppingBag
 } from "lucide-react";
 import { User, FunctionalRole } from "../types";
 import PersonCard from "./PersonCard";
 import PersonFormModal from "./PersonFormModal";
 import AccessRoleManager from "./AccessRoleManager";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface PeopleViewProps {
   users: User[];
@@ -464,161 +462,93 @@ export default function PeopleView({
       />
 
       {/* DELETE HELPER CONFIRMATION */}
-      {deleteConfirm.isOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="delete-people-confirm-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-rose-950/40 rounded-xl border border-rose-900/30 text-rose-500 shrink-0">
-                <AlertTriangle className="h-6 w-6 text-rose-500" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">Person löschen?</h4>
-                <p className="text-xs text-slate-350 leading-relaxed">
-                  Möchten Sie <strong className="text-white font-semibold">{deleteConfirm.name}</strong> wirklich löschen? Alle entsprechenden Schichten-Zuweisungen gehen verloren.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm({ isOpen: false, id: "", name: "" })}
-                className="px-3.5 py-2 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition"
-              >
-                Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                Ja, Löschen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="delete-people-confirm-dialog"
+        isOpen={deleteConfirm.isOpen}
+        title="Person löschen?"
+        message={
+          <>
+            Möchten Sie <strong className="text-white font-semibold">{deleteConfirm.name}</strong> wirklich löschen? Alle entsprechenden Schichten-Zuweisungen gehen verloren.
+          </>
+        }
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteConfirm({ isOpen: false, id: "", name: "" })}
+      />
 
       {/* CONFIRM ROLE UPDATE MODAL */}
-      {confirmRoleUpdate && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="confirm-role-update-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-emerald-950/40 rounded-xl border border-emerald-900/30 text-emerald-400 shrink-0">
-                <UserCheck className="h-6 w-6 text-emerald-400" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">Zuweisung ändern?</h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Möchten Sie die Rolle <strong className="text-white font-bold">"{confirmRoleUpdate.roleName}"</strong> der Person <strong className="text-emerald-400 font-bold">"{confirmRoleUpdate.newUserName}"</strong> zuweisen?
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setConfirmRoleUpdate(null)}
-                className="px-3.5 py-2 hover:bg-slate-850 border border-slate-800 text-slate-300 text-xs font-semibold rounded-lg transition"
-              >
-                Nein, Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await onUpdateRole(confirmRoleUpdate.roleId, { user_id: confirmRoleUpdate.newUserId });
-                    setConfirmRoleUpdate(null);
-                  } catch (err) {
-                    console.error(err);
-                    setConfirmRoleUpdate(null);
-                    setAlertState({
-                      isOpen: true,
-                      title: "Systemfehler",
-                      message: "Die Änderung konnte nicht gespeichert werden."
-                    });
-                  }
-                }}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                Ja, Zuordnen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="confirm-role-update-dialog"
+        isOpen={confirmRoleUpdate !== null}
+        variant="info"
+        title="Zuweisung ändern?"
+        message={
+          confirmRoleUpdate && (
+            <>
+              Möchten Sie die Rolle <strong className="text-white font-bold">"{confirmRoleUpdate.roleName}"</strong> der Person{" "}
+              <strong className="text-emerald-400 font-bold">"{confirmRoleUpdate.newUserName}"</strong> zuweisen?
+            </>
+          )
+        }
+        confirmLabel="Ja, Zuordnen"
+        cancelLabel="Nein, Abbrechen"
+        onConfirm={async () => {
+          if (!confirmRoleUpdate) return;
+          try {
+            await onUpdateRole(confirmRoleUpdate.roleId, { user_id: confirmRoleUpdate.newUserId });
+            setConfirmRoleUpdate(null);
+          } catch (err) {
+            console.error(err);
+            setConfirmRoleUpdate(null);
+            setAlertState({
+              isOpen: true,
+              title: "Systemfehler",
+              message: "Die Änderung konnte nicht gespeichert werden."
+            });
+          }
+        }}
+        onCancel={() => setConfirmRoleUpdate(null)}
+      />
 
       {/* CONFIRM ROLE DELETE MODAL */}
-      {confirmRoleDelete && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="confirm-role-delete-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-rose-950/40 rounded-xl border border-rose-900/30 text-rose-500 shrink-0">
-                <AlertTriangle className="h-6 w-6 text-rose-500" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">Rolle löschen?</h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Möchten Sie die funktionale Rolle <strong className="text-white font-bold">"{confirmRoleDelete.roleName}"</strong> wirklich dauerhaft löschen?
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setConfirmRoleDelete(null)}
-                className="px-3.5 py-2 hover:bg-slate-850 border border-slate-800 text-slate-300 text-xs font-semibold rounded-lg transition"
-              >
-                Nein, Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await onDeleteRole(confirmRoleDelete.roleId);
-                    setConfirmRoleDelete(null);
-                  } catch (err) {
-                    console.error(err);
-                    setConfirmRoleDelete(null);
-                    setAlertState({
-                      isOpen: true,
-                      title: "Systemfehler",
-                      message: "Die Rolle konnte nicht gelöscht werden."
-                    });
-                  }
-                }}
-                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                Ja, Löschen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="confirm-role-delete-dialog"
+        isOpen={confirmRoleDelete !== null}
+        title="Rolle löschen?"
+        message={
+          confirmRoleDelete && (
+            <>
+              Möchten Sie die funktionale Rolle <strong className="text-white font-bold">"{confirmRoleDelete.roleName}"</strong> wirklich dauerhaft löschen?
+            </>
+          )
+        }
+        cancelLabel="Nein, Abbrechen"
+        onConfirm={async () => {
+          if (!confirmRoleDelete) return;
+          try {
+            await onDeleteRole(confirmRoleDelete.roleId);
+            setConfirmRoleDelete(null);
+          } catch (err) {
+            console.error(err);
+            setConfirmRoleDelete(null);
+            setAlertState({
+              isOpen: true,
+              title: "Systemfehler",
+              message: "Die Rolle konnte nicht gelöscht werden."
+            });
+          }
+        }}
+        onCancel={() => setConfirmRoleDelete(null)}
+      />
 
       {/* ALERT DIALOG */}
-      {alertState.isOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="alert-people-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-slate-950 rounded-xl border border-slate-800 text-emerald-450 shrink-0">
-                <Info className="h-6 w-6 text-emerald-400" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">{alertState.title || "Hinweis"}</h4>
-                <p className="text-xs text-slate-350 leading-relaxed">{alertState.message}</p>
-              </div>
-            </div>
-            <div className="flex justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setAlertState({ isOpen: false, message: "" })}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="alert-people-dialog"
+        isOpen={alertState.isOpen}
+        variant="info"
+        title={alertState.title || "Hinweis"}
+        message={alertState.message}
+        onCancel={() => setAlertState({ isOpen: false, message: "" })}
+      />
     </div>
   );
 }
