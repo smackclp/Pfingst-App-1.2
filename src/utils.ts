@@ -1,6 +1,14 @@
 // Date Utilities for Pfingstlager Application
 import { GERMAN_MONTHS_SHORT, GERMAN_WEEKDAYS_SHORT, GERMAN_WEEKDAYS_LONG } from "./constants";
 
+// Extrahiert die Track-ID aus einem Spotify-Song-Link (open.spotify.com/track/...
+// oder spotify:track:...), z.B. für die login-freie Einbettung des Spotify-Players.
+export function extractSpotifyTrackId(link: string): string | null {
+  if (!link) return null;
+  const match = link.match(/track[:/]([a-zA-Z0-9]{22})/);
+  return match ? match[1] : null;
+}
+
 // Detect if we are inside a sandboxed or normal iframe
 export function isInsideIframe(): boolean {
   try {

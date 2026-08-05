@@ -2,6 +2,7 @@ import React from "react";
 import { Sparkles, Plus, Trash2, Edit, ChevronUp, ChevronDown, Printer, Music, X } from "lucide-react";
 import { TalentAct, Community } from "../types";
 import { motion, AnimatePresence } from "motion/react";
+import ProgramTalentShowPlaylist from "./ProgramTalentShowPlaylist";
 
 interface ProgramTalentShowProps {
   talentActs: TalentAct[];
@@ -57,6 +58,7 @@ export default function ProgramTalentShow({
 
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingAct, setEditingAct] = React.useState<TalentAct | null>(null);
+  const [isPlaylistOpen, setIsPlaylistOpen] = React.useState(false);
 
   // Talent Show Form States
   const [communityName, setCommunityName] = React.useState("");
@@ -192,6 +194,14 @@ export default function ProgramTalentShow({
               <span>Drucken</span>
             </button>
           </div>
+
+          <button
+            onClick={() => setIsPlaylistOpen(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-200 font-bold rounded-xl text-xs uppercase font-mono tracking-wider transition active:scale-95 cursor-pointer"
+          >
+            <Music className="h-4 w-4" />
+            <span>Wiedergabeliste</span>
+          </button>
 
           {isAdmin && (
             <button
@@ -421,6 +431,18 @@ export default function ProgramTalentShow({
                 </div>
 
                 <div>
+                  <label className="text-slate-400 font-bold uppercase block mb-1">Spotify-Song-Link (optional)</label>
+                  <input
+                    type="url"
+                    placeholder="z.B. https://open.spotify.com/track/..."
+                    value={spotifyLink}
+                    onChange={(e) => setSpotifyLink(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-sans focus:border-emerald-500 focus:outline-none"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1 font-sans">Für die Wiedergabeliste zur Songreihenfolge während der Show.</p>
+                </div>
+
+                <div>
                   <label className="text-slate-400 font-bold uppercase block mb-1">Lichtstimmung</label>
                   <select
                     value={lightingMood}
@@ -457,6 +479,8 @@ export default function ProgramTalentShow({
           </div>
         )}
       </AnimatePresence>
+
+      {isPlaylistOpen && <ProgramTalentShowPlaylist acts={talentActs} onClose={() => setIsPlaylistOpen(false)} />}
     </div>
   );
 }
