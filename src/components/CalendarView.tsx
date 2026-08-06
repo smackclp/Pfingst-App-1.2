@@ -17,6 +17,8 @@ import {
 import { User as UserType, Service, Shift, ShiftAssignment, Conflict, Camp } from "../types";
 import { addDays, getDayName, formatDateWithDayPrefix } from "../utils";
 import { useShiftSuggestions } from "../hooks/useShiftSuggestions";
+import { useToast } from "../hooks/useToast";
+import Toast from "./Toast";
 import CalendarCard from "./CalendarCard";
 import CalendarPersonStats from "./CalendarPersonStats";
 import CalendarTableView from "./CalendarTableView";
@@ -72,6 +74,7 @@ export default function CalendarView({
   // bereits "Bereichsleitung oder höher" (siehe TabContentManager).
   const [viewMode, setViewMode] = React.useState<"list" | "days" | "print">(isAdmin ? "list" : "days");
   const [searchTerm, setSearchTerm] = React.useState<string>("");
+  const { toastMessage, showToast } = useToast();
   const [assignPopoverShiftId, setAssignPopoverShiftId] = React.useState<string | null>(null);
   const [expandedShifts, setExpandedShifts] = React.useState<Record<string, boolean>>({});
   const { suggestions, loadingSuggestions } = useShiftSuggestions(assignPopoverShiftId);
@@ -362,6 +365,7 @@ export default function CalendarView({
             users={users}
             onClearPersonFilter={() => setSelectedPersonId("")}
             formatDateGerman={formatDateGerman}
+            showToast={showToast}
           />
         )}
       </div>
@@ -501,6 +505,8 @@ export default function CalendarView({
           />
         )}
       </div>
+
+      <Toast message={toastMessage} />
     </div>
   );
 }

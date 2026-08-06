@@ -6,10 +6,11 @@ interface MaterialOrderFormProps {
   users: User[];
   currentUserId: string | null;
   onAddMaterial: (material: Omit<MaterialItem, "id" | "created_at">) => Promise<void>;
+  showToast: (msg: string) => void;
 }
 
 /** "Materialbedarf anmelden"-Formular. Extrahiert aus MaterialsView.tsx. */
-export default function MaterialOrderForm({ users, currentUserId, onAddMaterial }: MaterialOrderFormProps) {
+export default function MaterialOrderForm({ users, currentUserId, onAddMaterial, showToast }: MaterialOrderFormProps) {
   const [selectedUser, setSelectedUser] = React.useState<string>(currentUserId || "");
   const [itemName, setItemName] = React.useState<string>("");
   const [websiteUrl, setWebsiteUrl] = React.useState<string>("");
@@ -30,7 +31,7 @@ export default function MaterialOrderForm({ users, currentUserId, onAddMaterial 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser || !itemName.trim() || !purpose.trim()) {
-      alert("Bitte fülle alle Pflichtfelder aus (Besteller, Artikel, Verwendungszweck).");
+      showToast("Bitte fülle alle Pflichtfelder aus (Besteller, Artikel, Verwendungszweck).");
       return;
     }
 
@@ -58,7 +59,7 @@ export default function MaterialOrderForm({ users, currentUserId, onAddMaterial 
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
       console.error(err);
-      alert("Fehler beim Speichern der Materialbestellung.");
+      showToast("Fehler beim Speichern der Materialbestellung.");
     } finally {
       setIsSubmitting(false);
     }

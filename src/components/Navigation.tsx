@@ -27,17 +27,19 @@ interface NavigationProps {
   isAdmin: boolean;
   accessRole?: AccessRole;
   currentUserId?: string | null;
+  showToast: (msg: string) => void;
 }
 
-export default function Navigation({ 
-  currentTab, 
-  setCurrentTab, 
+export default function Navigation({
+  currentTab,
+  setCurrentTab,
   conflictCount,
   theme = "dark",
   onToggleTheme,
   isAdmin,
   accessRole = "helfer",
-  currentUserId = null
+  currentUserId = null,
+  showToast
 }: NavigationProps) {
   const [exporting, setExporting] = React.useState(false);
   const [unreadCount, setUnreadCount] = React.useState(0);
@@ -134,7 +136,7 @@ export default function Navigation({
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Export failure:", err);
-      alert("Fehler beim Herunterladen des Dienstplans. Bitte versuchen Sie es erneut.");
+      showToast("Fehler beim Herunterladen des Dienstplans. Bitte versuchen Sie es erneut.");
     } finally {
       setExporting(false);
     }

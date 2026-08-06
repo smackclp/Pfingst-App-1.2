@@ -3,6 +3,8 @@ import { Printer, ArrowLeft, Copy, AlertCircle, FileText, CheckCircle2, Download
 import { User, Service, Shift, ShiftAssignment, Camp } from "../types";
 import { formatDateGerman, getDayNameShort } from "../utils";
 import { usePdfExport } from "../hooks/usePdfExport";
+import { useToast } from "../hooks/useToast";
+import Toast from "./Toast";
 import PrintScheduleTable from "./PrintScheduleTable";
 
 interface PrintViewProps {
@@ -16,7 +18,8 @@ interface PrintViewProps {
 
 export default function PrintView({ shifts, services, users, assignments, activeCamp, onBackToDashboard }: PrintViewProps) {
   const [copySuccess, setCopySuccess] = React.useState<string | null>(null);
-  const { pdfGenerating, downloadPdf } = usePdfExport(activeCamp);
+  const { toastMessage, showToast } = useToast();
+  const { pdfGenerating, downloadPdf } = usePdfExport(activeCamp, showToast);
   const isInIframe = React.useMemo(() => {
     try {
       return window.self !== window.top;
@@ -31,7 +34,7 @@ export default function PrintView({ shifts, services, users, assignments, active
       window.print();
     } catch (e) {
       console.error("Print execution failed:", e);
-      alert("Der Druck konnte nicht automatisch gestartet werden. Nutzen Sie Strg+P (Cmd+P) oder kopieren Sie die Tabelle.");
+      showToast("Der Druck konnte nicht automatisch gestartet werden. Nutzen Sie Strg+P (Cmd+P) oder kopieren Sie die Tabelle.");
     }
   };
 
@@ -266,6 +269,8 @@ export default function PrintView({ shifts, services, users, assignments, active
 
       {/* Toner-Saving Print Sheet Canvas */}
       <PrintScheduleTable sortedShifts={sortedShifts} services={services} users={users} assignments={assignments} activeCamp={activeCamp} />
+
+      <Toast message={toastMessage} />
     </div>
   );
 }

@@ -115,7 +115,7 @@ const PDF_RENDER_STYLES = `
  * PDF-Export von #print-sheet-canvas-element via html2canvas + jsPDF.
  * Extrahiert aus PrintView.tsx (downloadPdf).
  */
-export function usePdfExport(activeCamp?: Camp) {
+export function usePdfExport(activeCamp?: Camp, onError?: (msg: string) => void) {
   const [pdfGenerating, setPdfGenerating] = React.useState(false);
 
   const downloadPdf = async () => {
@@ -189,7 +189,7 @@ export function usePdfExport(activeCamp?: Camp) {
       pdf.save(`Dienstplan_${campTitle}_${campYear}.pdf`);
     } catch (err) {
       console.error("PDF generation failed:", err);
-      alert("PDF-Generierung fehlgeschlagen. Bitte nutzen Sie stattdessen die Druckfunktion oder 'Excel/Word Form'.");
+      onError?.("PDF-Generierung fehlgeschlagen. Bitte nutzen Sie stattdessen die Druckfunktion oder 'Excel/Word Form'.");
     } finally {
       // 4. Clean up mock and delete temporary styling element
       if (originalStyleSheetsDescriptor) {

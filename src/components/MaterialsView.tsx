@@ -1,6 +1,8 @@
 import React from "react";
 import { User, MaterialItem } from "../types";
 import { Download, ShoppingBag, Copy, Check } from "lucide-react";
+import { useToast } from "../hooks/useToast";
+import Toast from "./Toast";
 import MaterialOrderForm from "./MaterialOrderForm";
 import MaterialsList from "./MaterialsList";
 
@@ -26,6 +28,7 @@ export default function MaterialsView({
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [searchQuery, setSearchQuery] = React.useState<string>("");
   const [copySuccess, setCopySuccess] = React.useState<boolean>(false);
+  const { toastMessage, showToast } = useToast();
 
   const sortedAndFilteredMaterials = React.useMemo(() => {
     let list = [...materials];
@@ -53,7 +56,7 @@ export default function MaterialsView({
 
   const handleCopyWhatsApp = () => {
     if (sortedAndFilteredMaterials.length === 0) {
-      alert("Es gibt keine passenden Artikel zum Kopieren.");
+      showToast("Es gibt keine passenden Artikel zum Kopieren.");
       return;
     }
 
@@ -86,14 +89,14 @@ export default function MaterialsView({
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
       console.error("Failed to copy material list: ", err);
-      alert("Kopieren fehlgeschlagen.");
+      showToast("Kopieren fehlgeschlagen.");
     }
   };
 
   // Export as CSV for Buyer/Purchaser
   const handleExportCSV = () => {
     if (materials.length === 0) {
-      alert("Die Bestellliste ist leer. Es gibt nichts zu exportieren!");
+      showToast("Die Bestellliste ist leer. Es gibt nichts zu exportieren!");
       return;
     }
 
@@ -184,7 +187,7 @@ export default function MaterialsView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Register Form (lg:col-span-5) */}
         <div className="lg:col-span-5 space-y-6">
-          <MaterialOrderForm users={users} currentUserId={currentUserId} onAddMaterial={onAddMaterial} />
+          <MaterialOrderForm users={users} currentUserId={currentUserId} onAddMaterial={onAddMaterial} showToast={showToast} />
         </div>
 
         {/* Right Column: Interactive material listings and details board (lg:col-span-7) */}
@@ -201,9 +204,12 @@ export default function MaterialsView({
             isAdmin={isAdmin}
             onUpdateMaterial={onUpdateMaterial}
             onDeleteMaterial={onDeleteMaterial}
+            showToast={showToast}
           />
         </div>
       </div>
+
+      <Toast message={toastMessage} />
     </div>
   );
 }

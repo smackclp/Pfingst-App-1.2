@@ -267,7 +267,7 @@ export default function App() {
 
   const handleRequestPushPermission = async () => {
     if (!("Notification" in window)) {
-      alert("Dieses Gerät unterstützt leider keine automatischen Push-Benachrichtigungen.");
+      showQueueToast("Dieses Gerät unterstützt leider keine automatischen Push-Benachrichtigungen.");
       return;
     }
     try {
@@ -352,6 +352,7 @@ export default function App() {
           isAdmin={isAdmin}
           accessRole={accessRole}
           currentUserId={currentUserId}
+          showToast={showQueueToast}
         />
 
         <BottomNav

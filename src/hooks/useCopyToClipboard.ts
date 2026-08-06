@@ -6,7 +6,7 @@ import React from "react";
  * und ProgramView.tsx (handleCopySogWhatsApp) - beide identisches Muster
  * (Flag setzen, nach 2s zurücksetzen).
  */
-export function useCopyToClipboard(timeoutMs: number = 2000) {
+export function useCopyToClipboard(timeoutMs: number = 2000, onError?: (msg: string) => void) {
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
   const copy = React.useCallback(
@@ -17,10 +17,10 @@ export function useCopyToClipboard(timeoutMs: number = 2000) {
         setTimeout(() => setCopiedId(null), timeoutMs);
       } catch (err) {
         console.error(err);
-        alert("Fehler beim Kopieren.");
+        onError?.("Fehler beim Kopieren.");
       }
     },
-    [timeoutMs]
+    [timeoutMs, onError]
   );
 
   return { copiedId, copy };

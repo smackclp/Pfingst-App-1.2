@@ -6,6 +6,8 @@ import ProgramSogStations, { SogStation } from "./ProgramSogStations";
 import ProgramSogLaufplan from "./ProgramSogLaufplan";
 import ProgramSogPrintCards from "./ProgramSogPrintCards";
 import ProgramSogPrintGroups from "./ProgramSogPrintGroups";
+import { useToast } from "../hooks/useToast";
+import Toast from "./Toast";
 
 interface ProgramSogProps {
   communities: Community[];
@@ -85,6 +87,7 @@ export default function ProgramSog({
 }: ProgramSogProps) {
   const [sogNumTeams, setSogNumTeams] = React.useState<number>(4);
   const [sogActiveSubTab, setSogActiveSubTab] = React.useState<"groups" | "stations" | "laufplan" | "print_cards" | "print_groups">("groups");
+  const { toastMessage, showToast } = useToast();
 
   // Solange auf dem Server noch keine Stationen gespeichert sind, dienen die
   // Standard-Stationen als Vorlage (werden erst bei einer Bearbeitung
@@ -163,7 +166,7 @@ export default function ProgramSog({
   // Generate balanced teams
   const handleGenerateSogGroups = (count: number) => {
     if (!communities || communities.length === 0) {
-      alert("Keine Gemeinden vorhanden, um Gruppen zu erstellen.");
+      showToast("Keine Gemeinden vorhanden, um Gruppen zu erstellen.");
       return;
     }
 
@@ -258,7 +261,7 @@ export default function ProgramSog({
       setTimeout(() => setSogCopySuccess(false), 2000);
     } catch (err) {
       console.error(err);
-      alert("Fehler beim Kopieren.");
+      showToast("Fehler beim Kopieren.");
     }
   };
 
@@ -462,6 +465,8 @@ export default function ProgramSog({
       )}
 
       {sogActiveSubTab === "print_groups" && <ProgramSogPrintGroups reconciledSogGroups={reconciledSogGroups} communities={communities} />}
+
+      <Toast message={toastMessage} />
     </div>
   );
 }

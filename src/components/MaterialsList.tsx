@@ -2,6 +2,7 @@ import React from "react";
 import { Search, ExternalLink, ClipboardList, Trash2 } from "lucide-react";
 import { User, MaterialItem } from "../types";
 import MaterialStatusBadge from "./MaterialStatusBadge";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface MaterialsListProps {
   materials: MaterialItem[];
@@ -15,6 +16,7 @@ interface MaterialsListProps {
   isAdmin: boolean;
   onUpdateMaterial: (id: string, material: Partial<MaterialItem>) => Promise<void>;
   onDeleteMaterial: (id: string) => Promise<void>;
+  showToast: (msg: string) => void;
 }
 
 /** Such-/Filterleiste und Bestelllisten-Ansicht. Extrahiert aus MaterialsView.tsx. */
@@ -30,7 +32,9 @@ export default function MaterialsList({
   isAdmin,
   onUpdateMaterial,
   onDeleteMaterial,
+  showToast,
 }: MaterialsListProps) {
+  const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
   // Helper: toggle status ('pending' -> 'ordered' -> 'received' -> 'pending')
   const handleToggleStatus = async (item: MaterialItem) => {
     const currentStatus = item.status || "pending";
@@ -48,19 +52,23 @@ export default function MaterialsList({
       await onUpdateMaterial(item.id, { status: nextStatus });
     } catch (err) {
       console.error(err);
-      alert("Fehler beim Aktualisieren des Bestellstatus.");
+      showToast("Fehler beim Aktualisieren des Bestellstatus.");
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Möchtest du diesen Artikel wirklich aus der Bestellliste löschen?")) {
-      return;
-    }
+  const handleDelete = (id: string) => {
+    setDeleteTargetId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTargetId) return;
+    const id = deleteTargetId;
+    setDeleteTargetId(null);
     try {
       await onDeleteMaterial(id);
     } catch (err) {
       console.error(err);
-      alert("Fehler beim Löschen des Artikels.");
+      showToast("Fehler beim Löschen des Artikels.");
     }
   };
 
@@ -222,6 +230,14 @@ export default function MaterialsList({
           })
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={!!deleteTargetId}
+        title="Artikel löschen"
+        message="Möchtest du diesen Artikel wirklich aus der Bestellliste löschen?"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </div>
   );
 }

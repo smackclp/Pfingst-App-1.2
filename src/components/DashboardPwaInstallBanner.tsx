@@ -2,6 +2,7 @@ import React from "react";
 import { Bell, Download, Smartphone, X } from "lucide-react";
 import { isInsideIframe, safeStorage } from "../utils";
 import { STORAGE_KEYS } from "../constants";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface DashboardPwaInstallBannerProps {
   isStandalone: boolean;
@@ -21,6 +22,7 @@ export default function DashboardPwaInstallBanner({
   onTriggerPwaInstall,
   onOpenPwaOnboarding,
 }: DashboardPwaInstallBannerProps) {
+  const [showInstallInstructions, setShowInstallInstructions] = React.useState(false);
   const pushGranted = typeof window !== "undefined" && "Notification" in window && window.Notification.permission === "granted";
   // Nichts mehr zu tun (App installiert UND Push aktiv) oder manuell ausgeblendet -> Banner weg.
   if ((isStandalone && pushGranted) || hideInstallBanner) return null;
@@ -103,9 +105,7 @@ export default function DashboardPwaInstallBanner({
               if (onOpenPwaOnboarding) {
                 onOpenPwaOnboarding();
               } else {
-                alert(
-                  "Nutze am Android Smartphone den Chrome Browser. Tippe oben rechts auf die drei Punkte ⋮ und wähle 'App installieren' oder 'Zum Startbildschirm hinzufügen'. Bei iOS nutzen Sie bitte Safari und wählen 'Teilen' -> 'Zum Startbildschirm'."
-                );
+                setShowInstallInstructions(true);
               }
             }}
             className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-lg transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 uppercase tracking-wide"
@@ -126,6 +126,14 @@ export default function DashboardPwaInstallBanner({
           <X className="h-4 w-4 shrink-0" />
         </button>
       </div>
+
+      <ConfirmDialog
+        isOpen={showInstallInstructions}
+        variant="info"
+        title="App installieren"
+        message="Nutze am Android Smartphone den Chrome Browser. Tippe oben rechts auf die drei Punkte ⋮ und wähle 'App installieren' oder 'Zum Startbildschirm hinzufügen'. Bei iOS nutzen Sie bitte Safari und wählen 'Teilen' -> 'Zum Startbildschirm'."
+        onCancel={() => setShowInstallInstructions(false)}
+      />
     </div>
   );
 }

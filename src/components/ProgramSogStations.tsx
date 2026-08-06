@@ -2,6 +2,7 @@ import React from "react";
 import { Plus, Edit, Trash2, MapPin, Package, CheckSquare, X, Search } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { User } from "../types";
+import ConfirmDialog from "./ConfirmDialog";
 
 export interface SogStation {
   id: string;
@@ -35,6 +36,7 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
   const [stationMaterial, setStationMaterial] = React.useState<string>("");
   const [stationHelperIds, setStationHelperIds] = React.useState<string[]>([]);
   const [helperSearchQuery, setHelperSearchQuery] = React.useState<string>("");
+  const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
 
   const openAddStationModal = () => {
     const nextNum = sogStations.length > 0 ? Math.max(...sogStations.map((s) => s.number)) + 1 : 1;
@@ -97,10 +99,14 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
   };
 
   const handleDeleteStation = (id: string) => {
-    if (confirm("Möchtest du diese Station wirklich löschen?")) {
-      const updated = sogStations.filter((s) => s.id !== id);
-      onUpdateStations(updated);
-    }
+    setDeleteTargetId(id);
+  };
+
+  const confirmDeleteStation = () => {
+    if (!deleteTargetId) return;
+    const updated = sogStations.filter((s) => s.id !== deleteTargetId);
+    onUpdateStations(updated);
+    setDeleteTargetId(null);
   };
 
   const toggleStationHelper = (userId: string) => {
@@ -430,6 +436,14 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmDialog
+        isOpen={!!deleteTargetId}
+        title="Station löschen"
+        message="Möchtest du diese Station wirklich löschen?"
+        onConfirm={confirmDeleteStation}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </div>
   );
 }

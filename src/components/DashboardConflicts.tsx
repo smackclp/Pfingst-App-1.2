@@ -57,7 +57,7 @@ export default function DashboardConflicts({
   const [expandedConflictId, setExpandedConflictId] = React.useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null);
   const [conflictTab, setConflictTab] = React.useState<"overlaps" | "understaffed">("overlaps");
-  const { copiedId, copy } = useCopyToClipboard();
+  const { copiedId, copy } = useCopyToClipboard(2000, showToast);
 
   const getAvailableUsersForShift = React.useCallback(
     (shiftId: string): User[] => {

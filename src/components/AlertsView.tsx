@@ -5,6 +5,9 @@ import { sendLocalNotification, registerPushSubscription, unregisterPushSubscrip
 import { useNotificationPermission } from "../hooks/useNotificationPermission";
 import { useServiceWorkerStatus } from "../hooks/useServiceWorkerStatus";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import { useToast } from "../hooks/useToast";
+import Toast from "./Toast";
+import ConfirmDialog from "./ConfirmDialog";
 import AlertsPushPermissionSection from "./AlertsPushPermissionSection";
 import AlertsBrowserGuide from "./AlertsBrowserGuide";
 import AlertsServiceWorkerSection from "./AlertsServiceWorkerSection";
@@ -29,6 +32,8 @@ export default function AlertsView({ currentUser, users, onUpdateUser }: AlertsV
 
   const [subStatus, setSubStatus] = React.useState<"idle" | "registering" | "success" | "error">("idle");
   const [subMessage, setSubMessage] = React.useState("");
+  const [showClearConfirm, setShowClearConfirm] = React.useState(false);
+  const { toastMessage, showToast } = useToast();
 
   const handleForceRegisterPush = async () => {
     if (!currentUser) return;
@@ -149,7 +154,7 @@ export default function AlertsView({ currentUser, users, onUpdateUser }: AlertsV
   // Request browser notification perm
   const requestBrowserPermission = async () => {
     if (!("Notification" in window)) {
-      alert("Dieses Gerät unterstützt leider keine automatischen Push-Benachrichtigungen.");
+      showToast("Dieses Gerät unterstützt leider keine automatischen Push-Benachrichtigungen.");
       return;
     }
     try {
@@ -220,9 +225,14 @@ export default function AlertsView({ currentUser, users, onUpdateUser }: AlertsV
     }
   };
 
-  const handleClearNotifications = async () => {
+  const handleClearNotifications = () => {
     if (!currentUser) return;
-    if (!confirm("Möchtest du alle Benachrichtigungen in deinem Feed unwiderruflich löschen?")) return;
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearNotifications = async () => {
+    if (!currentUser) return;
+    setShowClearConfirm(false);
     try {
       const res = await fetch("/api/notifications/clear", {
         method: "POST",
@@ -348,6 +358,15 @@ export default function AlertsView({ currentUser, users, onUpdateUser }: AlertsV
           />
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showClearConfirm}
+        title="Benachrichtigungen löschen"
+        message="Möchtest du alle Benachrichtigungen in deinem Feed unwiderruflich löschen?"
+        onConfirm={confirmClearNotifications}
+        onCancel={() => setShowClearConfirm(false)}
+      />
+      <Toast message={toastMessage} />
     </div>
   );
 }

@@ -18,6 +18,7 @@ interface CalendarPersonStatsProps {
   users: User[];
   onClearPersonFilter: () => void;
   formatDateGerman: (dateStr: string) => string;
+  showToast: (msg: string) => void;
 }
 
 export default function CalendarPersonStats({
@@ -30,7 +31,8 @@ export default function CalendarPersonStats({
   services,
   users,
   onClearPersonFilter,
-  formatDateGerman
+  formatDateGerman,
+  showToast
 }: CalendarPersonStatsProps) {
   const [copySuccess, setCopySuccess] = React.useState<boolean>(false);
 
@@ -41,7 +43,7 @@ export default function CalendarPersonStats({
       .filter((s): s is Shift => !!s);
 
     if (userShifts.length === 0) {
-      alert(`${personStats.user.display_name} hat aktuell keine eingetragenen Schichten.`);
+      showToast(`${personStats.user.display_name} hat aktuell keine eingetragenen Schichten.`);
       return;
     }
 
@@ -89,7 +91,7 @@ export default function CalendarPersonStats({
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
       console.error("Failed to copy text: ", err);
-      alert("Fehler beim Kopieren des Textes.");
+      showToast("Fehler beim Kopieren des Textes.");
     }
   };
 
@@ -100,7 +102,7 @@ export default function CalendarPersonStats({
       .filter((s): s is Shift => !!s && s.date !== "Haupt");
 
     if (userShifts.length === 0) {
-      alert("Diese Person hat keine Schichten, für die Kalendereinträge erstellt werden können.");
+      showToast("Diese Person hat keine Schichten, für die Kalendereinträge erstellt werden können.");
       return;
     }
 
