@@ -6,7 +6,9 @@ import { useNotificationPermission } from "../hooks/useNotificationPermission";
 import { useServiceWorkerStatus } from "../hooks/useServiceWorkerStatus";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { useToast } from "../hooks/useToast";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import Toast from "./Toast";
+import UndoToast from "./UndoToast";
 import ConfirmDialog from "./ConfirmDialog";
 import AlertsPushPermissionSection from "./AlertsPushPermissionSection";
 import AlertsBrowserGuide from "./AlertsBrowserGuide";
@@ -34,6 +36,8 @@ export default function AlertsView({ currentUser, users, onUpdateUser }: AlertsV
   const [subMessage, setSubMessage] = React.useState("");
   const [showClearConfirm, setShowClearConfirm] = React.useState(false);
   const { toastMessage, showToast } = useToast();
+  const { scheduleDelete, undo, activeToast } = useUndoableDelete();
+  const notificationsBackupRef = React.useRef<DbNotification[]>([]);
 
   const handleForceRegisterPush = async () => {
     if (!currentUser) return;
@@ -230,21 +234,27 @@ export default function AlertsView({ currentUser, users, onUpdateUser }: AlertsV
     setShowClearConfirm(true);
   };
 
-  const confirmClearNotifications = async () => {
+  const confirmClearNotifications = () => {
     if (!currentUser) return;
     setShowClearConfirm(false);
-    try {
-      const res = await fetch("/api/notifications/clear", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: currentUser.id }),
-      });
-      if (res.ok) {
-        setNotifications([]);
+    notificationsBackupRef.current = notifications;
+    setNotifications([]);
+    scheduleDelete("clear-all-notifications", `${notificationsBackupRef.current.length} Benachrichtigungen`, async () => {
+      try {
+        await fetch("/api/notifications/clear", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUser.id }),
+        });
+      } catch (err) {
+        console.error(err);
       }
-    } catch (err) {
-      console.error(err);
-    }
+    });
+  };
+
+  const handleUndoClearNotifications = (id: string) => {
+    undo(id);
+    setNotifications(notificationsBackupRef.current);
   };
 
   if (!currentUser) {
@@ -362,11 +372,12 @@ export default function AlertsView({ currentUser, users, onUpdateUser }: AlertsV
       <ConfirmDialog
         isOpen={showClearConfirm}
         title="Benachrichtigungen löschen"
-        message="Möchtest du alle Benachrichtigungen in deinem Feed unwiderruflich löschen?"
+        message="Möchtest du alle Benachrichtigungen in deinem Feed löschen?"
         onConfirm={confirmClearNotifications}
         onCancel={() => setShowClearConfirm(false)}
       />
       <Toast message={toastMessage} />
+      <UndoToast toast={activeToast} onUndo={handleUndoClearNotifications} />
     </div>
   );
 }

@@ -7,6 +7,10 @@ import ConfirmDialog from "./ConfirmDialog";
 import UndoToast from "./UndoToast";
 import FieldError from "./FieldError";
 
+// Sentinel-Id im useUndoableDelete-Hook für "ganze Liste leeren" (kein
+// einzelnes Element, deshalb kein echtes community.id).
+const CLEAR_ALL_ID = "clear-all-communities";
+
 interface CommunitiesViewProps {
   communities: Community[];
   isAdmin: boolean;
@@ -117,13 +121,15 @@ export default function CommunitiesView({
     });
   };
 
-  const handleClearAll = async () => {
-    try {
-      await onClearCommunities();
-      setClearConfirm(false);
-    } catch (err) {
-      console.error(err);
-    }
+  const handleClearAll = () => {
+    setClearConfirm(false);
+    scheduleDelete(CLEAR_ALL_ID, `${communities.length} Gemeinden`, async () => {
+      try {
+        await onClearCommunities();
+      } catch (err) {
+        console.error(err);
+      }
+    });
   };
 
   // Calculate totals
@@ -141,7 +147,7 @@ export default function CommunitiesView({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [communities, searchTerm]);
 
-  const visibleCommunities = filteredCommunities.filter((c) => !isPending(c.id));
+  const visibleCommunities = isPending(CLEAR_ALL_ID) ? [] : filteredCommunities.filter((c) => !isPending(c.id));
 
   return (
     <div className="space-y-6">

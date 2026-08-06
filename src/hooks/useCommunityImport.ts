@@ -1,5 +1,4 @@
 import React from "react";
-import * as XLSX from "xlsx";
 import { Community } from "../types";
 
 type ParsedCommunityRow = { name: string; location: string; participants: number };
@@ -117,8 +116,13 @@ export function useCommunityImport(
       };
       reader.readAsText(file, "UTF-8");
     } else if (fileExtension === "xlsx" || fileExtension === "xls") {
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
+          // xlsx (~430 KB) nur laden, wenn wirklich eine Excel-Datei importiert
+          // wird - sonst würde jede*r Helfer*in es beim ersten App-Start
+          // mitladen, obwohl nur die Gemeinden-Verwaltung (Bereichsleitung+)
+          // es je nutzt.
+          const XLSX = await import("xlsx");
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: "array" });
           const firstSheetName = workbook.SheetNames[0];
@@ -172,7 +176,8 @@ export function useCommunityImport(
     }
   };
 
-  const downloadSampleExcel = () => {
+  const downloadSampleExcel = async () => {
+    const XLSX = await import("xlsx");
     const data = [
       { Gemeindename: "Sankt Elisabeth", Ort: "Heidelberg", "Anzahl Teilnehmer*innen": 18 },
       { Gemeindename: "Heilig Geist", Ort: "Mannheim", "Anzahl Teilnehmer*innen": 25 },
