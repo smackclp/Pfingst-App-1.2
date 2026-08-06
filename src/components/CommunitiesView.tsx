@@ -5,6 +5,7 @@ import { useCommunityImport } from "../hooks/useCommunityImport";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import ConfirmDialog from "./ConfirmDialog";
 import UndoToast from "./UndoToast";
+import FieldError from "./FieldError";
 
 interface CommunitiesViewProps {
   communities: Community[];
@@ -49,11 +50,16 @@ export default function CommunitiesView({
   const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
   const [clearConfirm, setClearConfirm] = React.useState(false);
   const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
+  const [manualNameError, setManualNameError] = React.useState<string | undefined>();
 
   // Submit manual adding
   const handleManualAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualName.trim()) return;
+    if (!manualName.trim()) {
+      setManualNameError("Bitte einen Gemeindenamen eingeben.");
+      return;
+    }
+    setManualNameError(undefined);
 
     try {
       await onAddCommunity({
@@ -493,12 +499,17 @@ export default function CommunitiesView({
                   <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Gemeindename*</label>
                   <input
                     type="text"
-                    required
                     placeholder="Heilig Geist Gemeinde"
                     value={manualName}
-                    onChange={(e) => setManualName(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border border-slate-800 rounded-xl bg-slate-950/65 text-slate-100 placeholder-slate-600 focus:border-cyan-500 focus:ring-0"
+                    onChange={(e) => {
+                      setManualName(e.target.value);
+                      setManualNameError(undefined);
+                    }}
+                    className={`w-full text-xs px-3 py-2 border rounded-xl bg-slate-950/65 text-slate-100 placeholder-slate-600 focus:border-cyan-500 focus:ring-0 ${
+                      manualNameError ? "border-rose-500/60" : "border-slate-800"
+                    }`}
                   />
+                  <FieldError message={manualNameError} />
                 </div>
 
                 <div className="space-y-1">

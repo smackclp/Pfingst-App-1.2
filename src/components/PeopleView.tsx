@@ -14,6 +14,7 @@ import PersonFormModal from "./PersonFormModal";
 import AccessRoleManager from "./AccessRoleManager";
 import ConfirmDialog from "./ConfirmDialog";
 import UndoToast from "./UndoToast";
+import FieldError from "./FieldError";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
 
 interface PeopleViewProps {
@@ -52,6 +53,7 @@ export default function PeopleView({
   // Add dynamic role form states
   const [newRoleName, setNewRoleName] = React.useState("");
   const [newRoleUserId, setNewRoleUserId] = React.useState("");
+  const [newRoleNameError, setNewRoleNameError] = React.useState<string | undefined>();
 
   // ModalsState for people management
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -275,7 +277,11 @@ export default function PeopleView({
             <form 
               onSubmit={async (e) => {
                 e.preventDefault();
-                if (!newRoleName.trim()) return;
+                if (!newRoleName.trim()) {
+                  setNewRoleNameError("Bitte eine Rollenbezeichnung eingeben.");
+                  return;
+                }
+                setNewRoleNameError(undefined);
                 try {
                   await onAddRole(newRoleName.trim(), newRoleUserId || null);
                   setNewRoleName("");
@@ -308,13 +314,18 @@ export default function PeopleView({
                   </label>
                   <input
                     type="text"
-                    required
                     placeholder="z.B. Einkauf, Schichtplanung, Küchenchef..."
                     value={newRoleName}
-                    onChange={(e) => setNewRoleName(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border border-slate-800 rounded-xl bg-slate-950/65 text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-0"
+                    onChange={(e) => {
+                      setNewRoleName(e.target.value);
+                      setNewRoleNameError(undefined);
+                    }}
+                    className={`w-full text-xs px-3 py-2 border rounded-xl bg-slate-950/65 text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-0 ${
+                      newRoleNameError ? "border-rose-500/60" : "border-slate-800"
+                    }`}
                     id="input-new-role-name"
                   />
+                  <FieldError message={newRoleNameError} />
                 </div>
 
                 <div className="md:col-span-5 space-y-1">

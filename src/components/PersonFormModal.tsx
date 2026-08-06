@@ -1,6 +1,7 @@
 import React from "react";
 import { X } from "lucide-react";
 import { User } from "../types";
+import FieldError from "./FieldError";
 
 interface PersonFormModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export default function PersonFormModal({
   const [active, setActive] = React.useState(true);
   const [notes, setNotes] = React.useState("");
   const [isBuyer, setIsBuyer] = React.useState(false);
+  const [errors, setErrors] = React.useState<{ firstName?: string; lastName?: string; displayName?: string }>({});
 
   // Populate when editingUser changes
   React.useEffect(() => {
@@ -53,6 +55,7 @@ export default function PersonFormModal({
       setNotes("");
       setIsBuyer(false);
     }
+    setErrors({});
   }, [editingUser, isOpen]);
 
   // Auto-fill Display Name
@@ -70,10 +73,15 @@ export default function PersonFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName || !lastName || !displayName) {
-      onShowAlert("Eingabe unvollständig", "Bitte füllen Sie Vorname, Nachname und Anzeigename aus.");
+    const newErrors: typeof errors = {};
+    if (!firstName.trim()) newErrors.firstName = "Bitte Vorname eingeben.";
+    if (!lastName.trim()) newErrors.lastName = "Bitte Nachname eingeben.";
+    if (!displayName.trim()) newErrors.displayName = "Bitte Anzeigename eingeben.";
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
+    setErrors({});
 
     const payload = {
       first_name: firstName,
@@ -121,24 +129,34 @@ export default function PersonFormModal({
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Vorname *</label>
               <input
                 type="text"
-                required
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-500/40 text-slate-100 placeholder-slate-700 font-medium"
+                onChange={(e) => {
+                  setFirstName(e.target.value);
+                  setErrors((prev) => ({ ...prev, firstName: undefined }));
+                }}
+                className={`w-full text-xs p-2.5 bg-slate-950 border rounded-xl focus:outline-none focus:border-cyan-500/40 text-slate-100 placeholder-slate-700 font-medium ${
+                  errors.firstName ? "border-rose-500/60" : "border-slate-800"
+                }`}
                 placeholder="z. B. Christian"
               />
+              <FieldError message={errors.firstName} />
             </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Nachname *</label>
               <input
                 type="text"
-                required
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-500/40 text-slate-100 placeholder-slate-700 font-medium"
+                onChange={(e) => {
+                  setLastName(e.target.value);
+                  setErrors((prev) => ({ ...prev, lastName: undefined }));
+                }}
+                className={`w-full text-xs p-2.5 bg-slate-950 border rounded-xl focus:outline-none focus:border-cyan-500/40 text-slate-100 placeholder-slate-700 font-medium ${
+                  errors.lastName ? "border-rose-500/60" : "border-slate-800"
+                }`}
                 placeholder="z. B. Beck"
               />
+              <FieldError message={errors.lastName} />
             </div>
           </div>
 
@@ -149,12 +167,17 @@ export default function PersonFormModal({
             </label>
             <input
               type="text"
-              required
               value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-500/40 text-slate-100 placeholder-slate-700 font-medium"
+              onChange={(e) => {
+                setDisplayName(e.target.value);
+                setErrors((prev) => ({ ...prev, displayName: undefined }));
+              }}
+              className={`w-full text-xs p-2.5 bg-slate-950 border rounded-xl focus:outline-none focus:border-cyan-500/40 text-slate-100 placeholder-slate-700 font-medium ${
+                errors.displayName ? "border-rose-500/60" : "border-slate-800"
+              }`}
               placeholder="z. B. Christian B."
             />
+            <FieldError message={errors.displayName} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

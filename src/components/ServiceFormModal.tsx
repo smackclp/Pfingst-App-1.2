@@ -1,6 +1,7 @@
 import React from "react";
 import { X } from "lucide-react";
 import { Service, User } from "../types";
+import FieldError from "./FieldError";
 
 interface ServiceFormModalProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export default function ServiceFormModal({
   const [minPersons, setMinPersons] = React.useState(1);
   const [maxPersons, setMaxPersons] = React.useState(3);
   const [responsibleId, setResponsibleId] = React.useState("");
+  const [errors, setErrors] = React.useState<{ title?: string }>({});
 
   // Populate form states when editingService or open state changes
   React.useEffect(() => {
@@ -68,16 +70,18 @@ export default function ServiceFormModal({
       setMaxPersons(3);
       setResponsibleId("");
     }
+    setErrors({});
   }, [editingService, isOpen]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title) {
-      onShowAlert("Eingabe erforderlich", "Ein Diensttitel ist erforderlich.");
+    if (!title.trim()) {
+      setErrors({ title: "Bitte einen Diensttitel eingeben." });
       return;
     }
+    setErrors({});
 
     const payload = {
       title,
@@ -125,12 +129,17 @@ export default function ServiceFormModal({
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Diensttitel *</label>
             <input
               type="text"
-              required
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-500/40 text-white font-medium"
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setErrors({});
+              }}
+              className={`w-full text-xs p-2.5 bg-slate-950 border rounded-xl focus:outline-none focus:border-cyan-500/40 text-white font-medium ${
+                errors.title ? "border-rose-500/60" : "border-slate-800"
+              }`}
               placeholder="z. B. Nachtwache, Imbiss, Kaffeezelt"
             />
+            <FieldError message={errors.title} />
           </div>
 
           <div className="space-y-1">

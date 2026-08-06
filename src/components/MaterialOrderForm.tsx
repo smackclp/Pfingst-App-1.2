@@ -1,6 +1,7 @@
 import React from "react";
 import { Plus, CheckCircle2 } from "lucide-react";
 import { User, MaterialItem } from "../types";
+import FieldError from "./FieldError";
 
 interface MaterialOrderFormProps {
   users: User[];
@@ -20,6 +21,7 @@ export default function MaterialOrderForm({ users, currentUserId, onAddMaterial,
 
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
+  const [errors, setErrors] = React.useState<{ selectedUser?: string; itemName?: string; purpose?: string }>({});
 
   // Auto-sync selected user when currentUserId changes
   React.useEffect(() => {
@@ -30,10 +32,15 @@ export default function MaterialOrderForm({ users, currentUserId, onAddMaterial,
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUser || !itemName.trim() || !purpose.trim()) {
-      showToast("Bitte fülle alle Pflichtfelder aus (Besteller, Artikel, Verwendungszweck).");
+    const newErrors: typeof errors = {};
+    if (!selectedUser) newErrors.selectedUser = "Bitte wähle eine bestellende Person aus.";
+    if (!itemName.trim()) newErrors.itemName = "Bitte gib einen Artikel ein.";
+    if (!purpose.trim()) newErrors.purpose = "Bitte gib den Verwendungszweck an.";
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
+    setErrors({});
 
     setIsSubmitting(true);
     setSuccessMsg(null);
@@ -87,9 +94,13 @@ export default function MaterialOrderForm({ users, currentUserId, onAddMaterial,
           </label>
           <select
             value={selectedUser}
-            onChange={(e) => setSelectedUser(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl text-slate-200 p-3 outline-none focus:border-emerald-500/50 transition duration-150"
-            required
+            onChange={(e) => {
+              setSelectedUser(e.target.value);
+              setErrors((prev) => ({ ...prev, selectedUser: undefined }));
+            }}
+            className={`w-full bg-slate-950 border rounded-xl text-slate-200 p-3 outline-none focus:border-emerald-500/50 transition duration-150 ${
+              errors.selectedUser ? "border-rose-500/60" : "border-slate-800"
+            }`}
           >
             <option value="">-- Wer bestellt das Material? --</option>
             {users.map((u) => (
@@ -98,6 +109,7 @@ export default function MaterialOrderForm({ users, currentUserId, onAddMaterial,
               </option>
             ))}
           </select>
+          <FieldError message={errors.selectedUser} />
           <p className="text-[10px] text-slate-500">Standardmäßig ist deine aktuell am Kopfende ausgewählte Person voreingestellt.</p>
         </div>
 
@@ -110,10 +122,15 @@ export default function MaterialOrderForm({ users, currentUserId, onAddMaterial,
             type="text"
             placeholder="z.B. Packung Buntstifte, 50 Stk"
             value={itemName}
-            onChange={(e) => setItemName(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl text-slate-200 p-3 outline-none focus:border-emerald-500/50 transition duration-150"
-            required
+            onChange={(e) => {
+              setItemName(e.target.value);
+              setErrors((prev) => ({ ...prev, itemName: undefined }));
+            }}
+            className={`w-full bg-slate-950 border rounded-xl text-slate-200 p-3 outline-none focus:border-emerald-500/50 transition duration-150 ${
+              errors.itemName ? "border-rose-500/60" : "border-slate-800"
+            }`}
           />
+          <FieldError message={errors.itemName} />
         </div>
 
         {/* Grid: Quantity & Estimated Price */}
@@ -163,10 +180,15 @@ export default function MaterialOrderForm({ users, currentUserId, onAddMaterial,
           <textarea
             placeholder="z.B. Für die Kreativ-Workshops am Sonntag Nachmittag im Bastelzelt."
             value={purpose}
-            onChange={(e) => setPurpose(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl text-slate-200 p-3 outline-none focus:border-emerald-500/50 h-24 resize-none transition duration-150"
-            required
+            onChange={(e) => {
+              setPurpose(e.target.value);
+              setErrors((prev) => ({ ...prev, purpose: undefined }));
+            }}
+            className={`w-full bg-slate-950 border rounded-xl text-slate-200 p-3 outline-none focus:border-emerald-500/50 h-24 resize-none transition duration-150 ${
+              errors.purpose ? "border-rose-500/60" : "border-slate-800"
+            }`}
           />
+          <FieldError message={errors.purpose} />
         </div>
 
         <button

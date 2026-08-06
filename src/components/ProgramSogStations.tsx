@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { User } from "../types";
 import ConfirmDialog from "./ConfirmDialog";
 import UndoToast from "./UndoToast";
+import FieldError from "./FieldError";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
 
 export interface SogStation {
@@ -39,6 +40,7 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
   const [stationHelperIds, setStationHelperIds] = React.useState<string[]>([]);
   const [helperSearchQuery, setHelperSearchQuery] = React.useState<string>("");
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
+  const [stationTitleError, setStationTitleError] = React.useState<string | undefined>();
   const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
 
   const openAddStationModal = () => {
@@ -51,6 +53,7 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
     setStationMaterial("");
     setStationHelperIds([]);
     setHelperSearchQuery("");
+    setStationTitleError(undefined);
     setIsStationModalOpen(true);
   };
 
@@ -63,12 +66,17 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
     setStationMaterial(st.materialNeeded || "");
     setStationHelperIds(st.helperIds || []);
     setHelperSearchQuery("");
+    setStationTitleError(undefined);
     setIsStationModalOpen(true);
   };
 
   const handleSaveStation = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stationTitle.trim()) return;
+    if (!stationTitle.trim()) {
+      setStationTitleError("Bitte einen Stationstitel eingeben.");
+      return;
+    }
+    setStationTitleError(undefined);
 
     if (editingStation) {
       const updated = sogStations.map((s) =>
@@ -319,7 +327,6 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
                     <input
                       type="number"
                       min={1}
-                      required
                       value={stationNumber}
                       onChange={(e) => setStationNumber(Number(e.target.value))}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 font-bold text-white text-center focus:border-emerald-500 focus:outline-none"
@@ -330,12 +337,17 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
                     <label className="text-slate-400 font-bold uppercase block mb-1">Stationstitel *</label>
                     <input
                       type="text"
-                      required
                       placeholder="z.B. Sackhüpfen-Slalom"
                       value={stationTitle}
-                      onChange={(e) => setStationTitle(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-sans font-semibold focus:border-emerald-500 focus:outline-none"
+                      onChange={(e) => {
+                        setStationTitle(e.target.value);
+                        setStationTitleError(undefined);
+                      }}
+                      className={`w-full bg-slate-950 border rounded-xl p-2.5 text-white font-sans font-semibold focus:border-emerald-500 focus:outline-none ${
+                        stationTitleError ? "border-rose-500/60" : "border-slate-800"
+                      }`}
                     />
+                    <FieldError message={stationTitleError} />
                   </div>
                 </div>
 

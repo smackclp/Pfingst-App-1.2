@@ -4,6 +4,7 @@ import { TalentAct, Community } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import ProgramTalentShowPlaylist from "./ProgramTalentShowPlaylist";
 import UndoToast from "./UndoToast";
+import FieldError from "./FieldError";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
 
 interface ProgramTalentShowProps {
@@ -76,6 +77,7 @@ export default function ProgramTalentShow({
   const [lightingMood, setLightingMood] = React.useState(LIGHT_MOODS[0]);
   const [spotifyLink, setSpotifyLink] = React.useState("");
   const [withoutRating, setWithoutRating] = React.useState(false);
+  const [talentsNamesError, setTalentsNamesError] = React.useState<string | undefined>();
 
   const openAddForm = () => {
     setEditingAct(null);
@@ -91,6 +93,7 @@ export default function ProgramTalentShow({
     setLightingMood(LIGHT_MOODS[0]);
     setSpotifyLink("");
     setWithoutRating(false);
+    setTalentsNamesError(undefined);
     setIsFormOpen(true);
   };
 
@@ -108,12 +111,17 @@ export default function ProgramTalentShow({
     setLightingMood(act.lighting_mood || LIGHT_MOODS[0]);
     setSpotifyLink(act.spotify_link || "");
     setWithoutRating(act.without_rating);
+    setTalentsNamesError(undefined);
     setIsFormOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!talentsNames.trim()) return;
+    if (!talentsNames.trim()) {
+      setTalentsNamesError("Bitte Teilnehmer und Alter eingeben.");
+      return;
+    }
+    setTalentsNamesError(undefined);
 
     const payload = {
       camp_id: "camp-2026",
@@ -387,12 +395,17 @@ export default function ProgramTalentShow({
                   <label className="text-slate-400 font-bold uppercase block mb-1">Teilnehmer & Alter *</label>
                   <input
                     type="text"
-                    required
                     placeholder="z.B. Max (14), Anna (15)"
                     value={talentsNames}
-                    onChange={(e) => setTalentsNames(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-sans focus:border-emerald-500 focus:outline-none"
+                    onChange={(e) => {
+                      setTalentsNames(e.target.value);
+                      setTalentsNamesError(undefined);
+                    }}
+                    className={`w-full bg-slate-950 border rounded-xl p-2.5 text-white font-sans focus:border-emerald-500 focus:outline-none ${
+                      talentsNamesError ? "border-rose-500/60" : "border-slate-800"
+                    }`}
                   />
+                  <FieldError message={talentsNamesError} />
                 </div>
 
                 <div>
