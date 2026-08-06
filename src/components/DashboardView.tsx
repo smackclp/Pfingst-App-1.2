@@ -3,6 +3,7 @@ import { QrCode } from "lucide-react";
 import { User, Service, Shift, ShiftAssignment, Conflict, Camp, Community } from "../types";
 import { addDays, timeToMinutes } from "../utils";
 import DashboardStatsGrid from "./DashboardStatsGrid";
+import DashboardNextShift from "./DashboardNextShift";
 import DashboardFeedbacks from "./DashboardFeedbacks";
 import DashboardPwaInstallBanner from "./DashboardPwaInstallBanner";
 import DashboardPersonalSchedule from "./DashboardPersonalSchedule";
@@ -121,6 +122,24 @@ export default function DashboardView({
     [assignments, shifts]
   );
 
+  // Eigene nächste anstehende Schicht (für die "Was ist als Nächstes"-Kachel
+  // ganz oben) - erste noch nicht abgelaufene Schicht mit echtem Datum
+  // (nicht "Haupt"/dauerhaft, da dort kein sinnvoller Zeitpunkt anzeigbar ist).
+  const myNextShiftEntry = React.useMemo(() => {
+    if (!currentUserId) return null;
+    const { shiftsDetails } = getUserWorkloadStats(currentUserId);
+    const nowStr = new Date().toISOString().split("T")[0];
+    const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+    return (
+      shiftsDetails.find(({ shift }) => {
+        if (shift.date === "Haupt") return false;
+        if (shift.date > nowStr) return true;
+        if (shift.date === nowStr) return timeToMinutes(shift.end_time) > nowMinutes;
+        return false;
+      }) || null
+    );
+  }, [currentUserId, getUserWorkloadStats]);
+
   // Real-time calculation of dashboard indicators
   const stats = React.useMemo(() => {
     let openShiftsCount = 0;
@@ -229,6 +248,9 @@ export default function DashboardView({
           <p className="text-sm text-slate-400 mt-1 font-sans">Echtzeit-Statistik aller Schichtbelegungen, Personalabdeckungen und Doppelbelegungen.</p>
         </div>
       </div>
+
+      {/* Was ist als Nächstes dran - eigene nächste Schicht, ohne Klick sichtbar */}
+      <DashboardNextShift nextShiftEntry={myNextShiftEntry} services={services} onUpdateAssignmentStatus={onUpdateAssignmentStatus} showToast={showToast} />
 
       {/* ⛺ PWA & Autopush-Benachrichtigung Installation & Infobox */}
       <DashboardPwaInstallBanner
