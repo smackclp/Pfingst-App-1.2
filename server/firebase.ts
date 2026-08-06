@@ -4,6 +4,7 @@ import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
 import { DB } from "./types";
 import { getDefaultSeedDB } from "./seed";
+import { getDbFilePath } from "./dbPath";
 
 // Der Server ist die EINZIGE Instanz, die mit Firestore spricht (der Browser
 // ruft ausschließlich unsere eigene /api/* an). Deshalb nutzt der Server das
@@ -352,7 +353,7 @@ export async function writeGlobalSettings(settingsData: { activeCampId?: string;
 
 // Local cache helper fallback in case Firebase is completely unavailable or during local offline testing
 function loadLocalDBFallback(): DB {
-  const DB_FILE = path.join(process.cwd(), "db.json");
+  const DB_FILE = getDbFilePath();
   try {
     if (fs.existsSync(DB_FILE)) {
       const raw = fs.readFileSync(DB_FILE, "utf-8");
@@ -371,7 +372,7 @@ function loadLocalDBFallback(): DB {
 }
 
 function saveLocalDBFallback(data: DB) {
-  const DB_FILE = path.join(process.cwd(), "db.json");
+  const DB_FILE = getDbFilePath();
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
   } catch (err) {

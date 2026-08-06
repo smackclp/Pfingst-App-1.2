@@ -1,8 +1,8 @@
 import fs from "fs";
-import path from "path";
 import webpush from "web-push";
 import { DB, Camp, Shift, ShiftAssignment } from "./types";
 import { getDefaultSeedDB } from "./seed";
+import { getDbFilePath } from "./dbPath";
 import {
   getUnifiedDB,
   isFirebaseEnabled,
@@ -13,7 +13,7 @@ import {
   FIRESTORE_COLLECTIONS
 } from "./firebase";
 
-const DB_FILE = path.join(process.cwd(), "db.json");
+const DB_FILE = getDbFilePath();
 
 // Local module-level in-memory cache synchronized with Firestore
 let currentCachedDB: DB | null = null;
