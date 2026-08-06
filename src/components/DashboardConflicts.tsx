@@ -34,6 +34,7 @@ interface DashboardConflictsProps {
   onSelectShift: (shiftId: string) => void;
   onAddAssignment?: (shiftId: string, userId: string) => Promise<void>;
   onRemoveAssignment?: (shiftId: string, userId: string) => Promise<void>;
+  onRemoveAssignmentImmediate?: (shiftId: string, userId: string) => Promise<void>;
   showToast: (msg: string) => void;
 }
 
@@ -52,6 +53,7 @@ export default function DashboardConflicts({
   onSelectShift,
   onAddAssignment,
   onRemoveAssignment,
+  onRemoveAssignmentImmediate,
   showToast,
 }: DashboardConflictsProps) {
   const [expandedConflictId, setExpandedConflictId] = React.useState<string | null>(null);
@@ -98,12 +100,18 @@ export default function DashboardConflicts({
     showToast("📋 Benachrichtigungsvorlage in die Zwischenablage kopiert!");
   };
 
+  // Nutzt bewusst die unverzögerte Variante statt der 6-Sekunden-Undo-
+  // Version: diese Aktion zeigt sofort eine eigene Erfolgsmeldung an, ohne
+  // Rückgängig-Option. Mit der Undo-Version würde die Meldung "erfolgreich
+  // ausgetragen" lügen, solange die Frist noch läuft, und die Änderung ginge
+  // verloren, falls die Bereichsleitung die Seite vorher verlässt.
   const handleRemoveHelper = async (shiftId: string, userId: string, label: string) => {
-    if (!onRemoveAssignment) return;
+    const removeFn = onRemoveAssignmentImmediate || onRemoveAssignment;
+    if (!removeFn) return;
     const actionId = `remove-${shiftId}-${userId}`;
     setActionLoadingId(actionId);
     try {
-      await onRemoveAssignment(shiftId, userId);
+      await removeFn(shiftId, userId);
       showToast(`👤 Helfer*in erfolgreich aus Dienst "${label}" ausgetragen.`);
     } catch (err) {
       console.error("Conflict resolve remove assignment failed:", err);
@@ -129,12 +137,16 @@ export default function DashboardConflicts({
     }
   };
 
+  // Gleicher Grund wie bei handleRemoveHelper: unverzögerte Variante, damit
+  // "umbesetzt" auch wirklich stimmt und nicht von einer noch laufenden
+  // Undo-Frist unterlaufen werden kann.
   const handleReassign = async (shiftId: string, oldUserId: string, newUserId: string, label: string) => {
-    if (!onRemoveAssignment || !onAddAssignment) return;
+    const removeFn = onRemoveAssignmentImmediate || onRemoveAssignment;
+    if (!removeFn || !onAddAssignment) return;
     const actionId = `reassign-${shiftId}-${oldUserId}-${newUserId}`;
     setActionLoadingId(actionId);
     try {
-      await onRemoveAssignment(shiftId, oldUserId);
+      await removeFn(shiftId, oldUserId);
       await onAddAssignment(shiftId, newUserId);
 
       const newName = users.find((u) => u.id === newUserId)?.display_name || "Helfer*in";

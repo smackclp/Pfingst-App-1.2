@@ -285,6 +285,24 @@ router.post("/assignments", (req, res) => {
     });
   }
 
+  // Kapazität prüfen (Schicht-Override hat Vorrang vor dem Service-Standard,
+  // gleiches Muster wie ShiftRow.tsx/CalendarCard.tsx). Bisher wurde das nur
+  // im Frontend geprüft - zwei gleichzeitige Selbst-Eintragungen für den
+  // letzten freien Platz konnten die Schicht dadurch beide durchkommen und
+  // überbuchen. force=true erlaubt weiterhin ein bewusstes Übersteuern durch
+  // die Schichtplanung (gleicher Mechanismus wie beim Überschneidungs-Konflikt).
+  const activeService = db.services.find((sv) => sv.id === activeShift.service_id);
+  if (activeService) {
+    const maxPersons = activeShift.max_persons !== undefined ? activeShift.max_persons : activeService.max_persons;
+    const currentCount = db.assignments.filter((a) => a.shift_id === shift_id).length;
+    if (currentCount >= maxPersons && !force) {
+      return res.status(409).json({
+        error: "CONFL_CAPACITY",
+        message: `Diese Schicht ist mit ${currentCount}/${maxPersons} Personen bereits voll besetzt. Trotzdem zuweisen?`,
+      });
+    }
+  }
+
   const newAssignment: ShiftAssignment = {
     id: `ass-${Date.now()}`,
     shift_id,

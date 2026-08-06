@@ -490,6 +490,7 @@ export default function App() {
               onDeleteShift={handleDeleteShift}
               onAddAssignment={handleAddAssignment}
               onRemoveAssignment={handleRemoveAssignmentWithUndo}
+              onRemoveAssignmentImmediate={handleRemoveAssignment}
               onSetActiveCamp={handleSetActiveCamp}
               onCreateCamp={handleCreateCamp}
               onSelectShift={handleSelectShift}

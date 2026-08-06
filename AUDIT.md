@@ -54,6 +54,7 @@ Git-Commit-Hash ein, gegen den geprüft wurde. Für den **nächsten** Audit gilt
 |---|---|---|---|
 | 2026-08-06 | `28ac5f8` | Vollständiger Erst-Audit (Sicherheit, Performance, Bugs, Code-Qualität), gesamte Codebase (119 Dateien, ~22.400 Zeilen) via 4 parallele Recherche-Agenten | 24 Funde, siehe unten |
 | 2026-08-06 | siehe Commit "Kritische Sicherheitsfunde behoben" | Fix der 3 kritischen Sicherheitsfunde: `server/conflicts.ts` (XSS-Escaping), `server/routes/exportHtmlTemplate.ts` (PIN-Hash-Leak), `server/auth.ts`/`server/routes/auth.ts` (Brute-Force-Sperre) | Alle 3 verifiziert (End-to-End gegen echten Server getestet) und aus der Liste entfernt. Restliche 21 Funde unverändert offen. |
+| 2026-08-06 | siehe Commit "6 von 7 Hoch-Funden behoben" | Fix von 6 der 7 Hoch-Funde: max_persons-Inkonsistenz (`CalendarCard.tsx`, `conflicts.ts`), serverseitige Kapazitätsprüfung (`shifts.ts`), Server-Guard letzte Lagerleitung (`auth.ts`), Konflikt-Umbesetzen-Bug (`DashboardConflicts.tsx`, neue `onRemoveAssignmentImmediate`-Prop-Kette), unbehandelte Promise-Rejection (`CalendarCard.tsx`), Code-Splitting pro Tab (`TabContentManager.tsx`, React.lazy) | Alle 6 verifiziert (Lint/Build/Browser-Test/E2E-Suite) und aus der Liste entfernt. "Jede Mutation lädt komplette DB neu" bewusst zurückgestellt (größter Punkt, eigene Analyse nötig). |
 
 ---
 
@@ -65,53 +66,14 @@ _Keine offenen Punkte mehr - siehe Audit-Historie._
 
 ### Hoch
 
-- [ ] **Keine serverseitige Kapazitätsprüfung bei Zuweisung**
-  `server/routes/shifts.ts` `POST /assignments` (Zeilen 233-313) validiert
-  nur Zeitüberschneidung pro Nutzer, nie `max_persons`/`min_persons`. Zwei
-  gleichzeitige Selbst-Eintragungen können eine Schicht überbuchen, ohne dass
-  eine der beiden Anfragen abgelehnt wird.
-
-- [ ] **"Letzte Lagerleitung kann sich nicht selbst degradieren" nur clientseitig**
-  `src/components/AccessRoleManager.tsx:60-64` blockt es im UI;
-  `server/routes/auth.ts` `PUT /auth/admin/access-role/:userId` (91-105) hat
-  keine äquivalente Prüfung. Ein direkter API-Call kann alle
-  Lagerleitungs-Zugänge entziehen → Team komplett ausgesperrt.
-
-- [ ] **Konflikt-"Umbesetzen" kann trotz Erfolgsmeldung wirkungslos bleiben**
-  `src/components/DashboardConflicts.tsx:132-149` ruft
-  `onRemoveAssignment` (= `handleRemoveAssignmentWithUndo`,
-  `src/App.tsx:106-115`) auf, was nur einen 6-Sekunden-Undo-Timer startet,
-  nicht sofort löscht. Verlässt die Bereichsleitung die Seite innerhalb der
-  Frist, verfällt der Timer ungenutzt (`useUndoableDelete.ts:67-71`), die
-  alte Zuweisung bleibt bestehen - UI zeigt aber "umbesetzt".
-
-- [ ] **`max_persons`-Prüfung inkonsistent zwischen Ansichten**
-  `src/components/CalendarCard.tsx` (Zeilen 64,119-127,178,314) liest nur
-  `svc.max_persons` (Service-Standard); `src/components/ShiftRow.tsx:57`
-  löst korrekt den Schicht-Override auf
-  (`s.max_persons ?? svc.max_persons`); `server/conflicts.ts:76` prüft
-  ebenfalls nur den Service-Standard. Individuelle Kapazitäts-Anpassungen
-  einer einzelnen Schicht wirken je nach Ansicht unterschiedlich oder gar
-  nicht.
-
 - [ ] **Jede Mutation lädt die komplette Datenbank neu (13 Endpunkte)**
   `src/hooks/useZeltlagerData.ts:136-194`, `loadDatabase()`, 33 Aufrufstellen
   in den `use*Data.ts`-Hooks. Ein Tap auf "Zusagen" löst 13 HTTP-Requests aus
   statt einer lokalen optimistischen Aktualisierung - widerspricht direkt
-  "Offline First"/"Hohe Geschwindigkeit" aus CLAUDE.md.
-
-- [ ] **Kein Code-Splitting pro Tab, 846 KB / 225 KB gzip Hauptbundle**
-  `src/components/TabContentManager.tsx:3-14` importiert alle Tab-Views
-  statisch. Ein Helfer, der nur "Mein Plan" nutzt, lädt auch alle
-  Admin-Ansichten (CampsView, VerwaltungHubView, ProgramSog*, etc.) beim
-  ersten Laden mit.
-
-- [ ] **Unbehandelte Promise-Rejection bei Selbst-Eintragung im Kalender**
-  `src/components/CalendarCard.tsx:317,384,435` ruft `onAddAssignment` ohne
-  `await`/`try-catch` auf. Bei Zeitüberschneidung (Server antwortet 409)
-  passiert beim Klick sichtbar nichts - kein Fehlerhinweis. Verletzt CLAUDE.md
-  §8 ("Nutzer informieren"). `ShiftsView.tsx:184-200` macht es an anderer
-  Stelle bereits richtig (Vorlage vorhanden).
+  "Offline First"/"Hohe Geschwindigkeit" aus CLAUDE.md. Größter verbleibender
+  Punkt, betrifft potenziell jeden Mutations-Aufruf im gesamten Projekt -
+  braucht vor der Umsetzung eine eigene Analyse/Freigabe, nicht im
+  Vorbeigehen mitgemacht.
 
 ### Mittel
 

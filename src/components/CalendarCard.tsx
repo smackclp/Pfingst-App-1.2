@@ -22,6 +22,7 @@ interface CalendarCardProps {
   onClosePopover: () => void;
   onRemoveAssignment: (shiftId: string, userId: string) => any;
   onAddAssignment: (shiftId: string, userId: string) => any;
+  onAssignError?: (message: string) => void;
   onToggleAssignmentAccepted?: (assignmentId: string, accepted: boolean) => any;
   selectedPersonId?: string;
   currentUserId?: string | null;
@@ -49,6 +50,7 @@ export default function CalendarCard({
   onClosePopover,
   onRemoveAssignment,
   onAddAssignment,
+  onAssignError,
   onToggleAssignmentAccepted,
   selectedPersonId,
   currentUserId,
@@ -60,8 +62,27 @@ export default function CalendarCard({
   const assigned = assignments.filter((a) => a.shift_id === s.id);
   const assignedCount = assigned.length;
 
-  const isUnderstaffed = assignedCount < svc.min_persons;
-  const isOverstaffed = assignedCount > svc.max_persons;
+  // Effektive Kapazität: Schicht-Override hat Vorrang vor dem Service-
+  // Standard (gleiches Muster wie ShiftRow.tsx) - sonst wirkt eine an
+  // dieser einzelnen Schicht angepasste Kapazität hier nicht.
+  const minPersons = s.min_persons !== undefined ? s.min_persons : svc.min_persons;
+  const maxPersons = s.max_persons !== undefined ? s.max_persons : svc.max_persons;
+
+  // onAddAssignment wurde bisher ohne Fehlerbehandlung aufgerufen - bei
+  // einem Konflikt (Zeitüberschneidung oder, seit der Server das jetzt auch
+  // prüft, Kapazität) passierte beim Klick sichtbar nichts. Hier zumindest
+  // eine Rückmeldung zeigen (kein Übersteuern-Dialog wie in der
+  // Schichtplanung, da Helfer sich hier nur selbst eintragen).
+  const handleAssign = async (userId: string) => {
+    try {
+      await onAddAssignment(s.id, userId);
+    } catch (err: any) {
+      onAssignError?.(err?.message || "Zuweisung fehlgeschlagen.");
+    }
+  };
+
+  const isUnderstaffed = assignedCount < minPersons;
+  const isOverstaffed = assignedCount > maxPersons;
 
   const borderTheme = svc.color || "#3b82f6";
 
@@ -108,23 +129,23 @@ export default function CalendarCard({
           /* Status badge */
           <div className="shrink-0 flex items-center font-mono">
             {isUnderstaffed ? (
-              <Tooltip content={`Mindestbesetzung fehlt! Mindestens ${svc.min_persons} Personen benötigt für einen sicheren Ablauf.`} position="left" delay={200}>
+              <Tooltip content={`Mindestbesetzung fehlt! Mindestens ${minPersons} Personen benötigt für einen sicheren Ablauf.`} position="left" delay={200}>
                 <span
                   className="bg-amber-950 text-amber-400 border border-amber-500/20 text-[10px] font-semibold px-2 py-0.5 rounded animate-pulse cursor-help"
                 >
-                  Soll: {svc.min_persons} • Ist: {assignedCount}
+                  Soll: {minPersons} • Ist: {assignedCount}
                 </span>
               </Tooltip>
             ) : isOverstaffed ? (
-              <Tooltip content={`Maximalkapazität überschritten! Limit liegt bei ${svc.max_persons} Personen.`} position="left" delay={200}>
+              <Tooltip content={`Maximalkapazität überschritten! Limit liegt bei ${maxPersons} Personen.`} position="left" delay={200}>
                 <span
                   className="bg-rose-950 text-rose-400 border border-rose-500/25 text-[10px] font-semibold px-2 py-0.5 rounded cursor-help"
                 >
-                  Überbesetzt ({assignedCount}/{svc.max_persons})
+                  Überbesetzt ({assignedCount}/{maxPersons})
                 </span>
               </Tooltip>
             ) : (
-              <Tooltip content={`Dienst ist optimal besetzt (${assignedCount} von max. ${svc.max_persons} Plätzen).`} position="left" delay={200}>
+              <Tooltip content={`Dienst ist optimal besetzt (${assignedCount} von max. ${maxPersons} Plätzen).`} position="left" delay={200}>
                 <span className="bg-emerald-950 text-emerald-400 border border-emerald-500/20 text-[10px] font-semibold px-2 py-0.5 rounded cursor-help">
                   Vollständig ({assignedCount})
                 </span>
@@ -175,7 +196,7 @@ export default function CalendarCard({
           <div className="pt-2.5 border-t border-slate-800/60" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between text-xs text-slate-400 font-bold font-mono pb-1.5">
               <span className="uppercase tracking-wider">Helfer*innen ({assignedCount})</span>
-              <span className="text-slate-400 font-normal">Soll: {svc.min_persons}-{svc.max_persons} P.</span>
+              <span className="text-slate-400 font-normal">Soll: {minPersons}-{maxPersons} P.</span>
             </div>
 
             <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -311,10 +332,10 @@ export default function CalendarCard({
                       </button>
                     </div>
                   ) : (
-                    assignedCount < svc.max_persons ? (
+                    assignedCount < maxPersons ? (
                       <button
                         type="button"
-                        onClick={() => onAddAssignment(s.id, currentUserId)}
+                        onClick={() => handleAssign(currentUserId!)}
                         className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-slate-950 text-[10px] font-extrabold rounded-lg transition-all flex items-center justify-center space-x-1 cursor-pointer shadow-md"
                       >
                         <span>Mich für diesen Dienst eintragen 🤝</span>
@@ -381,7 +402,7 @@ export default function CalendarCard({
                             return (
                               <button
                                 key={sug.user_id}
-                                onClick={() => onAddAssignment(s.id, sug.user_id)}
+                                onClick={() => handleAssign(sug.user_id)}
                                 className={`w-full text-left text-xs px-2.5 py-1.5 rounded-lg flex items-center justify-between transition border ${
                                   hasCollision
                                     ? "bg-rose-950/20 text-rose-400 border-rose-900/40"
@@ -432,7 +453,7 @@ export default function CalendarCard({
                         return (
                           <button
                             key={u.id}
-                            onClick={() => onAddAssignment(s.id, u.id)}
+                            onClick={() => handleAssign(u.id)}
                             title={hasCollision ? `Arbeitet bereits in: ${collisionServiceTitle}` : `Als Helfer*in für diesen Dienst eintragen`}
                             className={`w-full text-left text-xs px-2.5 py-1.5 rounded-lg flex items-center justify-between transition cursor-pointer ${
                               hasCollision

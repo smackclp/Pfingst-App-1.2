@@ -29,6 +29,7 @@ interface DashboardViewProps {
   onSelectShift: (shiftId: string) => void;
   onAddAssignment?: (shiftId: string, userId: string) => Promise<void>;
   onRemoveAssignment?: (shiftId: string, userId: string) => Promise<void>;
+  onRemoveAssignmentImmediate?: (shiftId: string, userId: string) => Promise<void>;
   activeCamp?: Camp;
   isAdmin: boolean;
   currentUserId?: string | null;
@@ -49,6 +50,7 @@ export default function DashboardView({
   onSelectShift,
   onAddAssignment,
   onRemoveAssignment,
+  onRemoveAssignmentImmediate,
   activeCamp,
   isAdmin,
   currentUserId,
@@ -302,6 +304,7 @@ export default function DashboardView({
           onSelectShift={onSelectShift}
           onAddAssignment={onAddAssignment}
           onRemoveAssignment={onRemoveAssignment}
+          onRemoveAssignmentImmediate={onRemoveAssignmentImmediate}
           showToast={showToast}
         />
 

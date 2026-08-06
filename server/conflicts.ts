@@ -85,16 +85,18 @@ export function computeConflicts(db: DB): Conflict[] {
     }
   }
 
-  // 2. Overcapacity (above service max occupants) or too few info
+  // 2. Overcapacity (above the effective max - Schicht-Override hat Vorrang
+  // vor dem Service-Standard, gleiches Muster wie ShiftRow.tsx/CalendarCard.tsx)
   for (const s of shifts) {
     const svc = services.find((sv) => sv.id === s.service_id);
     if (!svc) continue;
+    const maxPersons = s.max_persons !== undefined ? s.max_persons : svc.max_persons;
     const assignedCount = assignments.filter((a) => a.shift_id === s.id).length;
-    if (assignedCount > svc.max_persons) {
+    if (assignedCount > maxPersons) {
       conflicts.push({
         id: `overcapacity-${s.id}`,
         type: "overcapacity",
-        message: `Überbelegung für <strong><u>${escapeHtml(svc.title)}</u></strong> am ${getDayName(s.date)}, ${formatDateGerman(s.date)} (${getDayName(s.date)}, ${s.start_time}-${s.end_time} Uhr): ${assignedCount} von max. ${svc.max_persons} Personen zugeordnet.`,
+        message: `Überbelegung für <strong><u>${escapeHtml(svc.title)}</u></strong> am ${getDayName(s.date)}, ${formatDateGerman(s.date)} (${getDayName(s.date)}, ${s.start_time}-${s.end_time} Uhr): ${assignedCount} von max. ${maxPersons} Personen zugeordnet.`,
         shiftId1: s.id,
       });
     }

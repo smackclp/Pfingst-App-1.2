@@ -483,6 +483,7 @@ export default function CalendarView({
                   onClosePopover={() => setAssignPopoverShiftId(null)}
                   onRemoveAssignment={onRemoveAssignment}
                   onAddAssignment={onAddAssignment}
+                  onAssignError={showToast}
                   onToggleAssignmentAccepted={onToggleAssignmentAccepted}
                   selectedPersonId={selectedPersonId}
                   currentUserId={currentUserId}
