@@ -77,28 +77,27 @@ export default function ShiftsView({
   }>({ isOpen: false, title: "", message: "" });
 
   const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
-  const visibleAssignments = assignments.filter((a) => !isPending(`assignment-${a.shift_id}-${a.user_id}`));
 
   const understaffedCount = React.useMemo(() => {
     return shifts.filter((s) => {
       const svc = services.find((sv) => sv.id === s.service_id);
       const minNeeded = s.min_persons !== undefined ? s.min_persons : (svc ? svc.min_persons : 1);
-      const count = visibleAssignments.filter((a) => a.shift_id === s.id).length;
+      const count = assignments.filter((a) => a.shift_id === s.id).length;
       return count < minNeeded;
     }).length;
-  }, [shifts, visibleAssignments, services]);
+  }, [shifts, assignments, services]);
 
   const criticalCount = React.useMemo(() => {
     return shifts.filter((s) => {
-      const count = visibleAssignments.filter((a) => a.shift_id === s.id).length;
+      const count = assignments.filter((a) => a.shift_id === s.id).length;
       return count === 0;
     }).length;
-  }, [shifts, visibleAssignments]);
+  }, [shifts, assignments]);
 
   const myShiftsCount = React.useMemo(() => {
     if (!currentUserId) return 0;
-    return shifts.filter((s) => visibleAssignments.some((a) => a.shift_id === s.id && a.user_id === currentUserId)).length;
-  }, [shifts, visibleAssignments, currentUserId]);
+    return shifts.filter((s) => assignments.some((a) => a.shift_id === s.id && a.user_id === currentUserId)).length;
+  }, [shifts, assignments, currentUserId]);
 
   const filteredShifts = React.useMemo(() => {
     return shifts
@@ -106,7 +105,7 @@ export default function ShiftsView({
         if (selectedDateFilter !== "All" && s.date !== selectedDateFilter) return false;
         if (selectedServiceFilter !== "All" && s.service_id !== selectedServiceFilter) return false;
 
-        const shiftAssignments = visibleAssignments.filter((a) => a.shift_id === s.id);
+        const shiftAssignments = assignments.filter((a) => a.shift_id === s.id);
 
         if (statusFilter === "understaffed") {
           const svc = services.find((sv) => sv.id === s.service_id);
@@ -124,7 +123,7 @@ export default function ShiftsView({
         if (a.date !== b.date) return a.date.localeCompare(b.date);
         return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
       });
-  }, [shifts, selectedDateFilter, selectedServiceFilter, statusFilter, visibleAssignments, services, currentUserId]);
+  }, [shifts, selectedDateFilter, selectedServiceFilter, statusFilter, assignments, services, currentUserId]);
 
   const visibleShifts = filteredShifts.filter((s) => !isPending(s.id));
 
@@ -158,17 +157,6 @@ export default function ShiftsView({
         });
       }
     });
-  };
-
-  // Entfernt eine Zuweisung erst nach der Rückgängig-Frist (gleiches
-  // Sicherheitsnetz wie beim Schicht-Löschen). Composite-Id, damit Schicht-
-  // und Zuweisungs-Löschungen sich im selben Hook nicht überschneiden.
-  const handleRemoveAssignmentWithUndo = (shiftId: string, userId: string): Promise<void> => {
-    const user = users.find((u) => u.id === userId);
-    scheduleDelete(`assignment-${shiftId}-${userId}`, user?.display_name || "Zuweisung", async () => {
-      await onRemoveAssignment(shiftId, userId);
-    });
-    return Promise.resolve();
   };
 
   // Advanced assignment deploy helper with 409 conflict detection
@@ -324,7 +312,7 @@ export default function ShiftsView({
                 s={s}
                 svc={svc}
                 services={services}
-                assignments={visibleAssignments}
+                assignments={assignments}
                 shifts={shifts}
                 users={users}
                 isAdmin={isAdmin}
@@ -332,7 +320,7 @@ export default function ShiftsView({
                 activeShiftWizardId={activeShiftWizardId}
                 onUpdateShift={onUpdateShift}
                 onDeleteShift={handleDeleteShift}
-                onRemoveAssignment={handleRemoveAssignmentWithUndo}
+                onRemoveAssignment={onRemoveAssignment}
                 onToggleAssignmentAccepted={onToggleAssignmentAccepted}
                 suggestions={suggestions}
                 loadingSuggestions={loadingSuggestions}

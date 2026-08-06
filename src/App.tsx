@@ -14,6 +14,8 @@ import { STORAGE_KEYS } from "./constants";
 import { flushOfflineQueue, subscribeOfflineQueue, subscribeOfflineQueueFailure } from "./lib/offlineQueue";
 import { useToast } from "./hooks/useToast";
 import Toast from "./components/Toast";
+import { useUndoableDelete } from "./hooks/useUndoableDelete";
+import UndoToast from "./components/UndoToast";
 
 export default function App() {
   const {
@@ -81,6 +83,35 @@ export default function App() {
     handleUpdateSogSettings,
     handleResetDatabase,
   } = useZeltlagerData();
+
+  // Jemanden von einer Schicht abmelden ist häufig und leicht aus Versehen
+  // ausgelöst (ein Klick, keine Rückfrage) - deshalb hier zentral mit dem
+  // gleichen 6-Sekunden-Undo-Sicherheitsnetz wie bei anderen Löschungen
+  // versehen. Zentral in App.tsx statt einzeln in jeder View (Kalender,
+  // Dashboard, Schichtplanung), damit die Absicherung überall gilt, wo
+  // Zuweisungen entfernt werden können, nicht nur in der Schichtplanung.
+  const {
+    isPending: isAssignmentRemovalPending,
+    scheduleDelete: scheduleAssignmentRemoval,
+    undo: undoAssignmentRemoval,
+    activeToast: assignmentRemovalToast,
+  } = useUndoableDelete();
+
+  const visibleAssignments = React.useMemo(
+    () => assignments.filter((a) => !isAssignmentRemovalPending(`assignment-${a.shift_id}-${a.user_id}`)),
+    [assignments, isAssignmentRemovalPending]
+  );
+
+  const handleRemoveAssignmentWithUndo = React.useCallback(
+    (shiftId: string, userId: string): Promise<void> => {
+      const user = users.find((u) => u.id === userId);
+      scheduleAssignmentRemoval(`assignment-${shiftId}-${userId}`, user?.display_name || "Zuweisung", async () => {
+        await handleRemoveAssignment(shiftId, userId);
+      });
+      return Promise.resolve();
+    },
+    [users, scheduleAssignmentRemoval, handleRemoveAssignment]
+  );
 
   const [theme, setTheme] = React.useState<"dark" | "amoled" | "light font-sans" | "sunlight">(
     () => (safeStorage.getItem(STORAGE_KEYS.THEME) as any) || "light font-sans"
@@ -433,7 +464,7 @@ export default function App() {
               users={users}
               services={services}
               shifts={shifts}
-              assignments={assignments}
+              assignments={visibleAssignments}
               conflicts={conflicts}
               activeCampId={activeCampId}
               camps={camps}
@@ -457,7 +488,7 @@ export default function App() {
               onUpdateShift={handleUpdateShift}
               onDeleteShift={handleDeleteShift}
               onAddAssignment={handleAddAssignment}
-              onRemoveAssignment={handleRemoveAssignment}
+              onRemoveAssignment={handleRemoveAssignmentWithUndo}
               onSetActiveCamp={handleSetActiveCamp}
               onCreateCamp={handleCreateCamp}
               onSelectShift={handleSelectShift}
@@ -519,6 +550,7 @@ export default function App() {
         )}
 
         <Toast message={queueToastMessage} />
+        <UndoToast toast={assignmentRemovalToast} onUndo={undoAssignmentRemoval} />
       </div>
     </TooltipProvider>
   );

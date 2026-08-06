@@ -1,6 +1,7 @@
 import React from "react";
 import { ShieldCheck, ShieldAlert, User as UserIcon, Search } from "lucide-react";
 import { User } from "../types";
+import ConfirmDialog from "./ConfirmDialog";
 
 type AccessRole = "helfer" | "bereichsleiter" | "lagerleitung";
 
@@ -25,6 +26,17 @@ export default function AccessRoleManager({ users, onUpdateAccessRole }: AccessR
   const [searchTerm, setSearchTerm] = React.useState("");
   const [savingId, setSavingId] = React.useState<string | null>(null);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+  // Zugriffsrolle wirkt sich stark auf das aus, was jemand sehen/tun darf -
+  // bisher änderte ein einziger Klick auf das Dropdown die Rolle sofort ohne
+  // jede Rückfrage. Anders als bei Löschungen passt hier ein Bestätigungs-
+  // dialog besser als ein nachträgliches Undo-Toast: die Rolle soll gar nicht
+  // erst versehentlich wechseln, statt hinterher wieder zurückgedreht zu werden.
+  const [pendingChange, setPendingChange] = React.useState<{
+    userId: string;
+    role: AccessRole;
+    currentRole: AccessRole;
+    displayName: string;
+  } | null>(null);
 
   const filteredUsers = React.useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -35,7 +47,16 @@ export default function AccessRoleManager({ users, onUpdateAccessRole }: AccessR
 
   const lagerleitungCount = users.filter((u) => (u as any).access_role === "lagerleitung").length;
 
-  const handleChange = async (userId: string, role: AccessRole, currentRole: AccessRole, displayName: string) => {
+  const handleSelectChange = (userId: string, role: AccessRole, currentRole: AccessRole, displayName: string) => {
+    if (role === currentRole) return;
+    setPendingChange({ userId, role, currentRole, displayName });
+  };
+
+  const handleConfirmChange = async () => {
+    if (!pendingChange) return;
+    const { userId, role, currentRole, displayName } = pendingChange;
+    setPendingChange(null);
+
     // Verhindert versehentliches Aussperren: letzte verbleibende Lagerleitung kann sich nicht selbst degradieren.
     if (currentRole === "lagerleitung" && role !== "lagerleitung" && lagerleitungCount <= 1) {
       setErrorMsg(`${displayName} ist aktuell die einzige Lagerleitung. Weise zuerst einer anderen Person die Rolle Lagerleitung zu, bevor du diese hier änderst.`);
@@ -109,7 +130,7 @@ export default function AccessRoleManager({ users, onUpdateAccessRole }: AccessR
                   <select
                     value={currentRole}
                     disabled={isSaving}
-                    onChange={(e) => handleChange(u.id, e.target.value as AccessRole, currentRole, u.display_name)}
+                    onChange={(e) => handleSelectChange(u.id, e.target.value as AccessRole, currentRole, u.display_name)}
                     className={`w-full text-xs px-3 py-2 border rounded-xl bg-slate-950/65 font-mono focus:ring-0 ${
                       currentRole === "lagerleitung"
                         ? "border-emerald-500/40 text-emerald-400"
@@ -138,6 +159,25 @@ export default function AccessRoleManager({ users, onUpdateAccessRole }: AccessR
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        id="access-role-confirm-dialog"
+        isOpen={!!pendingChange}
+        variant="info"
+        title="Zugriffsrolle ändern?"
+        message={
+          pendingChange && (
+            <span>
+              Soll <strong className="text-white font-semibold">{pendingChange.displayName}</strong> wirklich von{" "}
+              <strong className="text-white font-semibold">{ROLE_LABEL[pendingChange.currentRole]}</strong> auf{" "}
+              <strong className="text-white font-semibold">{ROLE_LABEL[pendingChange.role]}</strong> geändert werden?
+            </span>
+          )
+        }
+        confirmLabel="Ja, Rolle ändern"
+        onConfirm={handleConfirmChange}
+        onCancel={() => setPendingChange(null)}
+      />
     </div>
   );
 }
