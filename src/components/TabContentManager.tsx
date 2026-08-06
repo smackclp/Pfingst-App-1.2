@@ -255,6 +255,8 @@ export default function TabContentManager({
           onDeleteShift={onDeleteShift}
           isAdmin={canManage}
           activeCamp={activeCamp}
+          accessRole={accessRole}
+          currentUserId={currentUserId}
         />
       )}
 
@@ -273,6 +275,7 @@ export default function TabContentManager({
           isAdmin={canManage}
           activeCamp={activeCamp}
           currentUserId={currentUserId}
+          accessRole={accessRole}
         />
       )}
 

@@ -24,6 +24,7 @@ interface ShiftsViewProps {
   isAdmin: boolean;
   activeCamp?: Camp;
   currentUserId?: string | null;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
 }
 
 export default function ShiftsView({
@@ -39,15 +40,28 @@ export default function ShiftsView({
   onToggleAssignmentAccepted,
   isAdmin,
   activeCamp,
-  currentUserId
+  currentUserId,
+  accessRole
 }: ShiftsViewProps) {
   const startDate = activeCamp?.start_date || "2026-05-23";
   const sunDate = addDays(startDate, 1);
   const endDate = activeCamp?.end_date || "2026-05-25";
 
+  // Bereichsleitung sieht sonst dieselbe volle Schichtliste wie die
+  // Lagerleitung - Standardansicht auf die Schichten der eigenen
+  // verantworteten Dienste (Service.responsible_id) fokussieren spart
+  // Klicks, analog zum gleichen Muster in ServicesView.tsx.
+  const isBereichsleiter = accessRole === "bereichsleiter";
+  const myServiceIds = React.useMemo(
+    () => new Set(services.filter((s) => s.responsible_id === currentUserId).map((s) => s.id)),
+    [services, currentUserId]
+  );
+
   const [selectedDateFilter, setSelectedDateFilter] = React.useState<string>("All");
   const [selectedServiceFilter, setSelectedServiceFilter] = React.useState<string>("All");
-  const [statusFilter, setStatusFilter] = React.useState<"all" | "understaffed" | "critical" | "my_shifts">("all");
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "understaffed" | "critical" | "my_shifts" | "my_services">(
+    () => (isBereichsleiter && myServiceIds.size > 0 ? "my_services" : "all")
+  );
 
   // Add shift modal states
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
@@ -99,6 +113,11 @@ export default function ShiftsView({
     return shifts.filter((s) => assignments.some((a) => a.shift_id === s.id && a.user_id === currentUserId)).length;
   }, [shifts, assignments, currentUserId]);
 
+  const myServicesShiftsCount = React.useMemo(() => {
+    if (myServiceIds.size === 0) return 0;
+    return shifts.filter((s) => myServiceIds.has(s.service_id)).length;
+  }, [shifts, myServiceIds]);
+
   const filteredShifts = React.useMemo(() => {
     return shifts
       .filter((s) => {
@@ -116,6 +135,8 @@ export default function ShiftsView({
         } else if (statusFilter === "my_shifts") {
           if (!currentUserId) return false;
           if (!shiftAssignments.some((a) => a.user_id === currentUserId)) return false;
+        } else if (statusFilter === "my_services") {
+          if (!myServiceIds.has(s.service_id)) return false;
         }
         return true;
       })
@@ -123,7 +144,7 @@ export default function ShiftsView({
         if (a.date !== b.date) return a.date.localeCompare(b.date);
         return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
       });
-  }, [shifts, selectedDateFilter, selectedServiceFilter, statusFilter, assignments, services, currentUserId]);
+  }, [shifts, selectedDateFilter, selectedServiceFilter, statusFilter, assignments, services, currentUserId, myServiceIds]);
 
   const visibleShifts = filteredShifts.filter((s) => !isPending(s.id));
 
@@ -228,6 +249,8 @@ export default function ShiftsView({
           criticalCount={criticalCount}
           myShiftsCount={myShiftsCount}
           totalShiftsCount={shifts.length}
+          myServicesShiftsCount={myServicesShiftsCount}
+          showMyServicesChip={isBereichsleiter && myServiceIds.size > 0}
         />
 
         {/* Dropdown Filters */}

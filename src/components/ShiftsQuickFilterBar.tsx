@@ -1,7 +1,7 @@
 import React from "react";
-import { Filter, Globe, Sparkles, Star, User as UserIcon } from "lucide-react";
+import { Filter, Globe, Sparkles, Star, User as UserIcon, UserCheck } from "lucide-react";
 
-type StatusFilter = "all" | "understaffed" | "critical" | "my_shifts";
+type StatusFilter = "all" | "understaffed" | "critical" | "my_shifts" | "my_services";
 
 interface ShiftsQuickFilterBarProps {
   statusFilter: StatusFilter;
@@ -10,9 +10,12 @@ interface ShiftsQuickFilterBarProps {
   criticalCount: number;
   myShiftsCount: number;
   totalShiftsCount: number;
+  /** Nur für Bereichsleitung: Schichten der Dienste, für die sie laut responsible_id verantwortlich ist. */
+  myServicesShiftsCount?: number;
+  showMyServicesChip?: boolean;
 }
 
-/** Horizontale Schnellfilter-Chip-Leiste (Offen/Dringend/Meine/Alle Schichten). */
+/** Horizontale Schnellfilter-Chip-Leiste (Meine Dienste/Offen/Dringend/Meine/Alle Schichten). */
 export default function ShiftsQuickFilterBar({
   statusFilter,
   onStatusFilterChange,
@@ -20,6 +23,8 @@ export default function ShiftsQuickFilterBar({
   criticalCount,
   myShiftsCount,
   totalShiftsCount,
+  myServicesShiftsCount = 0,
+  showMyServicesChip = false,
 }: ShiftsQuickFilterBarProps) {
   return (
     <div className="space-y-2.5 pt-2 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/90 shadow-inner min-w-0">
@@ -42,6 +47,30 @@ export default function ShiftsQuickFilterBar({
 
       {/* Horizontally Scrollable Chip Bar */}
       <div className="flex items-center space-x-2.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none scroll-smooth">
+        {/* Chip 0: Meine Dienste (nur Bereichsleitung) */}
+        {showMyServicesChip && (
+          <button
+            type="button"
+            onClick={() => onStatusFilterChange("my_services")}
+            className={`flex-none px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center space-x-2.5 cursor-pointer whitespace-nowrap border ${
+              statusFilter === "my_services"
+                ? "bg-gradient-to-r from-indigo-500/35 via-indigo-500/25 to-indigo-600/35 border-indigo-400 text-indigo-200 shadow-lg shadow-indigo-500/20 ring-2 ring-indigo-400/60 scale-[1.02]"
+                : "bg-indigo-950/25 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 hover:border-indigo-400/60"
+            }`}
+            id="chip-filter-myservices"
+          >
+            <UserCheck className="h-4 w-4 text-indigo-300 shrink-0" />
+            <span>Meine Dienste</span>
+            <span
+              className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-black border ${
+                myServicesShiftsCount > 0 ? "bg-indigo-500 text-white border-indigo-300 shadow-xs" : "bg-slate-900 border-slate-800 text-slate-500"
+              }`}
+            >
+              {myServicesShiftsCount} Schichten
+            </span>
+          </button>
+        )}
+
         {/* Chip 1: Offene Schichten (Helfer gesucht) */}
         <button
           type="button"

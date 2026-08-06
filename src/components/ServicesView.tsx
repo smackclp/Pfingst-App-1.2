@@ -2,7 +2,9 @@ import React from "react";
 import {
   Plus,
   Search,
-  Briefcase
+  Briefcase,
+  UserCheck,
+  Globe
 } from "lucide-react";
 import { Service, User, Shift, Camp } from "../types";
 import { addDays } from "../utils";
@@ -23,6 +25,8 @@ interface ServicesViewProps {
   onDeleteShift: (id: string) => Promise<void>;
   isAdmin: boolean;
   activeCamp?: Camp;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
+  currentUserId?: string | null;
 }
 
 export default function ServicesView({
@@ -35,7 +39,9 @@ export default function ServicesView({
   onAddShift,
   onDeleteShift,
   isAdmin,
-  activeCamp
+  activeCamp,
+  accessRole,
+  currentUserId
 }: ServicesViewProps) {
   const startDate = activeCamp?.start_date || "2026-05-23";
   const sunDate = addDays(startDate, 1);
@@ -61,12 +67,28 @@ export default function ServicesView({
   const [editingService, setEditingService] = React.useState<Service | null>(null);
   const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
 
+  // Bereichsleitung sieht sonst dieselbe volle Liste wie die Lagerleitung -
+  // Standardansicht auf die eigenen verantworteten Dienste fokussieren spart
+  // Klicks. Nur wenn wirklich verantwortete Dienste existieren, sonst würde
+  // der Start-Zustand eine leere, verwirrende Liste zeigen. Lagerleitung
+  // behält bewusst die volle Übersicht (kein Toggle nötig).
+  const myServicesCount = React.useMemo(
+    () => services.filter(s => s.responsible_id === currentUserId).length,
+    [services, currentUserId]
+  );
+  const isBereichsleiter = accessRole === "bereichsleiter";
+  const [showOnlyMine, setShowOnlyMine] = React.useState(() => isBereichsleiter && myServicesCount > 0);
+
   const categories = React.useMemo(() => {
     return Array.from(new Set(services.map(s => s.category).filter(Boolean)));
   }, [services]);
 
   const filteredServices = React.useMemo(() => {
     return services.filter(s => {
+      if (isBereichsleiter && showOnlyMine && s.responsible_id !== currentUserId) {
+        return false;
+      }
+
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         const matchesTitle = s.title.toLowerCase().includes(term) || s.description.toLowerCase().includes(term);
@@ -80,7 +102,7 @@ export default function ServicesView({
 
       return true;
     }).sort((a, b) => a.title.localeCompare(b.title));
-  }, [services, searchTerm, categoryFilter]);
+  }, [services, searchTerm, categoryFilter, isBereichsleiter, showOnlyMine, currentUserId]);
 
   const visibleServices = filteredServices.filter(s => !isPending(s.id));
   const visibleShifts = shifts.filter(s => !isPending(s.id));
@@ -157,6 +179,31 @@ export default function ServicesView({
             </button>
           )}
         </div>
+
+        {isBereichsleiter && myServicesCount > 0 && (
+          <div className="flex items-center gap-1.5 bg-slate-950/60 border border-slate-800 rounded-xl p-1 w-fit" id="services-mine-toggle">
+            <button
+              type="button"
+              onClick={() => setShowOnlyMine(true)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition flex items-center gap-1.5 cursor-pointer ${
+                showOnlyMine ? "bg-emerald-600 text-white shadow-md" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <UserCheck className="h-3.5 w-3.5" />
+              <span>Meine Dienste ({myServicesCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowOnlyMine(false)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition flex items-center gap-1.5 cursor-pointer ${
+                !showOnlyMine ? "bg-slate-700 text-white shadow-md" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Globe className="h-3.5 w-3.5" />
+              <span>Alle Dienste ({services.length})</span>
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-2">
           {/* Quick Search */}
