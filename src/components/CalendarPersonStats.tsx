@@ -1,5 +1,5 @@
 import React from "react";
-import { Calendar, X, Copy, Check } from "lucide-react";
+import { Calendar, Copy, Check } from "lucide-react";
 import { User, Shift, Service, ShiftAssignment } from "../types";
 
 interface CalendarPersonStatsProps {
@@ -9,28 +9,20 @@ interface CalendarPersonStatsProps {
     shiftCount: number;
     freeDays: string[];
   };
-  startDate: string;
-  sunDate: string;
-  endDate: string;
   assignments: ShiftAssignment[];
   shifts: Shift[];
   services: Service[];
   users: User[];
-  onClearPersonFilter: () => void;
   formatDateGerman: (dateStr: string) => string;
   showToast: (msg: string) => void;
 }
 
 export default function CalendarPersonStats({
   personStats,
-  startDate,
-  sunDate,
-  endDate,
   assignments,
   shifts,
   services,
   users,
-  onClearPersonFilter,
   formatDateGerman,
   showToast
 }: CalendarPersonStatsProps) {

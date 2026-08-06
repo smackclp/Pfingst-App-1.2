@@ -402,7 +402,6 @@ export default function App() {
           conflictCount={conflicts.length}
           theme={theme}
           onToggleTheme={toggleTheme}
-          isAdmin={isAdmin}
           accessRole={accessRole}
           currentUserId={currentUserId}
           showToast={showQueueToast}

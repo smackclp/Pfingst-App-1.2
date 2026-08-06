@@ -316,7 +316,6 @@ export default function TabContentManager({
         <AlertsView
           currentUser={users.find((u) => u.id === currentUserId) || null}
           users={users}
-          onUpdateUser={onUpdateUser}
         />
       )}
 

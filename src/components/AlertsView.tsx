@@ -20,10 +20,9 @@ import AlertsNotificationLog from "./AlertsNotificationLog";
 interface AlertsViewProps {
   currentUser: User | null;
   users: User[];
-  onUpdateUser: (id: string, user: Partial<User>) => Promise<void>;
 }
 
-export default function AlertsView({ currentUser, users, onUpdateUser }: AlertsViewProps) {
+export default function AlertsView({ currentUser, users }: AlertsViewProps) {
   const browserPermission = useNotificationPermission();
   const swStatus = useServiceWorkerStatus();
   const isOnline = useOnlineStatus();

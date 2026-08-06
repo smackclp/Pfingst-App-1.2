@@ -1,7 +1,7 @@
 import React from "react";
 import { QrCode } from "lucide-react";
 import { User, Service, Shift, ShiftAssignment, Conflict, Camp, Community } from "../types";
-import { addDays, timeToMinutes } from "../utils";
+import { timeToMinutes } from "../utils";
 import DashboardStatsGrid from "./DashboardStatsGrid";
 import DashboardNextShift from "./DashboardNextShift";
 import DashboardFeedbacks from "./DashboardFeedbacks";

@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, MapPin, Trash2, UserCheck, AlertTriangle, UserMinus, X, Edit, Plus } from "lucide-react";
+import { Clock, Trash2, UserCheck, AlertTriangle, UserMinus, X, Edit, Plus } from "lucide-react";
 import { Shift, Service, User, ShiftAssignment } from "../types";
 import ShiftDeployWizard from "./ShiftDeployWizard";
 
@@ -18,7 +18,6 @@ interface ShiftRowProps {
   onRemoveAssignment: (shiftId: string, userId: string) => Promise<void>;
   onToggleAssignmentAccepted?: (assignmentId: string, accepted: boolean) => Promise<void>;
   suggestions: Array<{ user_id: string; year: number; camp_title: string }>;
-  loadingSuggestions: boolean;
   setActiveShiftWizardId: (id: string | null) => void;
   getDayLabel: (dateStr: string) => string;
   formatDateGerman: (dateStr: string) => string;
@@ -40,7 +39,6 @@ function ShiftRow({
   onRemoveAssignment,
   onToggleAssignmentAccepted,
   suggestions,
-  loadingSuggestions,
   setActiveShiftWizardId,
   getDayLabel,
   formatDateGerman,

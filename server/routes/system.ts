@@ -171,7 +171,7 @@ router.get("/seed/backup-status", requireRole("lagerleitung"), (req, res) => {
 });
 
 // Letzten Stand vor dem zuletzt ausgeführten Reset wiederherstellen
-router.post("/seed/restore", requireRole("lagerleitung"), async (req, res) => {
+router.post("/seed/restore", requireRole("lagerleitung"), (req, res) => {
   const backup = readResetBackup();
   if (!backup) {
     return res.status(404).json({ error: "Keine Sicherung zum Wiederherstellen vorhanden." });

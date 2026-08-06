@@ -6,7 +6,6 @@ import {
   createSession,
   destroySession,
   sanitizeUser,
-  sanitizeUsers,
   authMiddleware,
   isLoginLocked,
   recordFailedLogin,

@@ -24,7 +24,6 @@ interface NavigationProps {
   conflictCount: number;
   theme?: string;
   onToggleTheme?: () => void;
-  isAdmin: boolean;
   accessRole?: AccessRole;
   currentUserId?: string | null;
   showToast: (msg: string) => void;
@@ -36,7 +35,6 @@ export default function Navigation({
   conflictCount,
   theme = "dark",
   onToggleTheme,
-  isAdmin,
   accessRole = "helfer",
   currentUserId = null,
   showToast

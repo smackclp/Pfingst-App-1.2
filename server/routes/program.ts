@@ -2,7 +2,7 @@ import { Router } from "express";
 import { readDB, writeDB } from "../db";
 import { sendNotificationToUser } from "../notifications";
 import { MaterialItem, TalentAct } from "../types";
-import { requireMinRole, requireRole } from "../auth";
+import { requireRole } from "../auth";
 
 const router = Router();
 
@@ -21,34 +21,40 @@ router.get("/materials", (req, res) => {
   res.json((db.materials || []).filter((m) => m.camp_id === activeCampId));
 });
 
-router.post("/materials", async (req, res) => {
-  const db = readDB();
-  const { user_id, item_name, url, purpose, quantity, price, status } = req.body;
-  if (!user_id || !item_name || !purpose) {
-    return res.status(400).json({ error: "Fehlende Pflichtfelder: Besteller (user_id), Artikel (item_name), Verwendungszweck (purpose)" });
+router.post("/materials", async (req, res, next) => {
+  let db: ReturnType<typeof readDB>;
+  let newMaterial: MaterialItem;
+  try {
+    db = readDB();
+    const { user_id, item_name, url, purpose, quantity, price, status } = req.body;
+    if (!user_id || !item_name || !purpose) {
+      return res.status(400).json({ error: "Fehlende Pflichtfelder: Besteller (user_id), Artikel (item_name), Verwendungszweck (purpose)" });
+    }
+    // Jede Person darf nur für sich selbst bestellen; Leitung darf auch für andere eintragen.
+    if (req.authUser!.id !== user_id && req.authUser!.accessRole === "helfer") {
+      return res.status(403).json({ error: "Du kannst nur für dich selbst Materialien bestellen." });
+    }
+    newMaterial = {
+      id: `material-${Date.now()}`,
+      user_id,
+      item_name,
+      url: url || "",
+      purpose,
+      quantity: quantity ? Number(quantity) : 1,
+      price: price || "",
+      created_at: new Date().toISOString(),
+      status: status || "pending",
+      camp_id: db.activeCampId || "camp-2026",
+    };
+    if (!db.materials) db.materials = [];
+    db.materials.push(newMaterial);
+    writeDB(db);
+  } catch (err) {
+    return next(err);
   }
-  // Jede Person darf nur für sich selbst bestellen; Leitung darf auch für andere eintragen.
-  if (req.authUser!.id !== user_id && req.authUser!.accessRole === "helfer") {
-    return res.status(403).json({ error: "Du kannst nur für dich selbst Materialien bestellen." });
-  }
-  const newMaterial: MaterialItem = {
-    id: `material-${Date.now()}`,
-    user_id,
-    item_name,
-    url: url || "",
-    purpose,
-    quantity: quantity ? Number(quantity) : 1,
-    price: price || "",
-    created_at: new Date().toISOString(),
-    status: status || "pending",
-    camp_id: db.activeCampId || "camp-2026",
-  };
-  if (!db.materials) db.materials = [];
-  db.materials.push(newMaterial);
-  writeDB(db);
 
   try {
-    const requester = db.users.find((u) => u.id === user_id);
+    const requester = db.users.find((u) => u.id === newMaterial.user_id);
     const requesterName = requester ? requester.display_name : "Ein Helfer";
     const einkaufRole = (db.functionalRoles || []).find(
       (r) => r.name.toLowerCase() === "einkauf" || r.id === "role-einkauf"

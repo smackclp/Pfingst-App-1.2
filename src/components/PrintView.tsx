@@ -201,8 +201,8 @@ export default function PrintView({ shifts, services, users, assignments, active
             <p className="mt-2 text-slate-300">
               <span className="font-bold text-white">Lösung:</span> Klicken Sie unten auf <span className="font-semibold text-white">"Excel & Word Form kopieren"</span> für eine perfekte
               Formatierung in Ihren Office-Programmen, oder nutzen Sie die Tastenkombination{" "}
-              <kbd className="bg-slate-850 px-1 border border-slate-705 rounded text-white font-mono">Strg + P</kbd> /{" "}
-              <kbd className="bg-slate-850 px-1 border border-slate-705 rounded text-white font-mono">Cmd + P</kbd>.
+              <kbd className="bg-slate-850 px-1 border border-slate-800 rounded text-white font-mono">Strg + P</kbd> /{" "}
+              <kbd className="bg-slate-850 px-1 border border-slate-800 rounded text-white font-mono">Cmd + P</kbd>.
             </p>
           </div>
         </div>

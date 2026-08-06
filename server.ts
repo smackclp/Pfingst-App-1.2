@@ -123,6 +123,19 @@ async function startServer() {
     });
   }
 
+  // Zentrale Fehlerbehandlung (muss nach allen Routen registriert werden):
+  // fängt sowohl von Route-Handlern durchgereichte Fehler (next(err)) als
+  // auch von Express automatisch abgefangene synchrone throws ab. Sorgt für
+  // ein einheitliches JSON-Fehlerformat ({error: "..."}, wie es der Rest der
+  // API bereits nutzt) statt Express' Standard-HTML-Fehlerseite.
+  app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error(`Unbehandelter Fehler bei ${req.method} ${req.path}:`, err);
+    if (res.headersSent) {
+      return next(err);
+    }
+    res.status(500).json({ error: "Interner Serverfehler. Bitte versuche es erneut." });
+  });
+
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server is running in ${process.env.NODE_ENV || "development"} mode on http://0.0.0.0:${PORT}`);
   });

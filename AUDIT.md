@@ -57,6 +57,7 @@ Git-Commit-Hash ein, gegen den geprüft wurde. Für den **nächsten** Audit gilt
 | 2026-08-06 | siehe Commit "6 von 7 Hoch-Funden behoben" | Fix von 6 der 7 Hoch-Funde: max_persons-Inkonsistenz (`CalendarCard.tsx`, `conflicts.ts`), serverseitige Kapazitätsprüfung (`shifts.ts`), Server-Guard letzte Lagerleitung (`auth.ts`), Konflikt-Umbesetzen-Bug (`DashboardConflicts.tsx`, neue `onRemoveAssignmentImmediate`-Prop-Kette), unbehandelte Promise-Rejection (`CalendarCard.tsx`), Code-Splitting pro Tab (`TabContentManager.tsx`, React.lazy) | Alle 6 verifiziert (Lint/Build/Browser-Test/E2E-Suite) und aus der Liste entfernt. "Jede Mutation lädt komplette DB neu" bewusst zurückgestellt (größter Punkt, eigene Analyse nötig). |
 | 2026-08-06 | siehe Commit "6 von 8 Mittel-Funden behoben" | Fix von 6 der 8 Mittel-Funde: HTTP-Status-Tippfehler 444→404 (`shifts.ts`), PII-Zugriffsbeschränkung auf `notes`-Feld (`people.ts`), React.memo + useCallback-Stabilisierung (`CalendarCard.tsx`, `ShiftRow.tsx`, `CalendarView.tsx`, `ShiftsView.tsx`), `any`-Typen entfernt (`CalendarCard.tsx`), doppelte Filterlogik zusammengeführt (`HeaderGlobalSearch.tsx`), min/max-Validierung client- und serverseitig (`ServiceFormModal.tsx`, `shifts.ts`), Basis-Sicherheits-Header ohne CSP (`server.ts`) | Alle 6 verifiziert (Lint/Build/Node-Verifikationsskript/E2E-Suite, 7/7 grün) und aus der Liste entfernt. `xlsx`-Abhängigkeit und vollständige CSP bewusst zurückgestellt (echte Entscheidungsfragen, siehe unten). |
 | 2026-08-06 | siehe Commit "Vollständige CSP + xlsx-Risiko-Entscheidung" | Entscheidung Nutzer: `xlsx`-Risiko bewusst akzeptiert (kein CDN-Umstieg); vollständige Content-Security-Policy umgesetzt (`server.ts`, nur Produktion, dynamischer SHA-256-Hash des Inline-Scripts aus `dist/index.html`, `style-src 'unsafe-inline'` für html2canvas/jsPDF-Export) | Beide letzten Mittel-Punkte aus der Liste entfernt. CSP gegen echten Produktions-Build mit Playwright verifiziert (Login, alle Sidebar-Tabs, QR-Kartendruck, PDF-Export/Druckcenter) - keine `securitypolicyviolation`-Events, keine CSP-Konsolenfehler. E2E-Suite (7/7) und Lint weiterhin grün. |
+| 2026-08-06 | siehe Commit "7 Niedrig-Funde behoben" | Alle 7 Niedrig-Funde: tote Props/Imports entfernt (9 Dateien), 3 Tailwind-Tippfehler korrigiert, globale JSON-Fehlerbehandlung + fehlende try/catch in den beiden ungeschützten async-Handlern ergänzt (`server.ts`, `system.ts`, `program.ts`), `writeDB()`-Datei-Backup non-blocking gemacht (`db.ts`), `computeConflicts()` auf Map-basierte Zählung umgestellt (`conflicts.ts`), fehlendes `useMemo` in `ShiftsView.tsx` ergänzt; `key?: any` war bereits aus dem Hoch-Batch entfernt (nur Listeneintrag bereinigt) | Alle verifiziert (Lint/Build/E2E-Suite, 7/7 grün - ein Timeout in `assignment-undo.spec.ts` beim ersten Lauf war Sandbox-Flake, isoliert erneut grün) und aus der Liste entfernt. Keine offenen Punkte mehr außer dem zurückgestellten Hoch-Fund. |
 
 ---
 
@@ -83,32 +84,7 @@ _Keine offenen Punkte mehr - siehe Audit-Historie._
 
 ### Niedrig (Aufräumen, kein akutes Risiko)
 
-- [ ] Tote Props/Imports: `CalendarPersonStats.tsx` (`startDate`, `sunDate`,
-  `endDate`, `onClearPersonFilter` nie gelesen), `AlertsView.tsx`
-  (`onUpdateUser` ungenutzt), `CalendarView.tsx` (8 ungenutzte
-  lucide-react-Icon-Importe), `DashboardView.tsx` (`addDays`),
-  `Navigation.tsx` (`isAdmin`-Prop), `ShiftRow.tsx` (`MapPin`-Icon,
-  `loadingSuggestions`-Prop), `server/db.ts` (`webpush`, `Camp`, `Shift`,
-  `ShiftAssignment`), `server/routes/auth.ts` (`sanitizeUsers`),
-  `server/routes/program.ts` (`requireMinRole`).
-- [ ] Tailwind-Tippfehler ohne Wirkung (erzeugen keine CSS-Regel):
-  `placeholder-slate-705`, `focus:border-cyan-505`, `border-slate-705`
-  (`PersonFormModal.tsx:262,273`, `PrintView.tsx:204-205`).
-- [ ] Uneinheitliches Error-Handling zwischen `server/routes/*.ts`-Dateien
-  (`notifications.ts` mit durchgängigem try/catch, andere Routen ohne).
-- [ ] `server/db.ts` `writeDB()` macht bei jeder Schreibung ein
-  **synchrones, blockierendes** `fs.writeFileSync` der kompletten Datei
-  (Zeilen 94-98) - bei aktueller Datengröße unkritisch (~85 KB), aber
-  blockiert den Event-Loop und wird bei mehr Daten/parallelen Schreibungen
-  zum Problem.
-- [ ] `computeConflicts()` in `server/conflicts.ts:72-84` ist
-  O(Schichten × Zuweisungen) statt einer Map-basierten Zählung - bei
-  aktueller Größe (~17.000 Operationen) trivial, aber leicht zu verbessern.
-- [ ] `ShiftsView.tsx:149` (`visibleShifts`-Filter) nicht in `useMemo`
-  gewrappt, anders als der Rest der Datei.
-- [ ] Bedeutungslose `key?: any;` in den Prop-Interfaces von
-  `CalendarCard.tsx:7` und `ShiftRow.tsx:7` (React-`key` ist nie als Prop
-  zugreifbar).
+_Keine offenen Punkte mehr - siehe Audit-Historie._
 
 ---
 
@@ -138,6 +114,20 @@ _Keine offenen Punkte mehr - siehe Audit-Historie._
   externe Hosts: `fonts.googleapis.com`/`fonts.gstatic.com` (Google Fonts),
   `api.qrserver.com` (QR-Code-Generierung für Helfer-QuickLogin-Karten),
   `open.spotify.com` (eingebetteter Talentshow-Playlist-Player).
+
+- **Zentrale Fehlerbehandlung (`server.ts`):** Als letzte Middleware nach
+  allen Routen registriert. Fängt sowohl automatisch von Express
+  abgefangene synchrone throws als auch explizit per `next(err)`
+  durchgereichte Fehler ab und antwortet einheitlich mit
+  `{error: "..."}` + Status 500 statt Express' HTML-Standardfehlerseite.
+  Die zwei einzigen `async`-Handler ohne `await` im gesamten Backend
+  (`server/routes/system.ts` `/seed/restore`, `server/routes/program.ts`
+  `POST /materials`) waren dadurch bislang ungeschützt: ein synchroner
+  throw in einer `async`-Funktion wird zur unbehandelten Promise-Rejection
+  statt automatisch von Express abgefangen zu werden (Express 4-Verhalten,
+  in Express 5 behoben). `/seed/restore` verlor das unnötige `async`
+  (kein `await` im Body), `/materials` bekam ein eigenes try/catch für den
+  Teil vor dem Notification-Versand.
 
 *Nicht als Fund gewertet (geprüft, aber unproblematisch): PIN-Hashing
 (scrypt + Salt + timingSafeEqual), Rollenprüfungen auf allen anderen

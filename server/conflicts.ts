@@ -87,11 +87,18 @@ export function computeConflicts(db: DB): Conflict[] {
 
   // 2. Overcapacity (above the effective max - Schicht-Override hat Vorrang
   // vor dem Service-Standard, gleiches Muster wie ShiftRow.tsx/CalendarCard.tsx)
+  // Map-basierte Zählung statt .filter() pro Schicht: O(Schichten +
+  // Zuweisungen) statt O(Schichten × Zuweisungen).
+  const assignmentCountByShiftId = new Map<string, number>();
+  for (const a of assignments) {
+    assignmentCountByShiftId.set(a.shift_id, (assignmentCountByShiftId.get(a.shift_id) || 0) + 1);
+  }
+
   for (const s of shifts) {
     const svc = services.find((sv) => sv.id === s.service_id);
     if (!svc) continue;
     const maxPersons = s.max_persons !== undefined ? s.max_persons : svc.max_persons;
-    const assignedCount = assignments.filter((a) => a.shift_id === s.id).length;
+    const assignedCount = assignmentCountByShiftId.get(s.id) || 0;
     if (assignedCount > maxPersons) {
       conflicts.push({
         id: `overcapacity-${s.id}`,

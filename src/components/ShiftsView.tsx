@@ -68,7 +68,7 @@ export default function ShiftsView({
 
   // Assign wizard details
   const [activeShiftWizardId, setActiveShiftWizardId] = React.useState<string | null>(null);
-  const { suggestions, loadingSuggestions } = useShiftSuggestions(activeShiftWizardId);
+  const { suggestions } = useShiftSuggestions(activeShiftWizardId);
 
   // Custom double boarding override prompt dialog
   const [overrideModal, setOverrideModal] = React.useState<{
@@ -146,7 +146,10 @@ export default function ShiftsView({
       });
   }, [shifts, selectedDateFilter, selectedServiceFilter, statusFilter, assignments, services, currentUserId, myServiceIds]);
 
-  const visibleShifts = filteredShifts.filter((s) => !isPending(s.id));
+  const visibleShifts = React.useMemo(
+    () => filteredShifts.filter((s) => !isPending(s.id)),
+    [filteredShifts, isPending]
+  );
 
   // Als useCallback/direkte Funktionsreferenz statt Neu-Erzeugung bei jedem
   // Render, damit ShiftRow (React.memo) tatsächlich Nicht-betroffene Zeilen
@@ -352,7 +355,6 @@ export default function ShiftsView({
                 onRemoveAssignment={onRemoveAssignment}
                 onToggleAssignmentAccepted={onToggleAssignmentAccepted}
                 suggestions={suggestions}
-                loadingSuggestions={loadingSuggestions}
                 setActiveShiftWizardId={setActiveShiftWizardId}
                 getDayLabel={getDayLabel}
                 formatDateGerman={formatDateGerman}

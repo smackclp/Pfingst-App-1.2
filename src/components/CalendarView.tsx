@@ -1,17 +1,9 @@
 import React from "react";
-import { 
-  Users, 
-  MapPin, 
-  Clock, 
-  Search, 
-  User, 
-  X, 
-  Plus, 
-  Trash2, 
-  Info, 
-  CheckCircle,
-  AlertCircle,
-  HelpCircle,
+import {
+  Search,
+  User,
+  X,
+  Plus,
   Calendar
 } from "lucide-react";
 import { User as UserType, Service, Shift, ShiftAssignment, Conflict, Camp } from "../types";
@@ -371,14 +363,10 @@ export default function CalendarView({
         {personStats && (
           <CalendarPersonStats
             personStats={personStats}
-            startDate={startDate}
-            sunDate={sunDate}
-            endDate={endDate}
             assignments={assignments}
             shifts={shifts}
             services={services}
             users={users}
-            onClearPersonFilter={() => setSelectedPersonId("")}
             formatDateGerman={formatDateGerman}
             showToast={showToast}
           />

@@ -1,6 +1,5 @@
 import fs from "fs";
-import webpush from "web-push";
-import { DB, Camp, Shift, ShiftAssignment } from "./types";
+import { DB } from "./types";
 import { getDefaultSeedDB } from "./seed";
 import { getDbFilePath } from "./dbPath";
 import {
@@ -90,12 +89,14 @@ export function writeDB(newData: DB) {
   const previousDB = currentCachedDB ? JSON.parse(JSON.stringify(currentCachedDB)) : getInitialLocalDB();
   currentCachedDB = newData;
 
-  // 1. Write local backup json file
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(newData, null, 2), "utf-8");
-  } catch (err) {
-    console.error("Failed to write fallback db.json", err);
-  }
+  // 1. Write local backup json file. Nicht-blockierend (fs.writeFile statt
+  // -Sync): currentCachedDB ist oben bereits synchron aktualisiert, spätere
+  // readDB()-Aufrufe sehen also unabhängig vom Abschluss dieses Schreibvorgangs
+  // immer den neuen Stand - die Datei ist nur ein Fallback/Backup für den
+  // nächsten Serverstart, kein Teil des Lese-Pfads zur Laufzeit.
+  fs.writeFile(DB_FILE, JSON.stringify(newData, null, 2), "utf-8", (err) => {
+    if (err) console.error("Failed to write fallback db.json", err);
+  });
 
   // 2. Perform intelligent incremental diff sync to Firestore to minimize write queries and ensure high scalability
   if (isFirebaseEnabled()) {

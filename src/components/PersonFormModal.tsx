@@ -259,7 +259,7 @@ export default function PersonFormModal({
               type="text"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-500/40 text-slate-100 placeholder-slate-705 font-medium font-mono"
+              className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-500/40 text-slate-100 placeholder-slate-700 font-medium font-mono"
               placeholder="+49 (0) 170 1234567"
             />
           </div>
@@ -270,7 +270,7 @@ export default function PersonFormModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-505 text-slate-100 placeholder-slate-700 font-medium"
+              className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-500/40 text-slate-100 placeholder-slate-700 font-medium"
               placeholder="Besonderheiten, Einschränkungen oder Zeltnummer..."
             />
           </div>
