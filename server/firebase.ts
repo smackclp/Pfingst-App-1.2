@@ -288,8 +288,10 @@ export async function writeFirestoreDoc(colName: string, docId: string, docData:
       }
     }
     
-    // Update metadata lastChange to trigger snapshot update
-    await triggerGlobalMetadataUpdate();
+    // Metadata-Stempel (lastChange) wird NICHT hier pro Dokument ausgelöst,
+    // sondern zentral einmal pro writeDB()-Aufruf in server/db.ts - sonst
+    // kostet jede Mutation, die mehrere Dokumente ändert, einen zusätzlichen
+    // Firestore-Write PRO Dokument statt nur einen einzigen am Ende.
   } catch (err) {
     console.error(`Error saving document ${docId} to Firestore collection ${colName}:`, err);
   }
@@ -318,7 +320,8 @@ export async function deleteFirestoreDoc(colName: string, docId: string) {
       }
     }
     
-    await triggerGlobalMetadataUpdate();
+    // Siehe writeFirestoreDoc: Metadata-Stempel bewusst nicht hier, sondern
+    // zentral einmal pro writeDB()-Aufruf.
   } catch (err) {
     console.error(`Error deleting document ${docId} from Firestore collection ${colName}:`, err);
   }
@@ -380,8 +383,10 @@ function saveLocalDBFallback(data: DB) {
   }
 }
 
-// Trigger metadata stamp to communicate update between multiple server containers
-async function triggerGlobalMetadataUpdate() {
+// Trigger metadata stamp to communicate update between multiple server containers.
+// Wird zentral EINMAL pro writeDB()-Aufruf in server/db.ts aufgerufen (nicht
+// mehr pro einzelnem Dokument-Write), um Firestore-Schreibkosten zu sparen.
+export async function triggerGlobalMetadataUpdate() {
   try {
     const stamp = Date.now();
     const docRef = db!.collection("settings").doc("global");

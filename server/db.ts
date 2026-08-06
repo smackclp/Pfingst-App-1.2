@@ -8,6 +8,7 @@ import {
   writeFirestoreDoc,
   deleteFirestoreDoc,
   writeGlobalSettings,
+  triggerGlobalMetadataUpdate,
   registerChangeListener,
   FIRESTORE_COLLECTIONS
 } from "./firebase";
@@ -102,6 +103,8 @@ export function writeDB(newData: DB) {
   if (isFirebaseEnabled()) {
     Promise.resolve().then(async () => {
       try {
+        let anyDocChanged = false;
+
         for (const colName of FIRESTORE_COLLECTIONS) {
           const oldItems: any[] = (previousDB as any)[colName] || [];
           const newItems: any[] = (newData as any)[colName] || [];
@@ -114,6 +117,7 @@ export function writeDB(newData: DB) {
             const oldItem = oldMap.get(id);
             if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(item)) {
               await writeFirestoreDoc(colName, id, item);
+              anyDocChanged = true;
             }
           }
 
@@ -121,17 +125,29 @@ export function writeDB(newData: DB) {
           for (const id of oldMap.keys()) {
             if (!newMap.has(id)) {
               await deleteFirestoreDoc(colName, id);
+              anyDocChanged = true;
             }
           }
         }
 
         // Sync settings/metadata if changed
-        if (previousDB.activeCampId !== newData.activeCampId || 
-            JSON.stringify(previousDB.vapidKeys) !== JSON.stringify(newData.vapidKeys)) {
+        const settingsChanged =
+          previousDB.activeCampId !== newData.activeCampId ||
+          JSON.stringify(previousDB.vapidKeys) !== JSON.stringify(newData.vapidKeys);
+        if (settingsChanged) {
           await writeGlobalSettings({
             activeCampId: newData.activeCampId,
             vapidKeys: newData.vapidKeys
           });
+        }
+
+        // Metadata-Stempel (lastChange, für Realtime-Sync zwischen mehreren
+        // Server-Instanzen) genau EINMAL pro writeDB()-Aufruf setzen statt
+        // wie vorher pro einzelnem Dokument-Write. writeGlobalSettings()
+        // schreibt lastChange bereits selbst mit - nur wenn NUR Dokumente
+        // (keine Settings) geändert wurden, brauchen wir den separaten Stempel.
+        if (anyDocChanged && !settingsChanged) {
+          await triggerGlobalMetadataUpdate();
         }
       } catch (syncErr) {
         console.error("Asynchronous incremental cloud sync failed:", syncErr);
