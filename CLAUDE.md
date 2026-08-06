@@ -437,6 +437,23 @@ Ziel ist nicht nur funktionierender Code.
 
 Ziel ist eine langfristig stabile, einfache und zuverlässige Helfer-App für ein echtes Festival.
 
+---
+
+15. Code-Audit (AUDIT.md)
+
+Im Projekt-Root liegt AUDIT.md mit offenen Funden aus Code-Audits (Sicherheit,
+Performance, Bugs, Code-Qualität).
+
+Regeln:
+
+- Bei Sitzungsbeginn und immer wieder zwischendurch kurz prüfen, ob AUDIT.md
+  offene Punkte enthält, und den Nutzer daran erinnern (kurz, nicht bei jeder
+  einzelnen Nachricht).
+- Erledigte Punkte werden aus AUDIT.md komplett gelöscht, nicht nur abgehakt.
+- Bei einem neuen Audit-Durchlauf: nicht die gesamte Codebase blind neu
+  prüfen. AUDIT.md enthält den Mechanismus dafür (Diff seit letztem
+  Audit-Commit, Ausnahmen für übergreifende Themen).
+
 # Technologie-Stack
 
 Die Anwendung basiert ausschließlich auf:
