@@ -13,6 +13,8 @@ import PersonCard from "./PersonCard";
 import PersonFormModal from "./PersonFormModal";
 import AccessRoleManager from "./AccessRoleManager";
 import ConfirmDialog from "./ConfirmDialog";
+import UndoToast from "./UndoToast";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 
 interface PeopleViewProps {
   users: User[];
@@ -80,6 +82,8 @@ export default function PeopleView({
     roleName: string;
   } | null>(null);
 
+  const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
+
   const roles = React.useMemo(() => {
     const list = new Set(users.map(u => u.role).filter(Boolean));
     return Array.from(list);
@@ -123,20 +127,25 @@ export default function PeopleView({
     setDeleteConfirm({ isOpen: true, id, name });
   };
 
-  const handleConfirmDelete = async () => {
-    const { id } = deleteConfirm;
+  const handleConfirmDelete = () => {
+    const { id, name } = deleteConfirm;
     setDeleteConfirm({ isOpen: false, id: "", name: "" });
-    try {
-      await onDeleteUser(id);
-    } catch (err) {
-      console.error(err);
-      setAlertState({
-        isOpen: true,
-        title: "Fehler beim Löschen",
-        message: "Fehler beim Löschen der Person."
-      });
-    }
+    scheduleDelete(id, name, async () => {
+      try {
+        await onDeleteUser(id);
+      } catch (err) {
+        console.error(err);
+        setAlertState({
+          isOpen: true,
+          title: "Fehler beim Löschen",
+          message: "Fehler beim Löschen der Person."
+        });
+      }
+    });
   };
+
+  const visibleUsers = filteredUsers.filter((u) => !isPending(u.id));
+  const visibleRoles = (functionalRoles || []).filter((r) => !isPending(r.id));
 
   return (
     <div className="space-y-6">
@@ -175,7 +184,7 @@ export default function PeopleView({
             onClick={() => setSubTab("roles")}
             className={`pb-3 font-mono font-bold text-xs uppercase tracking-wider transition ${subTab === "roles" ? "border-b-2 border-emerald-500 text-emerald-400" : "text-slate-400 hover:text-slate-200"}`}
           >
-            🛡️ Lager-Rollen ({(functionalRoles || []).length})
+            🛡️ Lager-Rollen ({visibleRoles.length})
           </button>
           {isAdmin && (
             <button
@@ -240,14 +249,14 @@ export default function PeopleView({
           </div>
 
           {/* Grid of Persons */}
-          {filteredUsers.length === 0 ? (
+          {visibleUsers.length === 0 ? (
             <div className="text-center py-20 bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xs animate-fade-in">
               <p className="text-white font-semibold text-sm">Keine Personen gefunden</p>
               <p className="text-xs text-slate-400 mt-1">Passen Sie Ihre Filter an oder errichten Sie einen neuen Eintrag.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="people-list-grid">
-              {filteredUsers.map((u) => (
+              {visibleUsers.map((u) => (
                 <PersonCard
                   key={u.id}
                   u={u}
@@ -343,7 +352,7 @@ export default function PeopleView({
 
           {/* List Roles Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="roles-cards-grid">
-            {(functionalRoles || []).map((role) => {
+            {visibleRoles.map((role) => {
               const assignedUser = users.find((u) => u.id === role.user_id);
               const isCoreRole = role.id === "role-einkauf" || role.id === "role-schichtplanung" || role.name.toLowerCase() === "einkauf" || role.name.toLowerCase() === "schichtplanung";
               
@@ -522,20 +531,22 @@ export default function PeopleView({
           )
         }
         cancelLabel="Nein, Abbrechen"
-        onConfirm={async () => {
+        onConfirm={() => {
           if (!confirmRoleDelete) return;
-          try {
-            await onDeleteRole(confirmRoleDelete.roleId);
-            setConfirmRoleDelete(null);
-          } catch (err) {
-            console.error(err);
-            setConfirmRoleDelete(null);
-            setAlertState({
-              isOpen: true,
-              title: "Systemfehler",
-              message: "Die Rolle konnte nicht gelöscht werden."
-            });
-          }
+          const { roleId, roleName } = confirmRoleDelete;
+          setConfirmRoleDelete(null);
+          scheduleDelete(roleId, roleName, async () => {
+            try {
+              await onDeleteRole(roleId);
+            } catch (err) {
+              console.error(err);
+              setAlertState({
+                isOpen: true,
+                title: "Systemfehler",
+                message: "Die Rolle konnte nicht gelöscht werden."
+              });
+            }
+          });
         }}
         onCancel={() => setConfirmRoleDelete(null)}
       />
@@ -549,6 +560,7 @@ export default function PeopleView({
         message={alertState.message}
         onCancel={() => setAlertState({ isOpen: false, message: "" })}
       />
+      <UndoToast toast={activeToast} onUndo={undo} />
     </div>
   );
 }

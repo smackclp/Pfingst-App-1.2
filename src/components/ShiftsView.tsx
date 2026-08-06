@@ -3,10 +3,12 @@ import { Plus, Clock, AlertTriangle } from "lucide-react";
 import { Shift, Service, User, ShiftAssignment, Camp } from "../types";
 import { addDays, formatDateWithDayPrefix, getDayName, timeToMinutes } from "../utils";
 import { useShiftSuggestions } from "../hooks/useShiftSuggestions";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import ShiftRow from "./ShiftRow";
 import ShiftFormModal from "./ShiftFormModal";
 import ShiftsQuickFilterBar from "./ShiftsQuickFilterBar";
 import ConfirmDialog from "./ConfirmDialog";
+import UndoToast from "./UndoToast";
 
 interface ShiftsViewProps {
   shifts: Shift[];
@@ -74,34 +76,37 @@ export default function ShiftsView({
     message: string;
   }>({ isOpen: false, title: "", message: "" });
 
+  const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
+  const visibleAssignments = assignments.filter((a) => !isPending(`assignment-${a.shift_id}-${a.user_id}`));
+
   const understaffedCount = React.useMemo(() => {
     return shifts.filter((s) => {
       const svc = services.find((sv) => sv.id === s.service_id);
       const minNeeded = s.min_persons !== undefined ? s.min_persons : (svc ? svc.min_persons : 1);
-      const count = assignments.filter((a) => a.shift_id === s.id).length;
+      const count = visibleAssignments.filter((a) => a.shift_id === s.id).length;
       return count < minNeeded;
     }).length;
-  }, [shifts, assignments, services]);
+  }, [shifts, visibleAssignments, services]);
 
   const criticalCount = React.useMemo(() => {
     return shifts.filter((s) => {
-      const count = assignments.filter((a) => a.shift_id === s.id).length;
+      const count = visibleAssignments.filter((a) => a.shift_id === s.id).length;
       return count === 0;
     }).length;
-  }, [shifts, assignments]);
+  }, [shifts, visibleAssignments]);
 
   const myShiftsCount = React.useMemo(() => {
     if (!currentUserId) return 0;
-    return shifts.filter((s) => assignments.some((a) => a.shift_id === s.id && a.user_id === currentUserId)).length;
-  }, [shifts, assignments, currentUserId]);
+    return shifts.filter((s) => visibleAssignments.some((a) => a.shift_id === s.id && a.user_id === currentUserId)).length;
+  }, [shifts, visibleAssignments, currentUserId]);
 
   const filteredShifts = React.useMemo(() => {
     return shifts
       .filter((s) => {
         if (selectedDateFilter !== "All" && s.date !== selectedDateFilter) return false;
         if (selectedServiceFilter !== "All" && s.service_id !== selectedServiceFilter) return false;
-        
-        const shiftAssignments = assignments.filter((a) => a.shift_id === s.id);
+
+        const shiftAssignments = visibleAssignments.filter((a) => a.shift_id === s.id);
 
         if (statusFilter === "understaffed") {
           const svc = services.find((sv) => sv.id === s.service_id);
@@ -119,7 +124,9 @@ export default function ShiftsView({
         if (a.date !== b.date) return a.date.localeCompare(b.date);
         return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
       });
-  }, [shifts, selectedDateFilter, selectedServiceFilter, statusFilter, assignments, services, currentUserId]);
+  }, [shifts, selectedDateFilter, selectedServiceFilter, statusFilter, visibleAssignments, services, currentUserId]);
+
+  const visibleShifts = filteredShifts.filter((s) => !isPending(s.id));
 
   const formatDateGerman = (dateStr: string): string => {
     return formatDateWithDayPrefix(dateStr, activeCamp);
@@ -137,18 +144,31 @@ export default function ShiftsView({
     });
   };
 
-  const handleConfirmDelete = async () => {
-    const { id } = deleteConfirm;
+  const handleConfirmDelete = () => {
+    const { id, name } = deleteConfirm;
     setDeleteConfirm({ isOpen: false, id: "", name: "" });
-    try {
-      await onDeleteShift(id);
-    } catch {
-      setAlertState({
-        isOpen: true,
-        title: "Systemfehler",
-        message: "Fehler beim Löschen der Schicht."
-      });
-    }
+    scheduleDelete(id, name, async () => {
+      try {
+        await onDeleteShift(id);
+      } catch {
+        setAlertState({
+          isOpen: true,
+          title: "Systemfehler",
+          message: "Fehler beim Löschen der Schicht."
+        });
+      }
+    });
+  };
+
+  // Entfernt eine Zuweisung erst nach der Rückgängig-Frist (gleiches
+  // Sicherheitsnetz wie beim Schicht-Löschen). Composite-Id, damit Schicht-
+  // und Zuweisungs-Löschungen sich im selben Hook nicht überschneiden.
+  const handleRemoveAssignmentWithUndo = (shiftId: string, userId: string): Promise<void> => {
+    const user = users.find((u) => u.id === userId);
+    scheduleDelete(`assignment-${shiftId}-${userId}`, user?.display_name || "Zuweisung", async () => {
+      await onRemoveAssignment(shiftId, userId);
+    });
+    return Promise.resolve();
   };
 
   // Advanced assignment deploy helper with 409 conflict detection
@@ -259,7 +279,7 @@ export default function ShiftsView({
       </div>
 
       {/* Shifts Loop */}
-      {filteredShifts.length === 0 ? (
+      {visibleShifts.length === 0 ? (
         <div className="text-center py-16 px-4 bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xs space-y-3">
           <div className="text-3xl">
             {statusFilter === "critical" ? "✨" : statusFilter === "understaffed" ? "🎉" : statusFilter === "my_shifts" ? "🙋‍♂️" : "📅"}
@@ -294,7 +314,7 @@ export default function ShiftsView({
         </div>
       ) : (
         <div className="space-y-4" id="shifts-accordion-container">
-          {filteredShifts.map((s) => {
+          {visibleShifts.map((s) => {
             const svc = services.find((sv) => sv.id === s.service_id);
             if (!svc) return null;
 
@@ -304,7 +324,7 @@ export default function ShiftsView({
                 s={s}
                 svc={svc}
                 services={services}
-                assignments={assignments}
+                assignments={visibleAssignments}
                 shifts={shifts}
                 users={users}
                 isAdmin={isAdmin}
@@ -312,7 +332,7 @@ export default function ShiftsView({
                 activeShiftWizardId={activeShiftWizardId}
                 onUpdateShift={onUpdateShift}
                 onDeleteShift={handleDeleteShift}
-                onRemoveAssignment={onRemoveAssignment}
+                onRemoveAssignment={handleRemoveAssignmentWithUndo}
                 onToggleAssignmentAccepted={onToggleAssignmentAccepted}
                 suggestions={suggestions}
                 loadingSuggestions={loadingSuggestions}
@@ -399,6 +419,7 @@ export default function ShiftsView({
         message={alertState.message}
         onCancel={() => setAlertState({ isOpen: false, title: "", message: "" })}
       />
+      <UndoToast toast={activeToast} onUndo={undo} />
     </div>
   );
 }

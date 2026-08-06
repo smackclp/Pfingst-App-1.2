@@ -2,7 +2,9 @@ import React from "react";
 import { Church, Upload, Trash2, Edit2, Check, X, Plus, FileSpreadsheet, AlertCircle, Info, Search, Download } from "lucide-react";
 import { Community } from "../types";
 import { useCommunityImport } from "../hooks/useCommunityImport";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import ConfirmDialog from "./ConfirmDialog";
+import UndoToast from "./UndoToast";
 
 interface CommunitiesViewProps {
   communities: Community[];
@@ -46,6 +48,7 @@ export default function CommunitiesView({
   // Dialog states
   const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
   const [clearConfirm, setClearConfirm] = React.useState(false);
+  const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
 
   // Submit manual adding
   const handleManualAdd = async (e: React.FormEvent) => {
@@ -96,13 +99,16 @@ export default function CommunitiesView({
     setEditingId(null);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await onDeleteCommunity(id);
-      setDeleteConfirmId(null);
-    } catch (err) {
-      console.error(err);
-    }
+  const handleDelete = (id: string) => {
+    const community = communities.find((c) => c.id === id);
+    setDeleteConfirmId(null);
+    scheduleDelete(id, community?.name || "Gemeinde", async () => {
+      try {
+        await onDeleteCommunity(id);
+      } catch (err) {
+        console.error(err);
+      }
+    });
   };
 
   const handleClearAll = async () => {
@@ -128,6 +134,8 @@ export default function CommunitiesView({
       })
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [communities, searchTerm]);
+
+  const visibleCommunities = filteredCommunities.filter((c) => !isPending(c.id));
 
   return (
     <div className="space-y-6">
@@ -234,7 +242,7 @@ export default function CommunitiesView({
           </div>
 
           {/* Communities List */}
-          {filteredCommunities.length === 0 ? (
+          {visibleCommunities.length === 0 ? (
             <div className="text-center py-20 bg-slate-900/40 border border-slate-800/80 rounded-2xl shadow-xs">
               <Church className="h-8 w-8 text-slate-500 mx-auto opacity-40 mb-3" />
               <p className="text-white font-semibold text-sm">Keine Gemeinden eingetragen</p>
@@ -258,7 +266,7 @@ export default function CommunitiesView({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50 text-xs">
-                    {filteredCommunities.map((com, index) => {
+                    {visibleCommunities.map((com, index) => {
                       const isEditing = editingId === com.id;
 
                       return (
@@ -532,7 +540,7 @@ export default function CommunitiesView({
       <ConfirmDialog
         isOpen={deleteConfirmId !== null}
         title="Gemeinde löschen?"
-        message="Möchten Sie den ausgewählten Gemeinde-Eintrag wirklich dauerhaft aus der Auswertung entfernen? Dieser Vorgang kann nicht rückgängig gemacht werden."
+        message="Möchten Sie den ausgewählten Gemeinde-Eintrag wirklich dauerhaft aus der Auswertung entfernen?"
         onConfirm={() => deleteConfirmId && handleDelete(deleteConfirmId)}
         onCancel={() => setDeleteConfirmId(null)}
       />
@@ -550,6 +558,7 @@ export default function CommunitiesView({
         onConfirm={handleClearAll}
         onCancel={() => setClearConfirm(false)}
       />
+      <UndoToast toast={activeToast} onUndo={undo} />
     </div>
   );
 }

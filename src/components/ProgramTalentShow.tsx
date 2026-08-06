@@ -3,6 +3,8 @@ import { Sparkles, Plus, Trash2, Edit, ChevronUp, ChevronDown, Printer, Music, X
 import { TalentAct, Community } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import ProgramTalentShowPlaylist from "./ProgramTalentShowPlaylist";
+import UndoToast from "./UndoToast";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 
 interface ProgramTalentShowProps {
   talentActs: TalentAct[];
@@ -59,6 +61,7 @@ export default function ProgramTalentShow({
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingAct, setEditingAct] = React.useState<TalentAct | null>(null);
   const [isPlaylistOpen, setIsPlaylistOpen] = React.useState(false);
+  const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
 
   // Talent Show Form States
   const [communityName, setCommunityName] = React.useState("");
@@ -229,6 +232,7 @@ export default function ProgramTalentShow({
           ) : (
             <div className="grid grid-cols-1 gap-3">
               {talentActs.map((act, idx) => {
+                if (isPending(act.id)) return null;
                 const { average } = extractAgesAndAverage(act.talents_names);
                 return (
                   <div key={act.id} className="bg-slate-900/40 border border-slate-850 hover:border-slate-800 p-4 rounded-2xl transition flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -279,7 +283,7 @@ export default function ProgramTalentShow({
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => onDeleteTalentAct(act.id)}
+                          onClick={() => scheduleDelete(act.id, act.talents_names || "Beitrag", () => onDeleteTalentAct(act.id))}
                           className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 cursor-pointer"
                           title="Löschen"
                         >
@@ -481,6 +485,8 @@ export default function ProgramTalentShow({
       </AnimatePresence>
 
       {isPlaylistOpen && <ProgramTalentShowPlaylist acts={talentActs} onClose={() => setIsPlaylistOpen(false)} />}
+
+      <UndoToast toast={activeToast} onUndo={undo} />
     </div>
   );
 }

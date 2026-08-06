@@ -8,8 +8,10 @@ import {
 } from "lucide-react";
 import { Service, User, Shift, Camp } from "../types";
 import { addDays } from "../utils";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import ServiceCard from "./ServiceCard";
 import ServiceFormModal from "./ServiceFormModal";
+import UndoToast from "./UndoToast";
 
 interface ServicesViewProps {
   services: Service[];
@@ -58,6 +60,7 @@ export default function ServicesView({
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingService, setEditingService] = React.useState<Service | null>(null);
+  const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
 
   const categories = React.useMemo(() => {
     return Array.from(new Set(services.map(s => s.category).filter(Boolean)));
@@ -79,6 +82,9 @@ export default function ServicesView({
       return true;
     }).sort((a, b) => a.title.localeCompare(b.title));
   }, [services, searchTerm, categoryFilter]);
+
+  const visibleServices = filteredServices.filter(s => !isPending(s.id));
+  const visibleShifts = shifts.filter(s => !isPending(s.id));
 
   const openAddModal = () => {
     setEditingService(null);
@@ -108,22 +114,24 @@ export default function ServicesView({
     });
   };
 
-  const handleConfirmDelete = async () => {
-    const { id, type } = deleteConfirm;
+  const handleConfirmDelete = () => {
+    const { id, type, name } = deleteConfirm;
     setDeleteConfirm({ isOpen: false, type: null, id: "", name: "" });
-    try {
-      if (type === "shift") {
-        await onDeleteShift(id);
-      } else if (type === "service") {
-        await onDeleteService(id);
+    scheduleDelete(id, name, async () => {
+      try {
+        if (type === "shift") {
+          await onDeleteShift(id);
+        } else if (type === "service") {
+          await onDeleteService(id);
+        }
+      } catch (err) {
+        setAlertState({
+          isOpen: true,
+          title: "Fehler beim Löschen",
+          message: type === "shift" ? "Fehler beim Löschen der Schicht." : "Dienst konnte nicht gelöscht werden."
+        });
       }
-    } catch (err) {
-      setAlertState({
-        isOpen: true,
-        title: "Fehler beim Löschen",
-        message: type === "shift" ? "Fehler beim Löschen der Schicht." : "Dienst konnte nicht gelöscht werden."
-      });
-    }
+    });
   };
 
   return (
@@ -185,19 +193,19 @@ export default function ServicesView({
       </div>
 
       {/* Services List / Cards */}
-      {filteredServices.length === 0 ? (
+      {visibleServices.length === 0 ? (
         <div className="text-center py-20 bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xs">
           <p className="text-white font-semibold text-sm">Keine Diensttypen gefunden</p>
           <p className="text-xs text-slate-400 mt-1">Passen Sie Ihre Suchbegriffe an oder erstellen Sie einen neuen Diensttyp.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="services-grid">
-          {filteredServices.map(svc => (
+          {visibleServices.map(svc => (
             <ServiceCard
               key={svc.id}
               svc={svc}
               users={users}
-              shifts={shifts}
+              shifts={visibleShifts}
               isAdmin={isAdmin}
               startDate={startDate}
               sunDate={sunDate}
@@ -290,6 +298,7 @@ export default function ServicesView({
         </div>
       )}
 
+      <UndoToast toast={activeToast} onUndo={undo} />
     </div>
   );
 }

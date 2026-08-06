@@ -3,6 +3,8 @@ import { Search, ExternalLink, ClipboardList, Trash2 } from "lucide-react";
 import { User, MaterialItem } from "../types";
 import MaterialStatusBadge from "./MaterialStatusBadge";
 import ConfirmDialog from "./ConfirmDialog";
+import UndoToast from "./UndoToast";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 
 interface MaterialsListProps {
   materials: MaterialItem[];
@@ -35,6 +37,7 @@ export default function MaterialsList({
   showToast,
 }: MaterialsListProps) {
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
+  const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
   // Helper: toggle status ('pending' -> 'ordered' -> 'received' -> 'pending')
   const handleToggleStatus = async (item: MaterialItem) => {
     const currentStatus = item.status || "pending";
@@ -60,17 +63,22 @@ export default function MaterialsList({
     setDeleteTargetId(id);
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = () => {
     if (!deleteTargetId) return;
     const id = deleteTargetId;
+    const item = materials.find((m) => m.id === id);
     setDeleteTargetId(null);
-    try {
-      await onDeleteMaterial(id);
-    } catch (err) {
-      console.error(err);
-      showToast("Fehler beim Löschen des Artikels.");
-    }
+    scheduleDelete(id, item?.item_name || "Artikel", async () => {
+      try {
+        await onDeleteMaterial(id);
+      } catch (err) {
+        console.error(err);
+        showToast("Fehler beim Löschen des Artikels.");
+      }
+    });
   };
+
+  const visibleMaterials = sortedAndFilteredMaterials.filter((m) => !isPending(m.id));
 
   return (
     <div className="space-y-6">
@@ -129,7 +137,7 @@ export default function MaterialsList({
 
       {/* Table/List view of orders */}
       <div className="space-y-3.5">
-        {sortedAndFilteredMaterials.length === 0 ? (
+        {visibleMaterials.length === 0 ? (
           <div className="text-center p-12 bg-slate-900/40 rounded-2xl border border-slate-800 space-y-3">
             <ClipboardList className="h-10 w-10 text-slate-600 mx-auto" />
             <p className="text-sm font-semibold text-slate-400">Keine Bestellungen gefunden.</p>
@@ -138,7 +146,7 @@ export default function MaterialsList({
             </p>
           </div>
         ) : (
-          sortedAndFilteredMaterials.map((item) => {
+          visibleMaterials.map((item) => {
             const creator = users.find((u) => u.id === item.user_id);
             const isItemOwner = item.user_id === currentUserId;
             const currentUser = users.find((u) => u.id === currentUserId);
@@ -238,6 +246,7 @@ export default function MaterialsList({
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTargetId(null)}
       />
+      <UndoToast toast={activeToast} onUndo={undo} />
     </div>
   );
 }

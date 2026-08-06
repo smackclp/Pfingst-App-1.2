@@ -3,6 +3,8 @@ import { Plus, Edit, Trash2, MapPin, Package, CheckSquare, X, Search } from "luc
 import { motion, AnimatePresence } from "motion/react";
 import { User } from "../types";
 import ConfirmDialog from "./ConfirmDialog";
+import UndoToast from "./UndoToast";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 
 export interface SogStation {
   id: string;
@@ -37,6 +39,7 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
   const [stationHelperIds, setStationHelperIds] = React.useState<string[]>([]);
   const [helperSearchQuery, setHelperSearchQuery] = React.useState<string>("");
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
+  const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
 
   const openAddStationModal = () => {
     const nextNum = sogStations.length > 0 ? Math.max(...sogStations.map((s) => s.number)) + 1 : 1;
@@ -104,9 +107,13 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
 
   const confirmDeleteStation = () => {
     if (!deleteTargetId) return;
-    const updated = sogStations.filter((s) => s.id !== deleteTargetId);
-    onUpdateStations(updated);
+    const id = deleteTargetId;
+    const station = sogStations.find((s) => s.id === id);
     setDeleteTargetId(null);
+    scheduleDelete(id, station?.title || "Station", () => {
+      const updated = sogStations.filter((s) => s.id !== id);
+      onUpdateStations(updated);
+    });
   };
 
   const toggleStationHelper = (userId: string) => {
@@ -127,13 +134,15 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
     onUpdateStations(updated);
   };
 
+  const visibleStations = sogStations.filter((s) => !isPending(s.id));
+
   return (
     <div className="space-y-6 no-print">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-850">
         <div>
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <span>🎯 Stationen & Helferzuordnung</span>
-            <span className="text-xs font-mono bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded border border-emerald-800/40">{sogStations.length} Stationen</span>
+            <span className="text-xs font-mono bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded border border-emerald-800/40">{visibleStations.length} Stationen</span>
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">Alle Helfer können Spiele anlegen, bearbeiten, Material eintragen oder sich eintragen.</p>
         </div>
@@ -147,7 +156,7 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
         </button>
       </div>
 
-      {sogStations.length === 0 ? (
+      {visibleStations.length === 0 ? (
         <div className="p-12 text-center bg-slate-900/20 border border-slate-850 border-dashed rounded-2xl">
           <CheckSquare className="h-10 w-10 text-slate-500 mx-auto opacity-40 mb-3" />
           <p className="text-sm font-semibold text-slate-300">Keine Stationen angelegt</p>
@@ -155,7 +164,7 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {sogStations.map((st) => {
+          {visibleStations.map((st) => {
             const isMyStation = Boolean(currentUserId && st.helperIds && st.helperIds.includes(currentUserId));
             const assignedHelpers = users.filter((u) => st.helperIds && st.helperIds.includes(u.id));
 
@@ -444,6 +453,7 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
         onConfirm={confirmDeleteStation}
         onCancel={() => setDeleteTargetId(null)}
       />
+      <UndoToast toast={activeToast} onUndo={undo} />
     </div>
   );
 }
