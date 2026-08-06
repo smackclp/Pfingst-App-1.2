@@ -88,6 +88,25 @@ _Keine offenen Punkte mehr - siehe Audit-Historie._
 
 ---
 
+## Geplante Verbesserungen (kein Audit-Fund, aus App-Bewertung 2026-08-06)
+
+Keine Bugs/Sicherheits-/Performance-Funde, sondern Funktionswünsche, die bei
+einer Gesamtbewertung der App als offen identifiziert wurden. Passend zu den
+"Geplanten Kernfunktionen" in CLAUDE.md Abschnitt 10.
+
+- [ ] **Automatische Erinnerungen bei unbestätigten Schichten.** Wenn ein
+  Helfer eine Schicht lange nicht bestätigt, soll automatisch eine
+  freundliche Erinnerung verschickt werden (entlastet Bereichsleitungen,
+  siehe CLAUDE.md Abschnitt 10).
+- [ ] **Einfaches Fehler-Monitoring in Produktion.** Bislang kein
+  zentrales Logging/Alerting für Laufzeitfehler im Live-Betrieb.
+- [ ] **Wetter-Hinweis auf dem Dashboard.** Für die Outdoor-Nutzung beim
+  Festival relevant (siehe CLAUDE.md Abschnitt 4, Outdoor-Fokus).
+- [ ] **Kurzes Feedback-/Fehlermelde-Formular für Helfer.** Niedrigschwellige
+  Möglichkeit, Probleme oder Feedback direkt aus der App zu melden.
+
+---
+
 ## Bewusste Entscheidungen (Nutzer-Freigabe, kein offener Punkt mehr)
 
 - **`xlsx`-Abhängigkeit (`package.json`, `^0.18.5`):** HIGH-severity
