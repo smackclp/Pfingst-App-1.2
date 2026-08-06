@@ -36,6 +36,9 @@ router.post("/services", requireMinRole("bereichsleiter"), (req, res) => {
     max_persons: Number(max_persons) || 3,
     responsible_id: responsible_id || "",
   };
+  if (newService.max_persons < newService.min_persons) {
+    return res.status(400).json({ error: "Max. Helfer*innen darf nicht kleiner als Min. Helfer*innen sein." });
+  }
   db.services.push(newService);
   writeDB(db);
   res.status(201).json(newService);
@@ -47,11 +50,15 @@ router.put("/services/:id", requireMinRole("bereichsleiter"), (req, res) => {
   if (index === -1) {
     return res.status(404).json({ error: "Service not found" });
   }
-  db.services[index] = {
+  const updatedService = {
     ...db.services[index],
     ...req.body,
     id: req.params.id,
   };
+  if (Number(updatedService.max_persons) < Number(updatedService.min_persons)) {
+    return res.status(400).json({ error: "Max. Helfer*innen darf nicht kleiner als Min. Helfer*innen sein." });
+  }
+  db.services[index] = updatedService;
   writeDB(db);
   res.json(db.services[index]);
 });
@@ -398,7 +405,7 @@ router.put("/assignments/:id/accepted", (req, res) => {
   const db = readDB();
   const assignment = db.assignments.find((a) => a.id === req.params.id);
   if (!assignment) {
-    return res.status(444).json({ error: "Zuordnung nicht gefunden." });
+    return res.status(404).json({ error: "Zuordnung nicht gefunden." });
   }
   if (!isSelfOrManager(req, assignment.user_id)) {
     return res.status(403).json({ error: "Du kannst nur deinen eigenen Status ändern." });

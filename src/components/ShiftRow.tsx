@@ -4,7 +4,6 @@ import { Shift, Service, User, ShiftAssignment } from "../types";
 import ShiftDeployWizard from "./ShiftDeployWizard";
 
 interface ShiftRowProps {
-  key?: any;
   s: Shift;
   svc: Service;
   services: Service[];
@@ -26,7 +25,7 @@ interface ShiftRowProps {
   handleAssignUser: (shiftId: string, userId: string) => Promise<void>;
 }
 
-export default function ShiftRow({
+function ShiftRow({
   s,
   svc,
   services,
@@ -440,3 +439,9 @@ export default function ShiftRow({
     </div>
   );
 }
+
+// React.memo: verhindert unnötige Neuberechnung/Rendering einzelner Zeilen,
+// wenn nur eine andere Zeile (z.B. per Zuweisungs-Assistent) betroffen ist.
+// Wirkt nur, wenn die Aufrufer stabile Callback-Referenzen übergeben (siehe
+// useCallback-Wraps in ShiftsView.tsx).
+export default React.memo(ShiftRow);

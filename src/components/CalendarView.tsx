@@ -79,6 +79,19 @@ export default function CalendarView({
   const [expandedShifts, setExpandedShifts] = React.useState<Record<string, boolean>>({});
   const { suggestions, loadingSuggestions } = useShiftSuggestions(assignPopoverShiftId);
 
+  // Stabile Referenzen statt Neu-Erzeugung bei jedem Render, damit
+  // CalendarCard (React.memo) beim Öffnen einer einzelnen Karte/eines
+  // Popovers nicht alle anderen, unveränderten Karten mit neu rendert.
+  const handleToggleExpand = React.useCallback((shiftId: string) => {
+    setExpandedShifts((prev) => ({ ...prev, [shiftId]: !prev[shiftId] }));
+  }, []);
+  const handleOpenPopover = React.useCallback((shiftId: string) => {
+    setAssignPopoverShiftId(shiftId);
+  }, []);
+  const handleClosePopover = React.useCallback(() => {
+    setAssignPopoverShiftId(null);
+  }, []);
+
   React.useEffect(() => {
     if (currentUserId) {
       setSelectedPersonId(currentUserId);
@@ -117,13 +130,14 @@ export default function CalendarView({
     }
   }, [onSelectShiftId, shifts, onClearSelectShiftId]);
 
-  // Utility calculations
-  const calculateShiftDurationHours = (start: string, end: string): number => {
+  // Utility calculations - useCallback für stabile Referenzen (siehe
+  // handleToggleExpand weiter oben für die Begründung).
+  const calculateShiftDurationHours = React.useCallback((start: string, end: string): number => {
     if (start === "Dauerhaft" || !start || !end) return 0;
     try {
       const [startH, startM] = start.split(":").map(Number);
       let [endH, endM] = end.split(":").map(Number);
-      
+
       // Handles overlapping cross-midnight (e.g., 22:00 - 00:00 or 19:00 - 00:00 or 20:00 - 02:00)
       if (endH < startH || (endH === startH && endM < startM)) {
         endH += 24;
@@ -133,11 +147,12 @@ export default function CalendarView({
     } catch {
       return 1;
     }
-  };
+  }, []);
 
-  const formatDateGerman = (dateStr: string): string => {
-    return formatDateWithDayPrefix(dateStr, activeCamp);
-  };
+  const formatDateGerman = React.useCallback(
+    (dateStr: string): string => formatDateWithDayPrefix(dateStr, activeCamp),
+    [activeCamp]
+  );
 
   const getDayLabel = (dateStr: string): string => {
     if (dateStr === "Haupt") return "Allgemein";
@@ -471,16 +486,14 @@ export default function CalendarView({
                   assignments={assignments}
                   users={users}
                   isExpanded={!!expandedShifts[s.id]}
-                  onToggleExpand={(shiftId) =>
-                    setExpandedShifts((prev) => ({ ...prev, [shiftId]: !prev[shiftId] }))
-                  }
+                  onToggleExpand={handleToggleExpand}
                   startDate={startDate}
                   sunDate={sunDate}
                   endDate={endDate}
                   isAdmin={isAdmin}
                   isPopoverActive={assignPopoverShiftId === s.id}
-                  onOpenPopover={(shiftId) => setAssignPopoverShiftId(shiftId)}
-                  onClosePopover={() => setAssignPopoverShiftId(null)}
+                  onOpenPopover={handleOpenPopover}
+                  onClosePopover={handleClosePopover}
                   onRemoveAssignment={onRemoveAssignment}
                   onAddAssignment={onAddAssignment}
                   onAssignError={showToast}

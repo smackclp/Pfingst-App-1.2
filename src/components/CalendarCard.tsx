@@ -4,13 +4,12 @@ import { Shift, Service, User, ShiftAssignment } from "../types";
 import { Tooltip } from "./Tooltip";
 
 interface CalendarCardProps {
-  key?: any;
   s: Shift;
   svc: Service;
   services: Service[];
   shifts: Shift[];
   assignments: ShiftAssignment[];
-  users: any[];
+  users: User[];
   isExpanded: boolean;
   onToggleExpand: (shiftId: string) => void;
   startDate: string;
@@ -20,19 +19,19 @@ interface CalendarCardProps {
   isPopoverActive: boolean;
   onOpenPopover: (shiftId: string) => void;
   onClosePopover: () => void;
-  onRemoveAssignment: (shiftId: string, userId: string) => any;
-  onAddAssignment: (shiftId: string, userId: string) => any;
+  onRemoveAssignment: (shiftId: string, userId: string) => Promise<void>;
+  onAddAssignment: (shiftId: string, userId: string) => Promise<void>;
   onAssignError?: (message: string) => void;
-  onToggleAssignmentAccepted?: (assignmentId: string, accepted: boolean) => any;
+  onToggleAssignmentAccepted?: (assignmentId: string, accepted: boolean) => Promise<void>;
   selectedPersonId?: string;
   currentUserId?: string | null;
-  suggestions: any[];
+  suggestions: Array<{ user_id: string; year: number; camp_title: string }>;
   loadingSuggestions: boolean;
   calculateShiftDurationHours: (start: string, end: string) => number;
   formatDateGerman: (dateStr: string) => string;
 }
 
-export default function CalendarCard({
+function CalendarCard({
   s,
   svc,
   services,
@@ -493,3 +492,9 @@ export default function CalendarCard({
     </div>
   );
 }
+
+// React.memo: verhindert unnötige Neuberechnung/Rendering einzelner Karten,
+// wenn nur eine andere Karte (z.B. per Popover/Ausklappen) betroffen ist.
+// Wirkt nur, wenn die Aufrufer stabile Callback-Referenzen übergeben (siehe
+// handleToggleExpand/handleOpenPopover/handleClosePopover in CalendarView.tsx).
+export default React.memo(CalendarCard);

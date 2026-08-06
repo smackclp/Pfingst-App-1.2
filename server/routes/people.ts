@@ -1,16 +1,28 @@
 import { Router } from "express";
 import { readDB, writeDB } from "../db";
 import { User, FunctionalRole, Community } from "../types";
-import { requireRole, requireMinRole, sanitizeUsers } from "../auth";
+import { requireRole, requireMinRole, sanitizeUsers, isAtLeast } from "../auth";
 
 const router = Router();
 
 // --- USERS ---
 // Lesen dürfen alle angemeldeten Personen (z.B. um Namen in Auswahllisten zu sehen),
-// aber NIE die PIN-Hashes anderer Leute.
+// aber NIE die PIN-Hashes anderer Leute. "notes" ist freies Admin-Textfeld
+// (z.B. gesundheitliche Hinweise, persönliche Einschränkungen) und war
+// bisher auch für andere Helfer*innen sichtbar, nicht nur für Bereichs-/
+// Lagerleitung - jetzt nur noch für die eigene Person und Bereichsleitung+
+// sichtbar. E-Mail/Telefon bleiben bewusst für alle sichtbar (kleines,
+// bekanntes Team, wird für die Suche und Kontaktaufnahme untereinander
+// genutzt).
 router.get("/users", (req, res) => {
   const db = readDB();
-  res.json(sanitizeUsers(db.users as any));
+  const sanitized = sanitizeUsers(db.users as any) as any[];
+  const canSeeNotes = isAtLeast(req.authUser!.accessRole, "bereichsleiter");
+  if (canSeeNotes) {
+    return res.json(sanitized);
+  }
+  const ownId = req.authUser!.id;
+  res.json(sanitized.map((u) => (u.id === ownId ? u : { ...u, notes: undefined })));
 });
 
 router.post("/users", requireRole("lagerleitung"), (req, res) => {

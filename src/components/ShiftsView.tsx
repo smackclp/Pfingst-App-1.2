@@ -148,21 +148,24 @@ export default function ShiftsView({
 
   const visibleShifts = filteredShifts.filter((s) => !isPending(s.id));
 
-  const formatDateGerman = (dateStr: string): string => {
-    return formatDateWithDayPrefix(dateStr, activeCamp);
-  };
+  // Als useCallback/direkte Funktionsreferenz statt Neu-Erzeugung bei jedem
+  // Render, damit ShiftRow (React.memo) tatsächlich Nicht-betroffene Zeilen
+  // überspringen kann (z.B. wenn nur der Zuweisungs-Assistent einer anderen
+  // Schicht geöffnet wird).
+  const formatDateGerman = React.useCallback(
+    (dateStr: string): string => formatDateWithDayPrefix(dateStr, activeCamp),
+    [activeCamp]
+  );
 
-  const getDayLabel = (dateStr: string): string => {
-    return getDayName(dateStr);
-  };
+  const getDayLabel = getDayName;
 
-  const handleDeleteShift = async (id: string, label: string) => {
+  const handleDeleteShift = React.useCallback(async (id: string, label: string) => {
     setDeleteConfirm({
       isOpen: true,
       id,
       name: label
     });
-  };
+  }, []);
 
   const handleConfirmDelete = () => {
     const { id, name } = deleteConfirm;
@@ -181,26 +184,29 @@ export default function ShiftsView({
   };
 
   // Advanced assignment deploy helper with 409 conflict detection
-  const handleAssignUser = async (shiftId: string, userId: string, force = false) => {
-    try {
-      await onAddAssignment(shiftId, userId, force);
-    } catch (err: any) {
-      if (err.status === 409) {
-        setOverrideModal({
-          isOpen: true,
-          shiftId,
-          userId,
-          message: err.message || "Es liegt ein Konflikt für diese Person vor."
-        });
-      } else {
-        setAlertState({
-          isOpen: true,
-          title: "Systemfehler",
-          message: err.message || "Bereits zugewiesen oder unvollständig."
-        });
+  const handleAssignUser = React.useCallback(
+    async (shiftId: string, userId: string, force = false) => {
+      try {
+        await onAddAssignment(shiftId, userId, force);
+      } catch (err: any) {
+        if (err.status === 409) {
+          setOverrideModal({
+            isOpen: true,
+            shiftId,
+            userId,
+            message: err.message || "Es liegt ein Konflikt für diese Person vor."
+          });
+        } else {
+          setAlertState({
+            isOpen: true,
+            title: "Systemfehler",
+            message: err.message || "Bereits zugewiesen oder unvollständig."
+          });
+        }
       }
-    }
-  };
+    },
+    [onAddAssignment]
+  );
 
   const handleConfirmOverride = async () => {
     const { shiftId, userId } = overrideModal;

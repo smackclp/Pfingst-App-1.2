@@ -15,6 +15,19 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
+// Grundlegende Sicherheits-Header ohne neue Abhängigkeit (kein helmet nötig
+// für diese wenigen, statischen Werte). Eine vollständige Content-Security-
+// Policy ist bewusst NICHT dabei - index.html enthält ein festes Inline-
+// <script>, das dafür einen eigenen, sorgfältig getesteten Hash bräuchte
+// (siehe AUDIT.md), das im Vorbeigehen falsch zu setzen wäre riskanter als
+// es wegzulassen.
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+
 // API mounting
 app.use("/api", apiRouter);
 app.use("/api", exportRouter); // mounts /api/export-html

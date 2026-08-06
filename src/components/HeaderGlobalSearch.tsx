@@ -19,6 +19,11 @@ interface HeaderGlobalSearchProps {
   setCurrentTab: (tab: string) => void;
 }
 
+/** Prüft, ob eines der übergebenen Felder (case-insensitive) die Suchanfrage enthält. */
+function matchesQuery(query: string, ...fields: Array<string | undefined>): boolean {
+  return fields.some((field) => !!field && field.toLowerCase().includes(query));
+}
+
 /**
  * Globale Suchleiste im Header. Durchsucht Personen, Dienste, Schichten,
  * Bestellliste, Gemeinden und Programm (Talentshow/Spiel ohne Grenzen).
@@ -62,23 +67,14 @@ export default function HeaderGlobalSearch({
   const filteredUsers = React.useMemo(() => {
     if (!query) return [];
     return users
-      .filter(
-        (u) =>
-          u.display_name.toLowerCase().includes(query) ||
-          u.first_name.toLowerCase().includes(query) ||
-          u.last_name.toLowerCase().includes(query) ||
-          u.role.toLowerCase().includes(query) ||
-          (u.email && u.email.toLowerCase().includes(query)) ||
-          (u.phone && u.phone.toLowerCase().includes(query)) ||
-          (u.notes && u.notes.toLowerCase().includes(query))
-      )
+      .filter((u) => matchesQuery(query, u.display_name, u.first_name, u.last_name, u.role, u.email, u.phone, u.notes))
       .slice(0, 5);
   }, [users, query]);
 
   // Search through Diensttypen (Services)
   const filteredServices = React.useMemo(() => {
     if (!query) return [];
-    return services.filter((s) => s.title.toLowerCase().includes(query) || s.description.toLowerCase().includes(query) || s.category.toLowerCase().includes(query) || s.location.toLowerCase().includes(query)).slice(0, 5);
+    return services.filter((s) => matchesQuery(query, s.title, s.description, s.category, s.location)).slice(0, 5);
   }, [services, query]);
 
   // Search through Schichten (Shifts) by service title or notes - bewusst
@@ -88,9 +84,8 @@ export default function HeaderGlobalSearch({
     if (!query) return [];
     return shifts
       .filter((sh) => {
-        const service = services.find((srv) => srv.id === sh.service_id);
-        const serviceTitle = service ? service.title : "";
-        return serviceTitle.toLowerCase().includes(query) || (sh.notes && sh.notes.toLowerCase().includes(query));
+        const serviceTitle = services.find((srv) => srv.id === sh.service_id)?.title;
+        return matchesQuery(query, serviceTitle, sh.notes);
       })
       .slice(0, 6);
   }, [shifts, services, query]);
@@ -98,35 +93,27 @@ export default function HeaderGlobalSearch({
   // Search through Bestellliste (Material)
   const filteredMaterials = React.useMemo(() => {
     if (!query) return [];
-    return materials.filter((m) => m.item_name.toLowerCase().includes(query) || m.purpose.toLowerCase().includes(query)).slice(0, 5);
+    return materials.filter((m) => matchesQuery(query, m.item_name, m.purpose)).slice(0, 5);
   }, [materials, query]);
 
   // Search through Gemeinden (Communities)
   const filteredCommunities = React.useMemo(() => {
     if (!query) return [];
-    return communities.filter((c) => c.name.toLowerCase().includes(query) || c.location.toLowerCase().includes(query)).slice(0, 5);
+    return communities.filter((c) => matchesQuery(query, c.name, c.location)).slice(0, 5);
   }, [communities, query]);
 
   // Search through Programm: Talentshow-Beiträge
   const filteredTalentActs = React.useMemo(() => {
     if (!query) return [];
     return talentActs
-      .filter(
-        (a) =>
-          a.community_name.toLowerCase().includes(query) ||
-          a.talents_names.toLowerCase().includes(query) ||
-          a.act_type.toLowerCase().includes(query) ||
-          (a.song_title && a.song_title.toLowerCase().includes(query))
-      )
+      .filter((a) => matchesQuery(query, a.community_name, a.talents_names, a.act_type, a.song_title))
       .slice(0, 3);
   }, [talentActs, query]);
 
   // Search through Programm: Spiel ohne Grenzen-Stationen
   const filteredSogStations = React.useMemo(() => {
     if (!query) return [];
-    return sogStations
-      .filter((s) => s.title.toLowerCase().includes(query) || s.description.toLowerCase().includes(query) || s.location.toLowerCase().includes(query))
-      .slice(0, 3);
+    return sogStations.filter((s) => matchesQuery(query, s.title, s.description, s.location)).slice(0, 3);
   }, [sogStations, query]);
 
   const hasResults =

@@ -47,7 +47,7 @@ export default function ServiceFormModal({
   const [minPersons, setMinPersons] = React.useState(1);
   const [maxPersons, setMaxPersons] = React.useState(3);
   const [responsibleId, setResponsibleId] = React.useState("");
-  const [errors, setErrors] = React.useState<{ title?: string }>({});
+  const [errors, setErrors] = React.useState<{ title?: string; capacity?: string }>({});
 
   // Populate form states when editingService or open state changes
   React.useEffect(() => {
@@ -85,6 +85,10 @@ export default function ServiceFormModal({
     e.preventDefault();
     if (!title.trim()) {
       setErrors({ title: "Bitte einen Diensttitel eingeben." });
+      return;
+    }
+    if (Number(maxPersons) < Number(minPersons)) {
+      setErrors({ capacity: "Max. Helfer*innen darf nicht kleiner als Min. Helfer*innen sein." });
       return;
     }
     setErrors({});
@@ -226,9 +230,17 @@ export default function ServiceFormModal({
                 min={1}
                 value={maxPersons}
                 onChange={(e) => setMaxPersons(Number(e.target.value))}
-                className="w-full text-xs p-2 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-500/40 font-mono text-white font-medium"
+                className={`w-full text-xs p-2 bg-slate-950 border rounded-xl focus:outline-none focus:border-cyan-500/40 font-mono text-white font-medium ${
+                  errors.capacity ? "border-rose-500/60" : "border-slate-800"
+                }`}
               />
             </div>
+
+            {errors.capacity && (
+              <div className="col-span-2">
+                <FieldError message={errors.capacity} />
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">
