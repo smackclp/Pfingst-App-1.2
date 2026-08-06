@@ -153,11 +153,27 @@ export default function App() {
     return false;
   });
 
-  const [showOnboarding, setShowOnboarding] = React.useState(
-    () => safeStorage.getItem(STORAGE_KEYS.ONBOARDING_SEEN) !== "true"
-  );
+  // Onboarding wird pro Lagerjahr erneut gezeigt (nicht nur einmalig pro Gerät):
+  // Rückkehrende Helfer nutzen die App oft nur einmal jährlich rund um Pfingsten
+  // und haben die Bedienung nach der Pause meist vergessen.
+  const [showOnboarding, setShowOnboarding] = React.useState(false);
+  React.useEffect(() => {
+    if (loading || !activeCampId) return;
+    const seenCampId = safeStorage.getItem(STORAGE_KEYS.ONBOARDING_SEEN_CAMP_ID);
+    if (seenCampId === activeCampId) return;
+    // Migration von Bestandsnutzern (altes Einmal-Flag ohne Lagerjahr-Bezug):
+    // aktuelle Saison als bereits gesehen markieren, statt sie direkt nach dem
+    // Update erneut zu unterbrechen. Ab dem nächsten Lagerjahr-Wechsel greift
+    // dann wieder die reguläre Logik oben.
+    if (seenCampId === null && safeStorage.getItem(STORAGE_KEYS.ONBOARDING_SEEN) === "true") {
+      safeStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN_CAMP_ID, activeCampId);
+      return;
+    }
+    setShowOnboarding(true);
+  }, [activeCampId, loading]);
   const closeOnboarding = () => {
     safeStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN, "true");
+    if (activeCampId) safeStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN_CAMP_ID, activeCampId);
     setShowOnboarding(false);
   };
 
