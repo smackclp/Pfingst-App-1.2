@@ -62,6 +62,7 @@ Git-Commit-Hash ein, gegen den geprüft wurde. Für den **nächsten** Audit gilt
 | 2026-08-06 | siehe Commit "Vollständige CSP + xlsx-Risiko-Entscheidung" | Entscheidung Nutzer: `xlsx`-Risiko bewusst akzeptiert (kein CDN-Umstieg); vollständige Content-Security-Policy umgesetzt (`server.ts`, nur Produktion, dynamischer SHA-256-Hash des Inline-Scripts aus `dist/index.html`, `style-src 'unsafe-inline'` für html2canvas/jsPDF-Export) | Beide letzten Mittel-Punkte aus der Liste entfernt. CSP gegen echten Produktions-Build mit Playwright verifiziert (Login, alle Sidebar-Tabs, QR-Kartendruck, PDF-Export/Druckcenter) - keine `securitypolicyviolation`-Events, keine CSP-Konsolenfehler. E2E-Suite (7/7) und Lint weiterhin grün. |
 | 2026-08-06 | siehe Commit "7 Niedrig-Funde behoben" | Alle 7 Niedrig-Funde: tote Props/Imports entfernt (9 Dateien), 3 Tailwind-Tippfehler korrigiert, globale JSON-Fehlerbehandlung + fehlende try/catch in den beiden ungeschützten async-Handlern ergänzt (`server.ts`, `system.ts`, `program.ts`), `writeDB()`-Datei-Backup non-blocking gemacht (`db.ts`), `computeConflicts()` auf Map-basierte Zählung umgestellt (`conflicts.ts`), fehlendes `useMemo` in `ShiftsView.tsx` ergänzt; `key?: any` war bereits aus dem Hoch-Batch entfernt (nur Listeneintrag bereinigt) | Alle verifiziert (Lint/Build/E2E-Suite, 7/7 grün - ein Timeout in `assignment-undo.spec.ts` beim ersten Lauf war Sandbox-Flake, isoliert erneut grün) und aus der Liste entfernt. Keine offenen Punkte mehr außer dem zurückgestellten Hoch-Fund. |
 | 2026-08-06 | siehe Commit "Mutation-Reload-Analyse: Teil B, Firestore-Schreibkosten" | Analyse des Hoch-Funds "Mutation-Reload" ergab 2 unabhängige Probleme: (A) 13 GET-Reloads pro Mutation im Frontend (Performance/UX, kostet KEINE Firestore-Reads, da `readDB()` rein aus dem In-Memory-Cache liest) und (B) ein bislang undokumentierter Firestore-Kostentreiber im Schreibpfad - `writeFirestoreDoc()`/`deleteFirestoreDoc()` lösten JE Dokument einen zusätzlichen Metadata-Stempel-Write aus (`server/firebase.ts`), d.h. jede Mutation kostete mind. 2 Writes statt 1, bei mehreren geänderten Dokumenten sogar 2N statt N+1. Teil B umgesetzt: Metadata-Stempel jetzt zentral einmal pro `writeDB()`-Aufruf statt pro Dokument (`server/db.ts`, `server/firebase.ts`). | Per Code-Trace für 4 Szenarien verifiziert (1 Dokument: unverändert 2 Writes; 3 Dokumente: 6→4 Writes, -33%; nur Settings-Änderung: unverändert 1 Write; Dokumente+Settings gleichzeitig: 2K+1→K+1 Writes). Live-Test gegen echtes Firestore in dieser Sandbox nicht möglich (kein Service-Account) - Fallback-Pfad (hier aktiv) per Lint/Build/E2E-Suite (7/7, 1 bestätigter Sandbox-Flake) verifiziert unverändert. Teil A (Frontend-Reload) folgt als nächster Schritt, Hoch-Fund bleibt bis dahin offen. |
+| 2026-08-06 | siehe Commit "Mutation-Reload Teil A: useShiftsData.ts" | Erster von 9 Hooks auf lokale State-Updates umgestellt: `useShiftsData.ts` (Schichten + Zuweisungen, 7 Mutationen) nutzt jetzt die Server-Antwort direkt (`setShifts`/`setAssignments`) statt `loadDatabase(true)`; Konflikte gezielt über `/api/conflicts` statt komplettem Reload; Offline-Queue-Fall (`handleUpdateAssignmentStatus`) repliziert die Server-Logik lokal exakt (status/accepted/decline_reason), da bei fehlender Verbindung nur eine synthetische Warteschlangen-Antwort zurückkommt. | Live gegen echten Produktions-Build mit Playwright verifiziert: Selbst-Eintragen (14→3 Requests), Status ändern über das Rückmeldungs-Modal (1 Request, korrekt keine Konflikt-Neuberechnung nötig), Austragen inkl. Undo-Fenster (2 Requests nach Fristablauf), Schicht bearbeiten (2 Requests) - jeweils UI-Korrektheit per Screenshot geprüft, keine Konsolenfehler. E2E-Suite (7/7) und Lint/Build weiterhin grün. Verbleibende 8 Hooks (26 Mutationen) folgen. |
 
 ---
 
@@ -74,16 +75,21 @@ _Keine offenen Punkte mehr - siehe Audit-Historie._
 ### Hoch
 
 - [ ] **Frontend lädt nach jeder Mutation die komplette Datenbank neu (Teil A,
-  Teil B/Firestore-Schreibkosten bereits erledigt - siehe Audit-Historie)**
-  `src/hooks/useZeltlagerData.ts:136-194`, `loadDatabase()`, 33 Aufrufstellen
-  in den `use*Data.ts`-Hooks. Ein Tap auf "Zusagen" löst 13 HTTP-GET-Requests
-  aus statt einer lokalen optimistischen Aktualisierung mit der bereits vom
-  Server zurückgegebenen Antwort - widerspricht direkt "Offline
-  First"/"Hohe Geschwindigkeit" aus CLAUDE.md. Kostet keine Firestore-Reads
-  (siehe Audit-Historie), ist aber spürbar langsam. Umsetzung: Hook für Hook
-  (zuerst `useShiftsData.ts`), Server-Response direkt in den State
-  einpflegen statt Reload; 5-Minuten-Poll (`checkSync`) bleibt als
-  Konsistenz-Netz.
+  läuft; Teil B/Firestore-Schreibkosten bereits erledigt - siehe
+  Audit-Historie)** `src/hooks/useZeltlagerData.ts`, `loadDatabase()`.
+  Umsetzung: Hook für Hook, Server-Response direkt in den State einpflegen
+  statt Reload; 5-Minuten-Poll (`checkSync`) bleibt als Konsistenz-Netz;
+  Konflikte gezielt über den einzelnen `/api/conflicts`-Endpunkt statt
+  komplettem Reload.
+  - [x] `useShiftsData.ts` (7 Mutationen: Schichten + Zuweisungen) - live
+    gegen echten Server verifiziert (Playwright): Requests pro Aktion von 14
+    auf 1-2 gesenkt (z.B. Selbst-Eintragen: 1 POST + 1 gezielter
+    Konflikt-Check statt 13 GETs), UI-Korrektheit für Zusagen/Austragen/
+    Status-Ändern/Schicht-Bearbeiten geprüft.
+  - [ ] `useUsersData.ts`, `useServicesData.ts`, `useCampsData.ts`,
+    `useMaterialsData.ts`, `useRolesData.ts`, `useCommunitiesData.ts`,
+    `useTalentActsData.ts`, `useSogData.ts` (verbleibende 8 Hooks, 26
+    Mutationen)
 
 ### Mittel
 

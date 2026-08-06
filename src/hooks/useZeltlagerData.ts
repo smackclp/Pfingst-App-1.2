@@ -133,6 +133,15 @@ export function useZeltlagerData() {
     }
   };
 
+  // Gezielter Nachlade-Helfer für den Konflikt-Endpunkt allein - genutzt von
+  // Mutations-Hooks, die den State lokal aus der Server-Antwort aktualisieren
+  // (siehe useShiftsData.ts) statt der kompletten Datenbank neu zu laden,
+  // aber trotzdem wissen müssen, ob sich dadurch Konflikte ergeben haben.
+  const refreshConflicts = async () => {
+    const data = await safeFetchJson("/api/conflicts", []);
+    setConflicts(data);
+  };
+
   const loadDatabase = async (isSilent = false, checkSync = false) => {
     if (checkSync) {
       try {
@@ -211,7 +220,7 @@ export function useZeltlagerData() {
   // --- Fachliche Mutations-Hooks (siehe use<Domain>Data.ts) ---
   const usersData = useUsersData(loadDatabase);
   const servicesData = useServicesData(loadDatabase);
-  const shiftsData = useShiftsData(loadDatabase);
+  const shiftsData = useShiftsData(setShifts, setAssignments, refreshConflicts);
   const campsData = useCampsData(loadDatabase);
   const materialsData = useMaterialsData(loadDatabase);
   const rolesData = useRolesData(loadDatabase);
