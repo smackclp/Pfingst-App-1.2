@@ -1,5 +1,7 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
+import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 
 // Router Imports
@@ -15,16 +17,49 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
+// Content-Security-Policy: nur in Produktion aktiv. Im Dev-Modus injiziert
+// Vite eigene Inline-Scripts (React-Refresh-Preamble, HMR-Client), deren
+// Inhalt sich je nach Vite-Version ändert - eine strikte CSP würde dort
+// unvorhersehbar brechen. Der Produktions-Build enthält dagegen nur das eine
+// feste Inline-<script> aus index.html (Early-Error-Suppression), dessen
+// SHA-256-Hash beim Serverstart direkt aus der gebauten dist/index.html
+// berechnet wird - ändert sich das Script, ändert sich der Hash automatisch
+// mit, statt die CSP still brechen zu lassen.
+let cspHeader: string | null = null;
+
+function buildCspHeader(inlineScriptHash: string): string {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'sha256-${inlineScriptHash}'`,
+    // 'unsafe-inline' nur für style-src: html2canvas (PDF-Export) klont den
+    // Baum in ein Offscreen-Dokument und injiziert dabei ein eigenes,
+    // dynamisch berechnetes <style>-Element - dessen Inhalt ändert sich pro
+    // Export, ein statischer Hash ist dafür nicht möglich. CSS-Injection ist
+    // ein deutlich kleineres Risiko als Script-Injection (kein Code-Execute),
+    // script-src bleibt strikt (kein unsafe-inline/unsafe-eval).
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://api.qrserver.com",
+    "connect-src 'self'",
+    "frame-src 'self' https://open.spotify.com",
+    "frame-ancestors 'none'",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+}
+
 // Grundlegende Sicherheits-Header ohne neue Abhängigkeit (kein helmet nötig
-// für diese wenigen, statischen Werte). Eine vollständige Content-Security-
-// Policy ist bewusst NICHT dabei - index.html enthält ein festes Inline-
-// <script>, das dafür einen eigenen, sorgfältig getesteten Hash bräuchte
-// (siehe AUDIT.md), das im Vorbeigehen falsch zu setzen wäre riskanter als
-// es wegzulassen.
+// für diese wenigen, statischen Werte).
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  if (cspHeader) {
+    res.setHeader("Content-Security-Policy", cspHeader);
+  }
   next();
 });
 
@@ -74,6 +109,14 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+    const indexHtml = fs.readFileSync(path.join(distPath, "index.html"), "utf8");
+    const inlineScriptMatch = indexHtml.match(/<script>([\s\S]*?)<\/script>/);
+    if (inlineScriptMatch) {
+      const hash = crypto.createHash("sha256").update(inlineScriptMatch[1], "utf8").digest("base64");
+      cspHeader = buildCspHeader(hash);
+    } else {
+      console.warn("Konnte Inline-Script in dist/index.html nicht finden - CSP wird ohne script-src-Hash übersprungen.");
+    }
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));

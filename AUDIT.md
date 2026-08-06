@@ -56,6 +56,7 @@ Git-Commit-Hash ein, gegen den geprüft wurde. Für den **nächsten** Audit gilt
 | 2026-08-06 | siehe Commit "Kritische Sicherheitsfunde behoben" | Fix der 3 kritischen Sicherheitsfunde: `server/conflicts.ts` (XSS-Escaping), `server/routes/exportHtmlTemplate.ts` (PIN-Hash-Leak), `server/auth.ts`/`server/routes/auth.ts` (Brute-Force-Sperre) | Alle 3 verifiziert (End-to-End gegen echten Server getestet) und aus der Liste entfernt. Restliche 21 Funde unverändert offen. |
 | 2026-08-06 | siehe Commit "6 von 7 Hoch-Funden behoben" | Fix von 6 der 7 Hoch-Funde: max_persons-Inkonsistenz (`CalendarCard.tsx`, `conflicts.ts`), serverseitige Kapazitätsprüfung (`shifts.ts`), Server-Guard letzte Lagerleitung (`auth.ts`), Konflikt-Umbesetzen-Bug (`DashboardConflicts.tsx`, neue `onRemoveAssignmentImmediate`-Prop-Kette), unbehandelte Promise-Rejection (`CalendarCard.tsx`), Code-Splitting pro Tab (`TabContentManager.tsx`, React.lazy) | Alle 6 verifiziert (Lint/Build/Browser-Test/E2E-Suite) und aus der Liste entfernt. "Jede Mutation lädt komplette DB neu" bewusst zurückgestellt (größter Punkt, eigene Analyse nötig). |
 | 2026-08-06 | siehe Commit "6 von 8 Mittel-Funden behoben" | Fix von 6 der 8 Mittel-Funde: HTTP-Status-Tippfehler 444→404 (`shifts.ts`), PII-Zugriffsbeschränkung auf `notes`-Feld (`people.ts`), React.memo + useCallback-Stabilisierung (`CalendarCard.tsx`, `ShiftRow.tsx`, `CalendarView.tsx`, `ShiftsView.tsx`), `any`-Typen entfernt (`CalendarCard.tsx`), doppelte Filterlogik zusammengeführt (`HeaderGlobalSearch.tsx`), min/max-Validierung client- und serverseitig (`ServiceFormModal.tsx`, `shifts.ts`), Basis-Sicherheits-Header ohne CSP (`server.ts`) | Alle 6 verifiziert (Lint/Build/Node-Verifikationsskript/E2E-Suite, 7/7 grün) und aus der Liste entfernt. `xlsx`-Abhängigkeit und vollständige CSP bewusst zurückgestellt (echte Entscheidungsfragen, siehe unten). |
+| 2026-08-06 | siehe Commit "Vollständige CSP + xlsx-Risiko-Entscheidung" | Entscheidung Nutzer: `xlsx`-Risiko bewusst akzeptiert (kein CDN-Umstieg); vollständige Content-Security-Policy umgesetzt (`server.ts`, nur Produktion, dynamischer SHA-256-Hash des Inline-Scripts aus `dist/index.html`, `style-src 'unsafe-inline'` für html2canvas/jsPDF-Export) | Beide letzten Mittel-Punkte aus der Liste entfernt. CSP gegen echten Produktions-Build mit Playwright verifiziert (Login, alle Sidebar-Tabs, QR-Kartendruck, PDF-Export/Druckcenter) - keine `securitypolicyviolation`-Events, keine CSP-Konsolenfehler. E2E-Suite (7/7) und Lint weiterhin grün. |
 
 ---
 
@@ -78,25 +79,7 @@ _Keine offenen Punkte mehr - siehe Audit-Historie._
 
 ### Mittel
 
-- [ ] **Verwundbare `xlsx`-Abhängigkeit** (`package.json`, `^0.18.5`,
-  bekannte Prototype-Pollution/ReDoS-Advisories, HIGH severity laut
-  `npm audit`). Bestätigt: 0.18.5 ist die letzte auf dem offiziellen
-  npm-Registry verfügbare Version, gefixte Versionen (≥0.19.3/≥0.20.2) gibt
-  es nur noch über SheetJS' eigenes CDN (cdn.sheetjs.com), nicht npm. Reine
-  Abhängigkeits-Entscheidung, wartet auf Freigabe: Umstieg auf CDN-Version
-  (neue Vertrauens-/Update-Frage) vs. Risiko akzeptieren (nur clientseitig,
-  nur bei bewusstem Excel-Import durch Bereichsleitung+ nutzbar,
-  `src/hooks/useCommunityImport.ts:125`).
-
-- [ ] **Vollständige Content-Security-Policy fehlt weiterhin.** Die
-  risikofreien Basis-Header (X-Content-Type-Options, X-Frame-Options,
-  Referrer-Policy) sind seit dem letzten Fix-Durchlauf gesetzt
-  (`server.ts`). Eine echte CSP wurde bewusst nicht im Vorbeigehen ergänzt:
-  `index.html` enthält ein festes Inline-`<script>` (Early-Error-Suppression),
-  das für `script-src` einen eigenen, korrekt berechneten SHA-Hash bräuchte
-  (sonst entweder App kaputt oder `'unsafe-inline'` und die CSP damit
-  wirkungslos für genau den Fall, den sie verhindern soll). Braucht eine
-  eigene, sorgfältig getestete Umsetzung statt einer schnellen Ergänzung.
+_Keine offenen Punkte mehr - siehe Audit-Historie._
 
 ### Niedrig (Aufräumen, kein akutes Risiko)
 
@@ -128,6 +111,33 @@ _Keine offenen Punkte mehr - siehe Audit-Historie._
   zugreifbar).
 
 ---
+
+## Bewusste Entscheidungen (Nutzer-Freigabe, kein offener Punkt mehr)
+
+- **`xlsx`-Abhängigkeit (`package.json`, `^0.18.5`):** HIGH-severity
+  Prototype-Pollution/ReDoS-Advisories laut `npm audit`, kein Fix auf dem
+  offiziellen npm-Registry verfügbar (nur über SheetJS' eigenes CDN,
+  cdn.sheetjs.com). Nutzer-Entscheidung: Risiko bewusst akzeptieren, kein
+  CDN-Umstieg. Betrifft nur clientseitigen Excel-Import durch
+  Bereichsleitung+ (`src/hooks/useCommunityImport.ts:125`). Bei einer
+  zukünftigen größeren Abhängigkeits-Aufräumaktion erneut aufgreifen, falls
+  sich die Verfügbarkeitslage ändert (z. B. `xlsx` doch wieder auf npm
+  gepflegt wird).
+
+- **Content-Security-Policy (`server.ts`):** Vollständig umgesetzt, nur in
+  Produktion aktiv (`NODE_ENV === "production"`). Der Hash für
+  `script-src` wird beim Serverstart automatisch aus dem tatsächlichen
+  Inline-`<script>` in `dist/index.html` berechnet - ändert sich der
+  Inhalt, ändert sich der Hash mit, statt die CSP still zu brechen. Im
+  Dev-Modus bewusst deaktiviert, da Vites HMR/React-Refresh-Preamble
+  eigene, versionsabhängige Inline-Scripts injiziert, die eine strikte CSP
+  unvorhersehbar brechen würden. `style-src` enthält `'unsafe-inline'`,
+  weil html2canvas (PDF-/Druck-Export) dynamisch berechnete `<style>`-Tags
+  injiziert, für die kein statischer Hash möglich ist - deutlich kleineres
+  Risiko als `script-src 'unsafe-inline'` (keine Code-Ausführung). Erlaubte
+  externe Hosts: `fonts.googleapis.com`/`fonts.gstatic.com` (Google Fonts),
+  `api.qrserver.com` (QR-Code-Generierung für Helfer-QuickLogin-Karten),
+  `open.spotify.com` (eingebetteter Talentshow-Playlist-Player).
 
 *Nicht als Fund gewertet (geprüft, aber unproblematisch): PIN-Hashing
 (scrypt + Salt + timingSafeEqual), Rollenprüfungen auf allen anderen
