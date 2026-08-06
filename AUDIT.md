@@ -7,11 +7,14 @@ erinnern, solange offene Punkte bestehen.
 
 ## Pflegeregeln (für Claude, verbindlich)
 
-1. **Erledigte Punkte werden gelöscht, nicht nur abgehakt.** Sobald ein Fund
-   behoben und verifiziert ist (Lint/Build/Tests grün, Fix tatsächlich
-   umgesetzt), wird der Eintrag komplett aus dieser Datei entfernt statt nur
-   markiert. Die Datei soll immer nur zeigen, was *noch* offen ist. Der Commit,
-   der den Fix macht, sollte auch diese Datei aktualisieren (Eintrag raus).
+1. **Erledigte Punkte werden gelöscht, nicht nur abgehakt.** Das gilt für
+   JEDEN Punkt in dieser Datei, unabhängig vom Abschnitt - Audit-Funde
+   (Kritisch/Hoch/Mittel/Niedrig) genauso wie "Geplante Verbesserungen" oder
+   künftige neue Abschnitte. Sobald ein Punkt erledigt und verifiziert ist
+   (Lint/Build/Tests grün, Umsetzung tatsächlich erfolgt), wird der Eintrag
+   komplett aus dieser Datei entfernt statt nur markiert. Die Datei soll
+   immer nur zeigen, was *noch* offen ist. Der Commit, der den Punkt
+   umsetzt, aktualisiert diese Datei im selben Zug (Eintrag raus).
 2. **Bei jeder Sitzung, in der an diesem Projekt gearbeitet wird**, kurz
    prüfen, ob offene Punkte bestehen, und den Nutzer daran erinnern (z. B. am
    Anfang oder Ende der Antwort, kurz und unaufdringlich - keine Wall of Text
