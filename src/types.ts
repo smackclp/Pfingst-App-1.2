@@ -101,6 +101,7 @@ export interface MaterialItem {
   price?: string;      // optional Preis
   created_at: string;  // ISO timestamp
   status?: 'pending' | 'ordered' | 'received'; // optional status management
+  camp_id?: string;
 }
 
 export interface FunctionalRole {
@@ -140,6 +141,7 @@ export interface SogTeamGroup {
   id: string;
   name: string;
   communityIds: string[];
+  camp_id?: string;
 }
 
 /** "Spiel ohne Grenzen": einzelne Spielstation inkl. Helfer-Zuordnung. */
@@ -151,6 +153,7 @@ export interface SogStation {
   location: string;
   materialNeeded: string;
   helperIds: string[];
+  camp_id?: string;
 }
 
 /** "Spiel ohne Grenzen": Rotationszeiten für den Laufplan. */

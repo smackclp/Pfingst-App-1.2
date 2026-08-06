@@ -112,7 +112,8 @@ router.delete("/roles/:id", requireRole("lagerleitung"), (req, res) => {
 // --- COMMUNITIES ---
 router.get("/communities", (req, res) => {
   const db = readDB();
-  res.json(db.communities || []);
+  const activeCampId = db.activeCampId || "camp-2026";
+  res.json((db.communities || []).filter((c) => c.camp_id === activeCampId));
 });
 
 router.post("/communities", requireMinRole("bereichsleiter"), (req, res) => {
@@ -188,7 +189,8 @@ router.delete("/communities/:id", requireMinRole("bereichsleiter"), (req, res) =
 
 router.post("/communities/clear", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
-  db.communities = [];
+  const activeCampId = db.activeCampId || "camp-2026";
+  db.communities = (db.communities || []).filter((c) => c.camp_id !== activeCampId);
   writeDB(db);
   res.json({ success: true });
 });

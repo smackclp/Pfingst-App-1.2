@@ -85,6 +85,7 @@ export interface MaterialItem {
   price?: string;
   created_at: string;
   status?: 'pending' | 'ordered' | 'received';
+  camp_id?: string;
 }
 
 export interface FunctionalRole {
@@ -120,7 +121,8 @@ export interface DB {
   talentActs?: TalentAct[];
   sogGroups?: SogTeamGroup[];
   sogStations?: SogStation[];
-  sogSettings?: SogSettings;
+  /** Ein Eintrag pro Lagerjahr (camp_id), damit Rotationszeiten pro Jahr erhalten bleiben. */
+  sogSettings?: (SogSettings & { camp_id: string })[];
 }
 
 export interface TalentAct {
@@ -146,6 +148,7 @@ export interface SogTeamGroup {
   id: string;
   name: string;
   communityIds: string[];
+  camp_id?: string;
 }
 
 /** "Spiel ohne Grenzen": einzelne Spielstation inkl. Helfer-Zuordnung. */
@@ -157,6 +160,7 @@ export interface SogStation {
   location: string;
   materialNeeded: string;
   helperIds: string[];
+  camp_id?: string;
 }
 
 /** "Spiel ohne Grenzen": Rotationszeiten für den Laufplan. */
