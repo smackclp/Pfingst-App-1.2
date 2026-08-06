@@ -8,6 +8,9 @@ import {
   sanitizeUser,
   sanitizeUsers,
   authMiddleware,
+  isLoginLocked,
+  recordFailedLogin,
+  clearFailedLogins,
 } from "../auth";
 
 const router = Router();
@@ -28,14 +31,20 @@ router.post("/auth/login", (req, res) => {
   if (!userId || !pin) {
     return res.status(400).json({ error: "Bitte Person und PIN angeben." });
   }
+  if (isLoginLocked(userId)) {
+    return res.status(429).json({ error: "Zu viele Fehlversuche. Bitte in einer Minute erneut versuchen." });
+  }
   const db = readDB();
   const user = db.users.find((u) => u.id === userId) as any;
   if (!user || !user.active) {
+    recordFailedLogin(userId);
     return res.status(401).json({ error: "Person oder PIN ist falsch." });
   }
   if (!verifyPin(String(pin), user.pin_hash)) {
+    recordFailedLogin(userId);
     return res.status(401).json({ error: "Person oder PIN ist falsch." });
   }
+  clearFailedLogins(userId);
   const accessRole = user.access_role || "helfer";
   const token = createSession(user.id, accessRole);
   res.json({ token, accessRole, user: sanitizeUser(user) });

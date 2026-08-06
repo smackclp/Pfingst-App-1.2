@@ -1,5 +1,6 @@
 import { DB, Camp, Shift, ShiftAssignment } from "../types";
 import { EXPORT_PAGE_STYLES } from "./exportStyles";
+import { sanitizeUsers } from "../auth";
 
 interface BuildExportHtmlParams {
   activeCamp: Camp;
@@ -201,7 +202,7 @@ export function buildExportHtml({ activeCamp, db, filteredShifts, filteredAssign
   <!-- Embed JSON Databases compiled securely inside the template literal -->
   <script>
     const activeCamp = ${JSON.stringify(activeCamp)};
-    const users = ${JSON.stringify(db.users.filter(u => u.active))};
+    const users = ${JSON.stringify(sanitizeUsers(db.users.filter(u => u.active)))};
     const services = ${JSON.stringify(db.services)};
     const shifts = ${JSON.stringify(filteredShifts)};
     const assignments = ${JSON.stringify(filteredAssignments)};

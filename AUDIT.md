@@ -53,6 +53,7 @@ Git-Commit-Hash ein, gegen den geprüft wurde. Für den **nächsten** Audit gilt
 | Datum | Commit | Umfang | Ergebnis |
 |---|---|---|---|
 | 2026-08-06 | `28ac5f8` | Vollständiger Erst-Audit (Sicherheit, Performance, Bugs, Code-Qualität), gesamte Codebase (119 Dateien, ~22.400 Zeilen) via 4 parallele Recherche-Agenten | 24 Funde, siehe unten |
+| 2026-08-06 | siehe Commit "Kritische Sicherheitsfunde behoben" | Fix der 3 kritischen Sicherheitsfunde: `server/conflicts.ts` (XSS-Escaping), `server/routes/exportHtmlTemplate.ts` (PIN-Hash-Leak), `server/auth.ts`/`server/routes/auth.ts` (Brute-Force-Sperre) | Alle 3 verifiziert (End-to-End gegen echten Server getestet) und aus der Liste entfernt. Restliche 21 Funde unverändert offen. |
 
 ---
 
@@ -60,26 +61,7 @@ Git-Commit-Hash ein, gegen den geprüft wurde. Für den **nächsten** Audit gilt
 
 ### Kritisch
 
-- [ ] **Stored XSS über Dienst-Titel → Session-Diebstahl / Privilege Escalation**
-  `server/conflicts.ts:56,80` baut `conflict.message` durch Interpolation von
-  `svc.title` ohne Escaping; gerendert via `dangerouslySetInnerHTML` in
-  `src/components/DashboardConflicts.tsx:263`. Ein Bereichsleiter kann per
-  Dienst-Titel Schadcode einschleusen; jeder Betrachter der
-  Konflikt-Übersicht (auch Lagerleitung) führt ihn aus. Auth-Token liegt in
-  `localStorage` → realistischer Weg von Bereichsleitung zu Admin-Übernahme.
-
-- [ ] **PIN-Hashes im HTML-Export enthalten**
-  `server/routes/exportHtmlTemplate.ts:204` bettet den kompletten
-  User-Datensatz (`JSON.stringify`) inkl. `pin_hash` in die exportierbare,
-  bewusst teilbare (z. B. WhatsApp) HTML-Datei ein - nie durch
-  `sanitizeUser(s)` gefiltert. 4-stellige PINs sind damit offline in Minuten
-  brute-forcebar, kompromittiert praktisch jeden Zugang.
-
-- [ ] **Kein Brute-Force-Schutz beim Login**
-  `server/routes/auth.ts:26-42`, `server.ts` (keine Rate-Limit-/Lockout-
-  Mechanik irgendwo). Nutzer-ID-Liste ist über
-  `/api/auth/login-directory` öffentlich einsehbar; 4-stellige PIN ist damit
-  skriptbar brute-forcebar.
+_Keine offenen Punkte mehr - siehe Audit-Historie._
 
 ### Hoch
 
