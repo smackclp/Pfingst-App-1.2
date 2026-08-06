@@ -3,6 +3,7 @@ import { Bell, Smartphone, ArrowUpRight, Download, RefreshCw, Play, Trash2, Help
 import { safeStorage, hasServiceWorkerSupport } from "../../utils";
 import { STORAGE_KEYS } from "../../constants";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 interface PwaSetupModalProps {
   pushPermStatus: string;
@@ -203,10 +204,12 @@ export default function PwaSetupModal({
   };
 
   const titleId = React.useId();
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(true);
   useEscapeKey(true, handleDismiss);
 
   return (
     <div
+      ref={focusTrapRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-slate-950/80 animate-fade-in"
       id="pwa-setup-overlay"
       role="dialog"

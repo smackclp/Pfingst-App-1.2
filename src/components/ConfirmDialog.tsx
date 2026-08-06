@@ -1,6 +1,7 @@
 import React from "react";
 import { AlertTriangle, Info } from "lucide-react";
 import { useEscapeKey } from "../hooks/useEscapeKey";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   const titleId = React.useId();
   const cancelButtonRef = React.useRef<HTMLButtonElement>(null);
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen);
   useEscapeKey(isOpen, onCancel);
 
   React.useEffect(() => {
@@ -47,6 +49,7 @@ export default function ConfirmDialog({
 
   return (
     <div
+      ref={focusTrapRef}
       className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in"
       id={id}
       role="alertdialog"

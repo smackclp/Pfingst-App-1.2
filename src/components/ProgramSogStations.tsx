@@ -6,6 +6,8 @@ import ConfirmDialog from "./ConfirmDialog";
 import UndoToast from "./UndoToast";
 import FieldError from "./FieldError";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
+import { useEscapeKey } from "../hooks/useEscapeKey";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 export interface SogStation {
   id: string;
@@ -42,6 +44,9 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
   const [stationTitleError, setStationTitleError] = React.useState<string | undefined>();
   const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
+  const stationModalTitleId = React.useId();
+  const stationModalFocusTrapRef = useFocusTrap<HTMLDivElement>(isStationModalOpen);
+  useEscapeKey(isStationModalOpen, () => setIsStationModalOpen(false));
 
   const openAddStationModal = () => {
     const nextNum = sogStations.length > 0 ? Math.max(...sogStations.map((s) => s.number)) + 1 : 1;
@@ -302,7 +307,13 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
       {/* STATION EDIT MODAL */}
       <AnimatePresence>
         {isStationModalOpen && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto no-print">
+          <div
+            ref={stationModalFocusTrapRef}
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto no-print"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={stationModalTitleId}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -310,12 +321,12 @@ export default function ProgramSogStations({ sogStations, users, currentUserId, 
               className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 my-8"
             >
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <h3 id={stationModalTitleId} className="text-base font-bold text-white flex items-center gap-2">
                   <CheckSquare className="h-5 w-5 text-emerald-400" />
                   <span>{editingStation ? "Station bearbeiten" : "Neue Station anlegen"}</span>
                 </h3>
-                <button onClick={() => setIsStationModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer">
-                  <X className="h-5 w-5" />
+                <button onClick={() => setIsStationModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer" aria-label="Schließen">
+                  <X className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>
 

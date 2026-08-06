@@ -1,6 +1,8 @@
 import React from "react";
 import { User as UserType, Service, Shift, ShiftAssignment } from "../types";
 import { formatDateGerman } from "../utils";
+import { useEscapeKey } from "../hooks/useEscapeKey";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 // --- STATUS EDITING MODAL ---
 interface StatusEditingModalProps {
@@ -25,6 +27,9 @@ function StatusEditingModal({
   });
   const [declineReason, setDeclineReason] = React.useState(() => assignment.decline_reason || '');
   const [saving, setSaving] = React.useState(false);
+  const titleId = React.useId();
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(true);
+  useEscapeKey(true, onClose);
 
   const handleSave = async () => {
     setSaving(true);
@@ -39,16 +44,24 @@ function StatusEditingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in" id="status-edit-modal">
+    <div
+      ref={focusTrapRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
+      id="status-edit-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5 text-white animate-scale-up">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-base font-extrabold font-display text-white">Dienst-Rückmeldung ändern</h3>
+            <h3 id={titleId} className="text-base font-extrabold font-display text-white">Dienst-Rückmeldung ändern</h3>
             <p className="text-[11px] text-slate-400 mt-1 justify-normal">Stelle den aktuellen Bestätigungsstatus für diese Einteilung ein.</p>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="text-slate-400 hover:text-white text-sm font-mono cursor-pointer"
+            aria-label="Schließen"
           >
             ✕
           </button>

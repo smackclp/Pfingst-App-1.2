@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { Service, User } from "../types";
 import FieldError from "./FieldError";
 import { useEscapeKey } from "../hooks/useEscapeKey";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface ServiceFormModalProps {
   isOpen: boolean;
@@ -75,6 +76,7 @@ export default function ServiceFormModal({
   }, [editingService, isOpen]);
 
   const titleId = React.useId();
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen);
   useEscapeKey(isOpen, onClose);
 
   if (!isOpen) return null;
@@ -114,6 +116,7 @@ export default function ServiceFormModal({
 
   return (
     <div
+      ref={focusTrapRef}
       className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in"
       id="services-modal"
       role="dialog"

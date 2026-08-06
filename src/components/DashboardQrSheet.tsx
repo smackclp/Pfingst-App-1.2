@@ -2,6 +2,8 @@ import React from "react";
 import { QrCode } from "lucide-react";
 import { motion } from "motion/react";
 import { User } from "../types";
+import { useEscapeKey } from "../hooks/useEscapeKey";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface DashboardQrSheetProps {
   users: User[];
@@ -16,13 +18,21 @@ interface DashboardQrSheetProps {
  * Eltern-Shell (DashboardView.tsx), damit die exit-Animation greift.
  */
 export default function DashboardQrSheet({ users, activeCampYear, onClose }: DashboardQrSheetProps) {
+  const titleId = React.useId();
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(true);
+  useEscapeKey(true, onClose);
+
   return (
     <motion.div
+      ref={focusTrapRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 bg-slate-950/98 backdrop-blur-md overflow-y-auto p-4 sm:p-8 flex items-start justify-center"
       id="printable-qr-sheet-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
     >
       <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-5xl shadow-2xl shadow-black/90 p-6 md:p-8 space-y-6 relative" id="printable-qr-sheet-container">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4 no-print">
@@ -31,7 +41,7 @@ export default function DashboardQrSheet({ users, activeCampYear, onClose }: Das
               <QrCode className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-white font-display">PWA-Quickaccess & QR-Ausweis Generierung</h3>
+              <h3 id={titleId} className="text-lg font-black text-white font-display">PWA-Quickaccess & QR-Ausweis Generierung</h3>
               <p className="text-xs text-slate-400 mt-0.5">Druckfertige Helfer-Anmeldekarten mit vorkonfigurierten Deep-Links</p>
             </div>
           </div>

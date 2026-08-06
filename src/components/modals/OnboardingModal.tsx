@@ -2,6 +2,7 @@ import React from "react";
 import { Compass, Calendar, ShoppingBag, Sun, ArrowRight, ArrowLeft, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 interface OnboardingModalProps {
   onClose: () => void;
@@ -46,10 +47,12 @@ export default function OnboardingModal({ onClose }: OnboardingModalProps) {
   const isLastStep = stepIndex === STEPS.length - 1;
   const Icon = step.icon;
   const titleId = React.useId();
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(true);
   useEscapeKey(true, onClose);
 
   return (
     <div
+      ref={focusTrapRef}
       className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       id="onboarding-modal-overlay"
       role="dialog"
