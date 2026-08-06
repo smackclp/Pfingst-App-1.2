@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Clock, AlertTriangle } from "lucide-react";
+import { Plus, Clock } from "lucide-react";
 import { Shift, Service, User, ShiftAssignment, Camp } from "../types";
 import { addDays, formatDateWithDayPrefix, getDayName, timeToMinutes } from "../utils";
 import { useShiftSuggestions } from "../hooks/useShiftSuggestions";
@@ -362,38 +362,20 @@ export default function ShiftsView({
       />
 
       {/* FORCE BI-BOARDING CONFIRM DIALOG */}
-      {overrideModal.isOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animation-fade-in" id="override-confirm-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-rose-950/40 rounded-xl border border-rose-900/30 text-rose-450 shrink-0">
-                <AlertTriangle className="h-6 w-6 text-rose-500 animate-bounce" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-sm font-bold text-white leading-tight font-display">Überlappungskonflikt</h4>
-                <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider font-mono">Warnung Doppelbelegung</p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed font-sans">{overrideModal.message}</p>
-
-            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-800 text-xs">
-              <button
-                onClick={() => setOverrideModal({ isOpen: false, shiftId: "", userId: "", message: "" })}
-                className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-slate-300 font-semibold rounded-xl text-[11px] transition cursor-pointer font-mono"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={handleConfirmOverride}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 border border-rose-500/20 font-bold text-white rounded-xl text-[11px] transition cursor-pointer font-mono"
-              >
-                Ja, trotzdem eintragen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="override-confirm-dialog"
+        isOpen={overrideModal.isOpen}
+        title="Überlappungskonflikt"
+        message={
+          <>
+            <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Warnung Doppelbelegung</span>
+            {overrideModal.message}
+          </>
+        }
+        confirmLabel="Ja, trotzdem eintragen"
+        onConfirm={handleConfirmOverride}
+        onCancel={() => setOverrideModal({ isOpen: false, shiftId: "", userId: "", message: "" })}
+      />
 
       {/* DELETE CONFIRMATION MODAL */}
       <ConfirmDialog

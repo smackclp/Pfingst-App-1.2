@@ -1,6 +1,7 @@
 import React from "react";
 import { Compass, Calendar, ShoppingBag, Sun, ArrowRight, ArrowLeft, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 interface OnboardingModalProps {
   onClose: () => void;
@@ -44,9 +45,17 @@ export default function OnboardingModal({ onClose }: OnboardingModalProps) {
   const step = STEPS[stepIndex];
   const isLastStep = stepIndex === STEPS.length - 1;
   const Icon = step.icon;
+  const titleId = React.useId();
+  useEscapeKey(true, onClose);
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="onboarding-modal-overlay">
+    <div
+      className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      id="onboarding-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -57,8 +66,9 @@ export default function OnboardingModal({ onClose }: OnboardingModalProps) {
           className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 cursor-pointer"
           id="onboarding-skip-btn"
           title="Überspringen"
+          aria-label="Überspringen"
         >
-          <X className="h-5 w-5" />
+          <X className="h-5 w-5" aria-hidden="true" />
         </button>
 
         <AnimatePresence mode="wait">
@@ -71,9 +81,9 @@ export default function OnboardingModal({ onClose }: OnboardingModalProps) {
             className="space-y-4 text-center pt-2"
           >
             <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center">
-              <Icon className="h-7 w-7 text-emerald-400" />
+              <Icon className="h-7 w-7 text-emerald-400" aria-hidden="true" />
             </div>
-            <h3 className="text-base font-bold text-white font-display">{step.title}</h3>
+            <h3 id={titleId} className="text-base font-bold text-white font-display">{step.title}</h3>
             <p className="text-xs text-slate-300 leading-relaxed">{step.text}</p>
           </motion.div>
         </AnimatePresence>

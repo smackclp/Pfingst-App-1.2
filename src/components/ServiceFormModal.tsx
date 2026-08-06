@@ -2,6 +2,7 @@ import React from "react";
 import { X } from "lucide-react";
 import { Service, User } from "../types";
 import FieldError from "./FieldError";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 
 interface ServiceFormModalProps {
   isOpen: boolean;
@@ -73,6 +74,9 @@ export default function ServiceFormModal({
     setErrors({});
   }, [editingService, isOpen]);
 
+  const titleId = React.useId();
+  useEscapeKey(isOpen, onClose);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,17 +113,24 @@ export default function ServiceFormModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in" id="services-modal">
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in"
+      id="services-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <div className="backdrop-blur-md bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-800 overflow-hidden my-8 animate-fade-in">
         <div className="bg-slate-950 px-6 py-4 text-white flex items-center justify-between border-b border-slate-800">
-          <h3 className="font-bold text-sm tracking-tight text-white font-mono">
+          <h3 id={titleId} className="font-bold text-sm tracking-tight text-white font-mono">
             {editingService ? "📟 DIENSTTYP_KONFIGURATION_EDIT" : "📟 NEUEN_DIENSTTYP_ANLEGEN"}
           </h3>
-          <button 
+          <button
             onClick={onClose}
             className="text-slate-400 hover:text-white transition"
+            aria-label="Schließen"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 

@@ -1,5 +1,6 @@
 import React from "react";
 import { AlertTriangle, Info } from "lucide-react";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -31,13 +32,27 @@ export default function ConfirmDialog({
   onCancel,
   id,
 }: ConfirmDialogProps) {
+  const titleId = React.useId();
+  const cancelButtonRef = React.useRef<HTMLButtonElement>(null);
+  useEscapeKey(isOpen, onCancel);
+
+  React.useEffect(() => {
+    if (isOpen) cancelButtonRef.current?.focus();
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const isAlertOnly = !onConfirm;
   const Icon = variant === "danger" ? AlertTriangle : Info;
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id={id}>
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in"
+      id={id}
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
         <div className="flex items-start space-x-3">
           <div
@@ -47,16 +62,17 @@ export default function ConfirmDialog({
                 : "bg-slate-950 border-slate-800 text-emerald-450"
             }`}
           >
-            <Icon className={`h-6 w-6 ${variant === "danger" ? "text-rose-500" : "text-emerald-400"}`} />
+            <Icon className={`h-6 w-6 ${variant === "danger" ? "text-rose-500" : "text-emerald-400"}`} aria-hidden="true" />
           </div>
           <div className="space-y-1.5 flex-1 min-w-0">
-            <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">{title}</h4>
+            <h4 id={titleId} className="text-sm font-bold text-white uppercase tracking-tight font-mono">{title}</h4>
             <p className="text-xs text-slate-350 leading-relaxed">{message}</p>
           </div>
         </div>
         <div className={`flex items-center pt-2 border-t border-slate-800 ${isAlertOnly ? "justify-end" : "justify-end space-x-2"}`}>
           {isAlertOnly ? (
             <button
+              ref={cancelButtonRef}
               type="button"
               onClick={onCancel}
               className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition cursor-pointer"
@@ -66,6 +82,7 @@ export default function ConfirmDialog({
           ) : (
             <>
               <button
+                ref={cancelButtonRef}
                 type="button"
                 onClick={onCancel}
                 className="px-3.5 py-2 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition cursor-pointer"

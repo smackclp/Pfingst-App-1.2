@@ -1,10 +1,8 @@
 import React from "react";
-import { 
-  Plus, 
-  Search, 
-  Briefcase, 
-  AlertTriangle,
-  Info
+import {
+  Plus,
+  Search,
+  Briefcase
 } from "lucide-react";
 import { Service, User, Shift, Camp } from "../types";
 import { addDays } from "../utils";
@@ -12,6 +10,7 @@ import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import ServiceCard from "./ServiceCard";
 import ServiceFormModal from "./ServiceFormModal";
 import UndoToast from "./UndoToast";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface ServicesViewProps {
   services: Service[];
@@ -232,71 +231,30 @@ export default function ServicesView({
       />
 
       {/* DELETE CONFIRMATION MODAL */}
-      {deleteConfirm.isOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="delete-services-confirm-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-rose-950/40 rounded-xl border border-rose-900/30 text-rose-500 shrink-0">
-                <AlertTriangle className="h-6 w-6 text-rose-500 animate-pulse" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">
-                  {deleteConfirm.type === "shift" ? "Schicht löschen?" : "Dienst löschen?"}
-                </h4>
-                <p className="text-xs text-slate-350 leading-relaxed">
-                  {deleteConfirm.type === "shift" ? (
-                    <span>Möchten Sie die Schicht <strong className="text-white font-semibold">"{deleteConfirm.name}"</strong> wirklich löschen?</span>
-                  ) : (
-                    <span>Möchten Sie Dienst <strong className="text-white font-semibold">"{deleteConfirm.name}"</strong> wirklich löschen? ACHTUNG: Hierdurch werden ALLE Schichten, die zu diesem Dienst gehören, sowie deren Einteilungen gelöscht!</span>
-                  )}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm({ isOpen: false, type: null, id: "", name: "" })}
-                className="px-3.5 py-2 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition"
-              >
-                Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                Ja, Löschen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="delete-services-confirm-dialog"
+        isOpen={deleteConfirm.isOpen}
+        title={deleteConfirm.type === "shift" ? "Schicht löschen?" : "Dienst löschen?"}
+        message={
+          deleteConfirm.type === "shift" ? (
+            <span>Möchten Sie die Schicht <strong className="text-white font-semibold">"{deleteConfirm.name}"</strong> wirklich löschen?</span>
+          ) : (
+            <span>Möchten Sie Dienst <strong className="text-white font-semibold">"{deleteConfirm.name}"</strong> wirklich löschen? ACHTUNG: Hierdurch werden ALLE Schichten, die zu diesem Dienst gehören, sowie deren Einteilungen gelöscht!</span>
+          )
+        }
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteConfirm({ isOpen: false, type: null, id: "", name: "" })}
+      />
 
       {/* ALERT DIALOG */}
-      {alertState.isOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="alert-services-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-slate-950 rounded-xl border border-slate-800 text-emerald-450 shrink-0">
-                <Info className="h-6 w-6 text-emerald-400" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">{alertState.title}</h4>
-                <p className="text-xs text-slate-350 leading-relaxed">{alertState.message}</p>
-              </div>
-            </div>
-            <div className="flex justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setAlertState({ isOpen: false, title: "", message: "" })}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="alert-services-dialog"
+        isOpen={alertState.isOpen}
+        variant="info"
+        title={alertState.title}
+        message={alertState.message}
+        onCancel={() => setAlertState({ isOpen: false, title: "", message: "" })}
+      />
 
       <UndoToast toast={activeToast} onUndo={undo} />
     </div>

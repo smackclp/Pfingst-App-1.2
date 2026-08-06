@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { Service, Shift } from "../types";
 import { formatDateGerman as formatDateGermanUtil } from "../utils";
 import FieldError from "./FieldError";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 
 interface ShiftFormModalProps {
   isOpen: boolean;
@@ -43,6 +44,9 @@ export default function ShiftFormModal({
     }
   }, [services, shiftServiceId, isOpen]);
 
+  const titleId = React.useId();
+  useEscapeKey(isOpen, onClose);
+
   if (!isOpen) return null;
 
   const handleCreateShift = async (e: React.FormEvent) => {
@@ -74,12 +78,18 @@ export default function ShiftFormModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in" id="shift-modal">
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in"
+      id="shift-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <div className="backdrop-blur-md bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-800 overflow-hidden my-8 animate-fade-in">
         <div className="bg-slate-950 px-6 py-4 text-white flex items-center justify-between border-b border-slate-800">
-          <h3 className="font-bold text-sm tracking-tight text-white font-mono">Schicht planen</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition">
-            <X className="h-5 w-5" />
+          <h3 id={titleId} className="font-bold text-sm tracking-tight text-white font-mono">Schicht planen</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition" aria-label="Schließen">
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 

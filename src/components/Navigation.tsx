@@ -184,8 +184,9 @@ export default function Navigation({
               onClick={onToggleTheme}
               className="text-emerald-400 hover:text-emerald-300 p-2 hover:bg-slate-800 rounded-xl transition cursor-pointer"
               id="mobile-theme-toggle"
+              aria-label={themeToggleInfo.tooltip}
             >
-              <themeToggleInfo.icon className={`h-4.5 w-4.5 ${themeToggleInfo.iconClass}`} />
+              <themeToggleInfo.icon className={`h-4.5 w-4.5 ${themeToggleInfo.iconClass}`} aria-hidden="true" />
             </button>
           </Tooltip>
         )}

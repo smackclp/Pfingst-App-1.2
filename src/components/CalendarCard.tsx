@@ -75,6 +75,15 @@ export default function CalendarCard({
     <div
       id={`shift-card-${s.id}`}
       onClick={() => onToggleExpand(s.id)}
+      role="button"
+      tabIndex={0}
+      aria-expanded={isExpanded}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggleExpand(s.id);
+        }
+      }}
       className={`bg-slate-900/85 backdrop-blur-md rounded-2xl border transition-all duration-300 flex flex-col p-4 cursor-pointer select-none ${
         isExpanded
           ? "border-emerald-500/35 hover:border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.06)] space-y-3"
