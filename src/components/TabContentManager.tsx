@@ -27,10 +27,12 @@ interface TabContentManagerProps {
   accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
   currentUserId: string | null;
   selectShiftId: string | null;
-  
+  programJumpTarget: "talentshow" | "spiel_ohne_grenzen" | null;
+
   // Upstream state callbacks
   setCurrentTab: (tab: string) => void;
   setSelectShiftId: (id: string | null) => void;
+  setProgramJumpTarget: (target: "talentshow" | "spiel_ohne_grenzen" | null) => void;
   openStatusModal: (assignmentId: string, _accepted?: boolean) => Promise<void>;
 
   // Data update handlers from useZeltlagerData
@@ -109,8 +111,10 @@ export default function TabContentManager({
   accessRole = "helfer",
   currentUserId,
   selectShiftId,
+  programJumpTarget,
   setCurrentTab,
   setSelectShiftId,
+  setProgramJumpTarget,
   openStatusModal,
   onAddUser,
   onUpdateUser,
@@ -329,6 +333,8 @@ export default function TabContentManager({
           onUpdateSogGroups={onUpdateSogGroups}
           onUpdateSogStations={onUpdateSogStations}
           onUpdateSogSettings={onUpdateSogSettings}
+          initialMainTab={programJumpTarget}
+          onInitialMainTabConsumed={() => setProgramJumpTarget(null)}
         />
       )}
 

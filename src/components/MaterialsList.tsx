@@ -157,6 +157,7 @@ export default function MaterialsList({
             return (
               <div
                 key={`mat-item-${item.id}`}
+                id={`mat-item-${item.id}`}
                 className={`bg-slate-900/85 hover:bg-slate-900 border transition rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row justify-between gap-4 ${
                   item.status === "received" ? "border-emerald-500/10" : item.status === "ordered" ? "border-blue-500/10" : "border-slate-850"
                 }`}

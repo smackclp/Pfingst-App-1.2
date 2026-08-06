@@ -1,21 +1,44 @@
 import React from "react";
-import { Search, X, Calendar as CalendarIcon, MapPin, ChevronRight } from "lucide-react";
-import { Camp, User, Service, Shift, ShiftAssignment } from "../types";
+import { Search, X, Calendar as CalendarIcon, MapPin, ChevronRight, ShoppingBag, Church, Sparkles, Award } from "lucide-react";
+import { Camp, User, Service, Shift, ShiftAssignment, MaterialItem, Community, TalentAct, SogStation } from "../types";
 import { AnimatePresence, motion } from "motion/react";
-import { formatDateGerman, getDayName, getDayNameShort, formatDateWithDayPrefix } from "../utils";
+import { formatDateWithDayPrefix } from "../utils";
 
 interface HeaderGlobalSearchProps {
   users: User[];
   services: Service[];
   shifts: Shift[];
   assignments: ShiftAssignment[];
+  materials: MaterialItem[];
+  communities: Community[];
+  talentActs: TalentAct[];
+  sogStations: SogStation[];
   activeCamp?: Camp;
   onSelectShift: (shiftId: string) => void;
+  onSelectProgram: (subTab: "talentshow" | "spiel_ohne_grenzen") => void;
   setCurrentTab: (tab: string) => void;
 }
 
-/** Globale Suchleiste im Header (Helfer*innen/Dienste/Schichten). Extrahiert aus Header.tsx. */
-export default function HeaderGlobalSearch({ users, services, shifts, assignments, activeCamp, onSelectShift, setCurrentTab }: HeaderGlobalSearchProps) {
+/**
+ * Globale Suchleiste im Header. Durchsucht Personen, Dienste, Schichten,
+ * Bestellliste, Gemeinden und Programm (Talentshow/Spiel ohne Grenzen).
+ * Bewusst OHNE Datum/Wochentag als Treffer - "Samstag" würde sonst pauschal
+ * alle Schichten dieses Tages zurückgeben statt einen gezielten Treffer.
+ */
+export default function HeaderGlobalSearch({
+  users,
+  services,
+  shifts,
+  assignments,
+  materials,
+  communities,
+  talentActs,
+  sogStations,
+  activeCamp,
+  onSelectShift,
+  onSelectProgram,
+  setCurrentTab,
+}: HeaderGlobalSearchProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isOpen, setIsOpen] = React.useState(false);
   const searchContainerRef = React.useRef<HTMLDivElement>(null);
@@ -58,31 +81,62 @@ export default function HeaderGlobalSearch({ users, services, shifts, assignment
     return services.filter((s) => s.title.toLowerCase().includes(query) || s.description.toLowerCase().includes(query) || s.category.toLowerCase().includes(query) || s.location.toLowerCase().includes(query)).slice(0, 5);
   }, [services, query]);
 
-  // Search through Schichten (Shifts) by date, weekday, service title or notes
+  // Search through Schichten (Shifts) by service title or notes - bewusst
+  // OHNE Datum/Wochentag, sonst würde z.B. "Samstag" alle Schichten dieses
+  // Tages treffen statt einen gezielten Suchtreffer zu liefern.
   const filteredShifts = React.useMemo(() => {
     if (!query) return [];
     return shifts
       .filter((sh) => {
         const service = services.find((srv) => srv.id === sh.service_id);
         const serviceTitle = service ? service.title : "";
-        const dateGerman = formatDateGerman(sh.date);
-        const dayName = getDayName(sh.date);
-        const dayNameShort = getDayNameShort(sh.date);
-        const dateStrNormalized = sh.date.toLowerCase();
-
-        return (
-          serviceTitle.toLowerCase().includes(query) ||
-          dateStrNormalized.includes(query) ||
-          dateGerman.toLowerCase().includes(query) ||
-          dayName.toLowerCase().includes(query) ||
-          dayNameShort.toLowerCase().includes(query) ||
-          (sh.notes && sh.notes.toLowerCase().includes(query))
-        );
+        return serviceTitle.toLowerCase().includes(query) || (sh.notes && sh.notes.toLowerCase().includes(query));
       })
       .slice(0, 6);
   }, [shifts, services, query]);
 
-  const hasResults = filteredUsers.length > 0 || filteredServices.length > 0 || filteredShifts.length > 0;
+  // Search through Bestellliste (Material)
+  const filteredMaterials = React.useMemo(() => {
+    if (!query) return [];
+    return materials.filter((m) => m.item_name.toLowerCase().includes(query) || m.purpose.toLowerCase().includes(query)).slice(0, 5);
+  }, [materials, query]);
+
+  // Search through Gemeinden (Communities)
+  const filteredCommunities = React.useMemo(() => {
+    if (!query) return [];
+    return communities.filter((c) => c.name.toLowerCase().includes(query) || c.location.toLowerCase().includes(query)).slice(0, 5);
+  }, [communities, query]);
+
+  // Search through Programm: Talentshow-Beiträge
+  const filteredTalentActs = React.useMemo(() => {
+    if (!query) return [];
+    return talentActs
+      .filter(
+        (a) =>
+          a.community_name.toLowerCase().includes(query) ||
+          a.talents_names.toLowerCase().includes(query) ||
+          a.act_type.toLowerCase().includes(query) ||
+          (a.song_title && a.song_title.toLowerCase().includes(query))
+      )
+      .slice(0, 3);
+  }, [talentActs, query]);
+
+  // Search through Programm: Spiel ohne Grenzen-Stationen
+  const filteredSogStations = React.useMemo(() => {
+    if (!query) return [];
+    return sogStations
+      .filter((s) => s.title.toLowerCase().includes(query) || s.description.toLowerCase().includes(query) || s.location.toLowerCase().includes(query))
+      .slice(0, 3);
+  }, [sogStations, query]);
+
+  const hasResults =
+    filteredUsers.length > 0 ||
+    filteredServices.length > 0 ||
+    filteredShifts.length > 0 ||
+    filteredMaterials.length > 0 ||
+    filteredCommunities.length > 0 ||
+    filteredTalentActs.length > 0 ||
+    filteredSogStations.length > 0;
 
   // Jump to specific User Card
   const handleSelectUser = (user: User) => {
@@ -132,6 +186,54 @@ export default function HeaderGlobalSearch({ users, services, shifts, assignment
     setIsOpen(false);
   };
 
+  // Jump to specific Material entry
+  const handleSelectMaterial = (item: MaterialItem) => {
+    setCurrentTab("materials");
+    setSearchQuery("");
+    setIsOpen(false);
+
+    setTimeout(() => {
+      const element = document.getElementById(`mat-item-${item.id}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.style.outline = "2px solid #10b981";
+        element.style.outlineOffset = "4px";
+
+        setTimeout(() => {
+          element.style.outline = "none";
+        }, 3000);
+      }
+    }, 300);
+  };
+
+  // Jump to specific Gemeinde
+  const handleSelectCommunity = (community: Community) => {
+    setCurrentTab("communities");
+    setSearchQuery("");
+    setIsOpen(false);
+
+    setTimeout(() => {
+      const element = document.getElementById(`community-row-${community.id}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.style.outline = "2px solid #10b981";
+        element.style.outlineOffset = "-2px";
+
+        setTimeout(() => {
+          element.style.outline = "none";
+        }, 3000);
+      }
+    }, 300);
+  };
+
+  // Jump to Programm (richtiger Unterbereich: Talentshow oder Spiel ohne Grenzen)
+  const handleSelectProgram = (subTab: "talentshow" | "spiel_ohne_grenzen") => {
+    setCurrentTab("program");
+    onSelectProgram(subTab);
+    setSearchQuery("");
+    setIsOpen(false);
+  };
+
   return (
     <div ref={searchContainerRef} className="relative flex-1 min-w-0 max-w-lg w-full" id="global-search-container">
       <div className="relative">
@@ -144,7 +246,7 @@ export default function HeaderGlobalSearch({ users, services, shifts, assignment
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
-          placeholder="Nach Helfern, Diensten, Tagen (z.B. Sa./Sonntag) suchen..."
+          placeholder="Nach Helfern, Diensten, Material, Gemeinden suchen..."
           className="w-full pl-10 pr-9 py-2 bg-slate-950/80 hover:bg-slate-950 border border-slate-800 focus:border-emerald-500/50 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 transition-all text-xs font-semibold font-mono shadow-inner shadow-black/40"
         />
         {searchQuery && (
@@ -174,7 +276,7 @@ export default function HeaderGlobalSearch({ users, services, shifts, assignment
             {!hasResults && (
               <div className="py-8 text-center">
                 <p className="text-slate-450 text-xs font-mono">Keine passenden Einträge gefunden</p>
-                <p className="text-[10px] text-slate-500 font-mono mt-1">Suche nach Begriffen, Namen oder Wochentagen</p>
+                <p className="text-[10px] text-slate-500 font-mono mt-1">Suche nach Namen oder Begriffen</p>
               </div>
             )}
 
@@ -232,7 +334,7 @@ export default function HeaderGlobalSearch({ users, services, shifts, assignment
 
             {/* 📅 Schichten (Shifts) Section */}
             {filteredShifts.length > 0 && (
-              <div className="py-2.5 last:pb-0">
+              <div className="py-2.5">
                 <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono flex items-center justify-between mb-2">
                   <span>📅 Arbeits-Schichten ({filteredShifts.length})</span>
                   <span className="text-[9px] text-slate-600 font-normal">Direkteinwahl</span>
@@ -266,6 +368,92 @@ export default function HeaderGlobalSearch({ users, services, shifts, assignment
                       </button>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* 🛒 Bestellliste (Material) Section */}
+            {filteredMaterials.length > 0 && (
+              <div className="py-2.5">
+                <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono flex items-center justify-between mb-2">
+                  <span>🛒 Bestellliste ({filteredMaterials.length})</span>
+                  <span className="text-[9px] text-slate-600 font-normal">Kanal: Material</span>
+                </h5>
+                <div className="space-y-1">
+                  {filteredMaterials.map((m) => (
+                    <button key={m.id} onClick={() => handleSelectMaterial(m)} className="w-full text-left p-2 hover:bg-slate-800/60 rounded-xl flex items-center justify-between transition-all group font-mono">
+                      <div className="truncate pr-3">
+                        <p className="text-slate-200 text-xs font-bold leading-tight group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                          <ShoppingBag className="h-3 w-3 text-slate-500 shrink-0" />
+                          {m.item_name}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">{m.purpose}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-emerald-400 transition-colors shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ⛪ Gemeinden (Communities) Section */}
+            {filteredCommunities.length > 0 && (
+              <div className="py-2.5">
+                <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono flex items-center justify-between mb-2">
+                  <span>⛪ Gemeinden ({filteredCommunities.length})</span>
+                  <span className="text-[9px] text-slate-600 font-normal">Kanal: Gemeinden</span>
+                </h5>
+                <div className="space-y-1">
+                  {filteredCommunities.map((c) => (
+                    <button key={c.id} onClick={() => handleSelectCommunity(c)} className="w-full text-left p-2 hover:bg-slate-800/60 rounded-xl flex items-center justify-between transition-all group font-mono">
+                      <div className="truncate pr-3">
+                        <p className="text-slate-200 text-xs font-bold leading-tight group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                          <Church className="h-3 w-3 text-slate-500 shrink-0" />
+                          {c.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">{c.location}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-emerald-400 transition-colors shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 🎭 Programm (Talentshow + Spiel ohne Grenzen) Section */}
+            {(filteredTalentActs.length > 0 || filteredSogStations.length > 0) && (
+              <div className="py-2.5 last:pb-0">
+                <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono flex items-center justify-between mb-2">
+                  <span>🎭 Programm ({filteredTalentActs.length + filteredSogStations.length})</span>
+                  <span className="text-[9px] text-slate-600 font-normal">Kanal: Programm</span>
+                </h5>
+                <div className="space-y-1">
+                  {filteredTalentActs.map((a) => (
+                    <button key={a.id} onClick={() => handleSelectProgram("talentshow")} className="w-full text-left p-2 hover:bg-slate-800/60 rounded-xl flex items-center justify-between transition-all group font-mono">
+                      <div className="truncate pr-3">
+                        <p className="text-slate-200 text-xs font-bold leading-tight group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                          <Sparkles className="h-3 w-3 text-slate-500 shrink-0" />
+                          {a.community_name}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                          {a.act_type} • {a.talents_names}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-emerald-400 transition-colors shrink-0" />
+                    </button>
+                  ))}
+                  {filteredSogStations.map((s) => (
+                    <button key={s.id} onClick={() => handleSelectProgram("spiel_ohne_grenzen")} className="w-full text-left p-2 hover:bg-slate-800/60 rounded-xl flex items-center justify-between transition-all group font-mono">
+                      <div className="truncate pr-3">
+                        <p className="text-slate-200 text-xs font-bold leading-tight group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                          <Award className="h-3 w-3 text-slate-500 shrink-0" />
+                          {s.title}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">{s.location}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-slate-600 group-hover:text-emerald-400 transition-colors shrink-0" />
+                    </button>
+                  ))}
                 </div>
               </div>
             )}

@@ -1,6 +1,6 @@
 import React from "react";
 import { RefreshCw } from "lucide-react";
-import { Camp, User, Service, Shift, ShiftAssignment } from "../types";
+import { Camp, User, Service, Shift, ShiftAssignment, MaterialItem, Community, TalentAct, SogStation } from "../types";
 import { Tooltip } from "./Tooltip";
 import HeaderGlobalSearch from "./HeaderGlobalSearch";
 
@@ -19,7 +19,12 @@ interface HeaderProps {
   services: Service[];
   shifts: Shift[];
   assignments: ShiftAssignment[];
+  materials: MaterialItem[];
+  communities: Community[];
+  talentActs: TalentAct[];
+  sogStations: SogStation[];
   onSelectShift: (shiftId: string) => void;
+  onSelectProgram: (subTab: "talentshow" | "spiel_ohne_grenzen") => void;
   setCurrentTab: (tab: string) => void;
   currentUserId?: string | null;
   onOpenPwaOnboarding?: () => void;
@@ -42,7 +47,12 @@ export default function Header({
   services,
   shifts,
   assignments,
+  materials,
+  communities,
+  talentActs,
+  sogStations,
   onSelectShift,
+  onSelectProgram,
   setCurrentTab,
   currentUserId,
   onOpenPwaOnboarding,
@@ -84,7 +94,20 @@ export default function Header({
       </div>
 
       {/* Global Interactive Search Bar - min-w-0 damit sie schrumpft statt die Seite zu verbreitern */}
-      <HeaderGlobalSearch users={users} services={services} shifts={shifts} assignments={assignments} activeCamp={activeCamp} onSelectShift={onSelectShift} setCurrentTab={setCurrentTab} />
+      <HeaderGlobalSearch
+        users={users}
+        services={services}
+        shifts={shifts}
+        assignments={assignments}
+        materials={materials}
+        communities={communities}
+        talentActs={talentActs}
+        sogStations={sogStations}
+        activeCamp={activeCamp}
+        onSelectShift={onSelectShift}
+        onSelectProgram={onSelectProgram}
+        setCurrentTab={setCurrentTab}
+      />
 
       {/* Aktionen: App laden, Aktualisieren, Abmelden */}
       <div className="flex items-center gap-2 shrink-0">

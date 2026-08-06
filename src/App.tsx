@@ -171,6 +171,11 @@ export default function App() {
     }
     setShowOnboarding(true);
   }, [activeCampId, loading]);
+
+  // Sprungziel für die globale Suche: öffnet ProgramView direkt im richtigen
+  // Unterbereich (Talentshow oder Spiel ohne Grenzen).
+  const [programJumpTarget, setProgramJumpTarget] = React.useState<"talentshow" | "spiel_ohne_grenzen" | null>(null);
+
   const closeOnboarding = () => {
     safeStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN, "true");
     if (activeCampId) safeStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN_CAMP_ID, activeCampId);
@@ -410,7 +415,12 @@ export default function App() {
             services={services}
             shifts={shifts}
             assignments={assignments}
+            materials={materials}
+            communities={communities}
+            talentActs={talentActs}
+            sogStations={sogStations}
             onSelectShift={handleSelectShift}
+            onSelectProgram={setProgramJumpTarget}
             setCurrentTab={setCurrentTab}
             currentUserId={currentUserId}
             onOpenPwaOnboarding={() => setShowPwaSetupModal(true)}
@@ -431,7 +441,9 @@ export default function App() {
               accessRole={accessRole}
               currentUserId={currentUserId}
               selectShiftId={selectShiftId}
+              programJumpTarget={programJumpTarget}
               setCurrentTab={setCurrentTab}
+              setProgramJumpTarget={setProgramJumpTarget}
               setSelectShiftId={setSelectShiftId}
               openStatusModal={openStatusModal}
               onAddUser={handleAddUser}

@@ -20,6 +20,9 @@ interface ProgramViewProps {
   onUpdateSogGroups: (groups: SogTeamGroup[]) => Promise<void>;
   onUpdateSogStations: (stations: SogStation[]) => Promise<void>;
   onUpdateSogSettings: (settings: SogSettings) => Promise<void>;
+  /** Öffnet direkt den gewünschten Unterbereich (z.B. Sprung aus der globalen Suche). */
+  initialMainTab?: "talentshow" | "spiel_ohne_grenzen" | null;
+  onInitialMainTabConsumed?: () => void;
 }
 
 /**
@@ -43,8 +46,21 @@ export default function ProgramView({
   onUpdateSogGroups,
   onUpdateSogStations,
   onUpdateSogSettings,
+  initialMainTab,
+  onInitialMainTabConsumed,
 }: ProgramViewProps) {
   const [activeMainTab, setActiveMainTab] = React.useState<"talentshow" | "spiel_ohne_grenzen">("talentshow");
+
+  // Reagiert auch dann, wenn ProgramView schon offen ist und ein zweiter
+  // Sprung aus der Suche reinkommt (z.B. erst Talentshow-, dann SoG-Treffer
+  // angeklickt, ohne dass die Komponente zwischendurch neu montiert wird -
+  // ein reiner useState-Startwert würde das zweite Mal ignoriert).
+  React.useEffect(() => {
+    if (!initialMainTab) return;
+    setActiveMainTab(initialMainTab);
+    onInitialMainTabConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMainTab]);
 
   return (
     <div className="space-y-6">

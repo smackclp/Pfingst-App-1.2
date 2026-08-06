@@ -276,7 +276,7 @@ export default function CommunitiesView({
                       const isEditing = editingId === com.id;
 
                       return (
-                        <tr key={com.id} className="hover:bg-slate-850/40 transition group">
+                        <tr key={com.id} id={`community-row-${com.id}`} className="hover:bg-slate-850/40 transition group">
                           <td className="py-3 px-4 font-mono text-slate-500 w-10">{index + 1}</td>
                           <td className="py-3 px-4 font-semibold text-white">
                             {isEditing ? (
