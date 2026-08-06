@@ -304,18 +304,6 @@ Eine zentrale Suche für:
 
 ---
 
-Materialbestellung per Foto
-
-Materialanforderungen sollen möglichst einfach sein:
-
-- Foto aufnehmen
-- hochladen
-- kurze Beschreibung hinzufügen
-
-Keine langen Formulare.
-
----
-
 Automatische Erinnerungen
 
 Wenn ein Helfer eine Schicht lange nicht bestätigt:
