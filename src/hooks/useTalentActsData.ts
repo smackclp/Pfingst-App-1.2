@@ -1,31 +1,27 @@
 import { TalentAct } from "../types";
+import { queuedFetch } from "../lib/offlineQueue";
 
-/** Mutations-Funktionen für Talentshow-Beiträge, extrahiert aus useZeltlagerData. */
+/**
+ * Mutations-Funktionen für Talentshow-Beiträge, extrahiert aus useZeltlagerData.
+ * Anlegen/Ändern/Löschen einzelner Beiträge ist unkritisch & konfliktarm ->
+ * offline-fähig via queuedFetch. Reorder/Clear betreffen alle Beiträge auf
+ * einmal (kollisionsanfällig bei Offline-Wiederholung) und bleiben normal.
+ */
 export function useTalentActsData(loadDatabase: (silent?: boolean) => Promise<void>) {
   const handleAddTalentAct = async (actPayload: Omit<TalentAct, "id">) => {
-    const res = await fetch("/api/talent-acts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(actPayload),
-    });
+    const res = await queuedFetch("POST", "/api/talent-acts", actPayload, "Talentshow-Beitrag eintragen");
     if (!res.ok) throw new Error("Adding talent act failed");
     await loadDatabase(true);
   };
 
   const handleUpdateTalentAct = async (id: string, actPayload: Partial<TalentAct>) => {
-    const res = await fetch(`/api/talent-acts/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(actPayload),
-    });
+    const res = await queuedFetch("PUT", `/api/talent-acts/${id}`, actPayload, "Talentshow-Beitrag ändern");
     if (!res.ok) throw new Error("Updating talent act failed");
     await loadDatabase(true);
   };
 
   const handleDeleteTalentAct = async (id: string) => {
-    const res = await fetch(`/api/talent-acts/${id}`, {
-      method: "DELETE",
-    });
+    const res = await queuedFetch("DELETE", `/api/talent-acts/${id}`, undefined, "Talentshow-Beitrag löschen");
     if (!res.ok) throw new Error("Deleting talent act failed");
     await loadDatabase(true);
   };

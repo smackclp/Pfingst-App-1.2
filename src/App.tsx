@@ -11,6 +11,9 @@ import { useZeltlagerData } from "./hooks/useZeltlagerData";
 import { TooltipProvider } from "./components/Tooltip";
 import { sendLocalNotification, registerPushSubscription, safeStorage, hasServiceWorkerSupport } from "./utils";
 import { STORAGE_KEYS } from "./constants";
+import { flushOfflineQueue, subscribeOfflineQueue, subscribeOfflineQueueFailure } from "./lib/offlineQueue";
+import { useToast } from "./hooks/useToast";
+import Toast from "./components/Toast";
 
 export default function App() {
   const {
@@ -93,15 +96,48 @@ export default function App() {
   const [isOnline, setIsOnline] = React.useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
 
   React.useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
+    const handleOnline = () => {
+      setIsOnline(true);
+      flushOfflineQueue();
+    };
     const handleOffline = () => setIsOnline(false);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+    // Falls beim App-Start bereits eine Verbindung besteht, wartende
+    // Aktionen aus einer vorherigen Offline-Sitzung gleich nachsenden.
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      flushOfflineQueue();
+    }
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
+
+  // Offline-Warteschlange: Anzahl wartender Aktionen fürs Banner + Toast-
+  // Hinweise beim Einreihen bzw. bei endgültigem Fehlschlagen (siehe CLAUDE.md
+  // Abschnitt 8 "Offline First").
+  const [offlineQueueLength, setOfflineQueueLength] = React.useState(0);
+  const { toastMessage: queueToastMessage, showToast: showQueueToast } = useToast();
+  const prevOfflineQueueLengthRef = React.useRef(0);
+
+  React.useEffect(() => {
+    const unsubscribe = subscribeOfflineQueue((queue) => {
+      if (queue.length > prevOfflineQueueLengthRef.current) {
+        showQueueToast("📥 Gespeichert - wird synchronisiert, sobald du wieder online bist.");
+      }
+      prevOfflineQueueLengthRef.current = queue.length;
+      setOfflineQueueLength(queue.length);
+    });
+    return unsubscribe;
+  }, [showQueueToast]);
+
+  React.useEffect(() => {
+    const unsubscribe = subscribeOfflineQueueFailure((action) => {
+      showQueueToast(`⚠️ "${action.label}" konnte nicht übernommen werden - bitte im Netz erneut versuchen.`);
+    });
+    return unsubscribe;
+  }, [showQueueToast]);
   
   const [showPwaSetupModal, setShowPwaSetupModal] = React.useState(() => {
     if (typeof window !== "undefined") {
@@ -329,7 +365,20 @@ export default function App() {
           {!isOnline && (
             <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white px-4 py-2.5 text-xs font-bold text-center flex items-center justify-center gap-2 animate-pulse border-b border-amber-500/30 shadow-md shrink-0">
               <span>📴</span>
-              <span><b>Offline-Modus aktiv:</b> Auf dem Zeltlagerplatz ist der Empfang oft miserabel. Dein Dienstplan wurde lokal gecached und steht vollständig offline bereit!</span>
+              <span>
+                <b>Offline-Modus aktiv:</b> Auf dem Zeltlagerplatz ist der Empfang oft miserabel. Dein Dienstplan wurde lokal gecached.
+                {offlineQueueLength > 0 &&
+                  ` ${offlineQueueLength} Aktion${offlineQueueLength === 1 ? "" : "en"} ${offlineQueueLength === 1 ? "wird" : "werden"} synchronisiert, sobald du wieder online bist.`}
+              </span>
+            </div>
+          )}
+
+          {isOnline && offlineQueueLength > 0 && (
+            <div className="bg-gradient-to-r from-emerald-700 to-teal-700 text-white px-4 py-2.5 text-xs font-bold text-center flex items-center justify-center gap-2 border-b border-emerald-500/30 shadow-md shrink-0" id="offline-queue-syncing-banner">
+              <span>🔄</span>
+              <span>
+                {offlineQueueLength} wartende Aktion{offlineQueueLength === 1 ? "" : "en"} {offlineQueueLength === 1 ? "wird" : "werden"} gerade synchronisiert...
+              </span>
             </div>
           )}
 
@@ -439,6 +488,8 @@ export default function App() {
             onClose={() => setShowPwaSetupModal(false)}
           />
         )}
+
+        <Toast message={queueToastMessage} />
       </div>
     </TooltipProvider>
   );

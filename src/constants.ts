@@ -9,6 +9,7 @@ export const STORAGE_KEYS = {
   WELCOME_CHECKED: "zeltlager_checked_user_welcome_v1",
   PWA_SETUP_DISMISSED: "zeltlager_pwa_setup_dismissed_v1",
   ONBOARDING_SEEN: "zeltlager_onboarding_seen_v1",
+  OFFLINE_QUEUE: "zeltlager_offline_queue_v1",
   ALERTED_IDS_PREFIX: "zeltlager_alerted_ids_",
   CURRENT_USER_ID: "zeltlager_current_user_id",
 };

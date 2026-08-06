@@ -1,4 +1,5 @@
 import { Shift } from "../types";
+import { queuedFetch } from "../lib/offlineQueue";
 
 /**
  * Mutations-Funktionen für Schichten & Zuordnungen (Shifts/Assignments),
@@ -77,11 +78,10 @@ export function useShiftsData(loadDatabase: (silent?: boolean) => Promise<void>)
     status: "pending" | "accepted" | "declined" | "maybe",
     declineReason?: string
   ) => {
-    const res = await fetch(`/api/assignments/${assignmentId}/status`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, decline_reason: declineReason }),
-    });
+    // Unkritische, konfliktarme Aktion (eigener Status) -> offline-fähig via
+    // queuedFetch: wird bei fehlender Verbindung lokal gespeichert und
+    // automatisch nachgesendet, statt sofort zu scheitern.
+    const res = await queuedFetch("PUT", `/api/assignments/${assignmentId}/status`, { status, decline_reason: declineReason }, "Schicht-Status ändern");
     if (!res.ok) throw new Error("Updating assignment status failed");
     await loadDatabase(true);
   };
