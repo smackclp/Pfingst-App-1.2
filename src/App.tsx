@@ -82,6 +82,7 @@ export default function App() {
     handleUpdateSogStations,
     handleUpdateSogSettings,
     handleResetDatabase,
+    handleRestoreLastReset,
   } = useZeltlagerData();
 
   // Jemanden von einer Schicht abmelden ist häufig und leicht aus Versehen
@@ -521,6 +522,7 @@ export default function App() {
               onUpdateSogStations={handleUpdateSogStations}
               onUpdateSogSettings={handleUpdateSogSettings}
               onResetDatabase={handleResetDatabase}
+              onRestoreLastReset={handleRestoreLastReset}
               onUpdateAssignmentStatus={handleUpdateAssignmentStatus}
             />
           </main>

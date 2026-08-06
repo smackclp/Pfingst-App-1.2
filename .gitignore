@@ -2,6 +2,7 @@ node_modules/
 dist/
 db.json
 db.test.json
+*.pre-reset-backup.json
 .env
 .env.local
 *.log

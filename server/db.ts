@@ -139,6 +139,55 @@ export function writeDB(newData: DB) {
   }
 }
 
+// Pfad für die automatische Sicherung, die vor jedem Lagerjahr-Reset
+// angelegt wird (server/routes/system.ts, POST /seed). Getrennt von DB_FILE,
+// damit sie nicht in den normalen Firestore-Diff-Sync von writeDB() gerät -
+// das würde den alten Stand fälschlich als neue Live-Daten interpretieren.
+function getResetBackupFilePath(): string {
+  return DB_FILE.replace(/\.json$/, ".pre-reset-backup.json");
+}
+
+export interface ResetBackup {
+  timestamp: string;
+  db: DB;
+}
+
+// Sichert den Datenbankstand unmittelbar vor einem Lagerjahr-Reset lokal
+// weg, damit ein versehentlicher Reset über "Letzten Stand wiederherstellen"
+// rückgängig gemacht werden kann. Überschreibt eine evtl. vorhandene ältere
+// Sicherung bewusst (nur eine Undo-Stufe, kein Sicherungsverlauf).
+export function saveResetBackup(db: DB) {
+  const backup: ResetBackup = { timestamp: new Date().toISOString(), db };
+  try {
+    fs.writeFileSync(getResetBackupFilePath(), JSON.stringify(backup, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Failed to write pre-reset backup:", err);
+  }
+}
+
+export function readResetBackup(): ResetBackup | null {
+  try {
+    const p = getResetBackupFilePath();
+    if (!fs.existsSync(p)) return null;
+    return JSON.parse(fs.readFileSync(p, "utf-8"));
+  } catch (err) {
+    console.error("Failed to read pre-reset backup:", err);
+    return null;
+  }
+}
+
+// Nach erfolgreicher Wiederherstellung entfernt: ein zweites Mal
+// "wiederherstellen" auf denselben Stand böte keinen Mehrwert und könnte
+// eher verwirren, wenn seither schon wieder neue Änderungen gemacht wurden.
+export function clearResetBackup() {
+  try {
+    const p = getResetBackupFilePath();
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  } catch (err) {
+    console.error("Failed to clear pre-reset backup:", err);
+  }
+}
+
 // Utility times
 export function timeToMinutes(timeStr: string): number {
   if (!timeStr) return 0;

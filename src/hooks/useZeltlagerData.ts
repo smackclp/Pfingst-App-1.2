@@ -240,6 +240,17 @@ export function useZeltlagerData() {
     return data.message || "Erfolgreich zurückgesetzt!";
   };
 
+  const handleRestoreLastReset = async () => {
+    const res = await fetch("/api/seed/restore", { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Wiederherstellung ist fehlgeschlagen");
+    }
+    const data = await res.json();
+    await loadDatabase(false);
+    return data.message || "Stand wiederhergestellt!";
+  };
+
   return {
     currentTab,
     setCurrentTab,
@@ -286,5 +297,6 @@ export function useZeltlagerData() {
     sogSettings,
     ...sogData,
     handleResetDatabase,
+    handleRestoreLastReset,
   };
 }

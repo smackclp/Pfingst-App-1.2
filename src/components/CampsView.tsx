@@ -1,9 +1,12 @@
 import React from "react";
-import { Compass, Calendar, CheckCircle2, Layers, AlertCircle, Database, RefreshCw, TrendingUp, RotateCcw, Download, Eraser, AlertTriangle } from "lucide-react";
+import { Compass, Calendar, CheckCircle2, Layers, AlertCircle, Database, RefreshCw, TrendingUp, RotateCcw, Download, Eraser, AlertTriangle, History } from "lucide-react";
 import { Camp } from "../types";
 import { formatDateGerman, addDays } from "../utils";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import CreateCampForm from "./camps/CreateCampForm";
 import ResetModal from "./camps/ResetModal";
+import ConfirmDialog from "./ConfirmDialog";
+import UndoToast from "./UndoToast";
 
 interface CampsViewProps {
   camps: Camp[];
@@ -11,9 +14,10 @@ interface CampsViewProps {
   onSetActiveCamp: (campId: string) => Promise<void>;
   onCreateCamp: (year: number, copyFromCampId?: string) => Promise<void>;
   onResetDatabase?: (year?: number, mode?: "full" | "shifts_only" | "clear_assignments") => Promise<string>;
+  onRestoreLastReset?: () => Promise<string>;
 }
 
-export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCreateCamp, onResetDatabase }: CampsViewProps) {
+export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCreateCamp, onResetDatabase, onRestoreLastReset }: CampsViewProps) {
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
   const [stats, setStats] = React.useState<{ date: string; reads: number; writes: number; deletes: number; apiHits: number }>({
@@ -36,27 +40,78 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
   const [resetModalOpen, setResetModalOpen] = React.useState(false);
   const [resetMode, setResetMode] = React.useState<"full" | "shifts_only" | "clear_assignments">("shifts_only");
   const [resetYear, setResetYear] = React.useState<number>(2026);
-  const [resetSubmitting, setResetSubmitting] = React.useState(false);
+
+  // Ein Lagerjahr-Reset ist die folgenreichste Aktion der App - deshalb
+  // zusätzlich zum Bestätigungsmodal noch der gleiche 6-Sekunden-Rückgängig-
+  // Vorlauf wie bei anderen Löschungen, PLUS eine echte serverseitige
+  // Sicherung (siehe backupStatus unten), die auch dann noch hilft, wenn
+  // der Fehler erst später auffällt statt in den ersten 6 Sekunden.
+  const { scheduleDelete, undo, activeToast } = useUndoableDelete();
+  const [backupStatus, setBackupStatus] = React.useState<{ available: boolean; timestamp: string | null }>({
+    available: false,
+    timestamp: null
+  });
+  const [restoreConfirmOpen, setRestoreConfirmOpen] = React.useState(false);
+  const [restoring, setRestoring] = React.useState(false);
+
+  const fetchBackupStatus = async () => {
+    try {
+      const res = await fetch("/api/seed/backup-status");
+      if (res.ok) {
+        setBackupStatus(await res.json());
+      }
+    } catch (err) {
+      console.warn("Failed to fetch backup status:", err);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchBackupStatus();
+  }, []);
+
+  const resetModeLabel: Record<"full" | "shifts_only" | "clear_assignments", string> = {
+    full: "Werks-Reset",
+    shifts_only: "Muster-Schichten laden",
+    clear_assignments: "Einteilungen leeren"
+  };
 
   const openResetModal = (mode: "full" | "shifts_only" | "clear_assignments") => {
     setResetMode(mode);
     setResetModalOpen(true);
   };
 
-  const handleExecuteReset = async () => {
+  const handleExecuteReset = () => {
     if (!onResetDatabase) return;
-    setResetSubmitting(true);
+    setResetModalOpen(false);
+    setError(null);
+    setSuccess(null);
+    scheduleDelete(`camp-reset-${resetMode}`, resetModeLabel[resetMode], async () => {
+      try {
+        const msg = await onResetDatabase(resetYear, resetMode);
+        setSuccess(msg);
+        setTimeout(() => setSuccess(null), 5000);
+        fetchBackupStatus();
+      } catch (err: any) {
+        setError(err?.message || "Fehler beim Zurücksetzen der Daten.");
+      }
+    });
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!onRestoreLastReset) return;
+    setRestoreConfirmOpen(false);
+    setRestoring(true);
     setError(null);
     setSuccess(null);
     try {
-      const msg = await onResetDatabase(resetYear, resetMode);
+      const msg = await onRestoreLastReset();
       setSuccess(msg);
-      setResetModalOpen(false);
       setTimeout(() => setSuccess(null), 5000);
+      fetchBackupStatus();
     } catch (err: any) {
-      setError(err?.message || "Fehler beim Zurücksetzen der Daten.");
+      setError(err?.message || "Fehler beim Wiederherstellen des vorherigen Standes.");
     } finally {
-      setResetSubmitting(false);
+      setRestoring(false);
     }
   };
 
@@ -308,6 +363,30 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
             </a>
           </div>
 
+          {backupStatus.available && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-cyan-950/25 border border-cyan-500/25 rounded-xl px-4 py-3">
+              <div className="flex items-start gap-2.5">
+                <History className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-cyan-200 leading-relaxed">
+                  Automatische Sicherung vom{" "}
+                  <b className="font-mono">
+                    {backupStatus.timestamp &&
+                      new Date(backupStatus.timestamp).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })}
+                  </b>{" "}
+                  verfügbar (vor dem letzten Reset).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRestoreConfirmOpen(true)}
+                disabled={restoring}
+                className="shrink-0 px-3.5 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-mono font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
+              >
+                Letzten Stand wiederherstellen
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
             <div className="bg-slate-950 p-5 rounded-2xl border border-slate-850 hover:border-slate-800 transition flex flex-col justify-between space-y-4">
               <div className="space-y-2">
@@ -382,11 +461,26 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
         isOpen={resetModalOpen}
         mode={resetMode}
         year={resetYear}
-        submitting={resetSubmitting}
         onYearChange={setResetYear}
         onConfirm={handleExecuteReset}
         onClose={() => setResetModalOpen(false)}
       />
+
+      <ConfirmDialog
+        isOpen={restoreConfirmOpen}
+        variant="danger"
+        title="Letzten Stand wiederherstellen?"
+        message={
+          backupStatus.timestamp
+            ? `Der Stand von ${new Date(backupStatus.timestamp).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })} wird wiederhergestellt. Alle Änderungen seitdem gehen dabei verloren.`
+            : "Der zuletzt gesicherte Stand wird wiederhergestellt."
+        }
+        confirmLabel="Ja, wiederherstellen"
+        onConfirm={handleConfirmRestore}
+        onCancel={() => setRestoreConfirmOpen(false)}
+      />
+
+      <UndoToast toast={activeToast} onUndo={undo} />
     </div>
   );
 }

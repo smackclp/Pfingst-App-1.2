@@ -86,6 +86,7 @@ interface TabContentManagerProps {
   onDeleteTalentAct: (id: string) => Promise<void>;
   onReorderTalentActs: (orders: { [id: string]: number }) => Promise<void>;
   onResetDatabase?: (year?: number, mode?: "full" | "shifts_only" | "clear_assignments") => Promise<string>;
+  onRestoreLastReset?: () => Promise<string>;
   onUpdateAssignmentStatus: (assignmentId: string, status: "pending" | "accepted" | "declined" | "maybe", declineReason?: string) => Promise<void>;
 
   // Spiel ohne Grenzen props
@@ -160,6 +161,7 @@ export default function TabContentManager({
   onUpdateSogStations,
   onUpdateSogSettings,
   onResetDatabase,
+  onRestoreLastReset,
   onUpdateAssignmentStatus,
 }: TabContentManagerProps) {
   // "isAdmin" ist bewusst nur Lagerleitung (Personen/Lager-Verwaltung).
@@ -281,6 +283,7 @@ export default function TabContentManager({
           onSetActiveCamp={onSetActiveCamp}
           onCreateCamp={onCreateCamp}
           onResetDatabase={onResetDatabase}
+          onRestoreLastReset={onRestoreLastReset}
         />
       )}
 

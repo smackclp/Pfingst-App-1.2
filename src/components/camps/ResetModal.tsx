@@ -1,11 +1,10 @@
 import React from "react";
-import { AlertTriangle, X, RefreshCw } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 
 interface ResetModalProps {
   isOpen: boolean;
   mode: "full" | "shifts_only" | "clear_assignments";
   year: number;
-  submitting: boolean;
   onYearChange: (year: number) => void;
   onConfirm: () => void;
   onClose: () => void;
@@ -15,7 +14,6 @@ export default function ResetModal({
   isOpen,
   mode,
   year,
-  submitting,
   onYearChange,
   onConfirm,
   onClose,
@@ -50,7 +48,7 @@ export default function ResetModal({
             <div className="p-3 bg-rose-950/30 border border-rose-500/20 rounded-xl text-rose-200">
               <p className="font-bold">⚠️ Achtung: Vollständiger Reset!</p>
               <p className="mt-1">
-                Alle aktuellen Benutzer, Schichten, Dienste, Materialien und Zuordnungen werden unwiderruflich durch die werkseitigen Beispieldaten (Muster-Helfer Maria, Jonas, etc.) ersetzt.
+                Alle aktuellen Benutzer, Schichten, Dienste, Materialien und Zuordnungen werden durch die werkseitigen Beispieldaten (Muster-Helfer Maria, Jonas, etc.) ersetzt. Der bisherige Stand wird automatisch gesichert und kann danach über "Letzten Stand wiederherstellen" zurückgeholt werden.
               </p>
             </div>
           )}
@@ -101,7 +99,6 @@ export default function ResetModal({
           </button>
           <button
             type="button"
-            disabled={submitting}
             onClick={onConfirm}
             className={`px-4 py-2 text-xs font-mono font-bold rounded-xl transition cursor-pointer flex items-center gap-2 ${
               mode === "full"
@@ -111,14 +108,7 @@ export default function ResetModal({
                 : "bg-amber-600 hover:bg-amber-500 text-white"
             }`}
           >
-            {submitting ? (
-              <>
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                <span>Ausführen...</span>
-              </>
-            ) : (
-              <span>Bestätigen & Ausführen</span>
-            )}
+            <span>Bestätigen & Ausführen</span>
           </button>
         </div>
       </div>

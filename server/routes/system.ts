@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { readDB, writeDB } from "../db";
+import { readDB, writeDB, saveResetBackup, readResetBackup, clearResetBackup } from "../db";
 import { getDefaultSeedDB } from "../seed";
 import { getLastChange, getStats } from "../firebase";
 import { requireMinRole, requireRole } from "../auth";
@@ -110,6 +110,12 @@ router.post("/seed", requireRole("lagerleitung"), async (req, res) => {
     const targetYear = Number(year) || 2026;
     const currentDB = readDB();
 
+    // Vor jedem Reset-Modus den bisherigen Stand sichern, damit er über
+    // "Letzten Stand wiederherstellen" zurückgeholt werden kann - ein Reset
+    // ist die folgenreichste Aktion der App und verdient mehr Schutz als
+    // nur die Bestätigungsabfrage im Modal.
+    saveResetBackup(currentDB);
+
     if (mode === "clear_assignments") {
       currentDB.assignments = [];
       writeDB(currentDB);
@@ -156,6 +162,24 @@ router.post("/seed", requireRole("lagerleitung"), async (req, res) => {
     console.error("Error in /api/seed:", err);
     res.status(500).json({ error: err.message || String(err) });
   }
+});
+
+// Status der automatischen Vor-Reset-Sicherung (für den "Wiederherstellen"-Hinweis in CampsView)
+router.get("/seed/backup-status", requireRole("lagerleitung"), (req, res) => {
+  const backup = readResetBackup();
+  res.json({ available: !!backup, timestamp: backup?.timestamp || null });
+});
+
+// Letzten Stand vor dem zuletzt ausgeführten Reset wiederherstellen
+router.post("/seed/restore", requireRole("lagerleitung"), async (req, res) => {
+  const backup = readResetBackup();
+  if (!backup) {
+    return res.status(404).json({ error: "Keine Sicherung zum Wiederherstellen vorhanden." });
+  }
+  writeDB(backup.db);
+  clearResetBackup();
+  const ts = new Date(backup.timestamp).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" });
+  res.json({ success: true, message: `Stand vom ${ts} wurde wiederhergestellt.`, db: backup.db });
 });
 
 export default router;
