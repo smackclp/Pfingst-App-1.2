@@ -321,7 +321,7 @@ Branch-Struktur
 
 
 main = stabile Version
-Beta = Entwicklungszweig
+beta = Entwicklungszweig
 
 
 main
@@ -336,7 +336,7 @@ Regeln:
 
 ---
 
-Beta
+beta
 
 Entwicklungs- und Testversion.
 
@@ -351,11 +351,11 @@ Vor jeder Änderung:
 Prüfen:
 
 - Welcher Branch ist aktiv?
-- Ist es Beta?
+- Ist es beta?
 
 Falls nicht:
 
-Auf Beta wechseln oder darauf hinweisen.
+Auf beta wechseln oder darauf hinweisen.
 
 ---
 
@@ -374,7 +374,7 @@ Veröffentlichung
 
 Eine Änderung darf erst nach Freigabe:
 
-Beta → main
+beta → main
 
 übernommen werden.
 
