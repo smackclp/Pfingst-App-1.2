@@ -19,6 +19,7 @@ import { useRolesData } from "./useRolesData";
 import { useCommunitiesData } from "./useCommunitiesData";
 import { useTalentActsData } from "./useTalentActsData";
 import { useSogData } from "./useSogData";
+import { throwIfNotOk } from "../lib/apiMutations";
 
 export type { AccessRole };
 
@@ -244,10 +245,7 @@ export function useZeltlagerData() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ year, mode }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Reset der Daten ist fehlgeschlagen");
-    }
+    await throwIfNotOk(res, "Reset der Daten ist fehlgeschlagen");
     const data = await res.json();
     await loadDatabase(false);
     return data.message || "Erfolgreich zurückgesetzt!";
@@ -255,10 +253,7 @@ export function useZeltlagerData() {
 
   const handleRestoreLastReset = async () => {
     const res = await fetch("/api/seed/restore", { method: "POST" });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Wiederherstellung ist fehlgeschlagen");
-    }
+    await throwIfNotOk(res, "Wiederherstellung ist fehlgeschlagen");
     const data = await res.json();
     await loadDatabase(false);
     return data.message || "Stand wiederhergestellt!";

@@ -1,6 +1,7 @@
 import React from "react";
 import { Shift, ShiftAssignment } from "../types";
 import { queuedFetch } from "../lib/offlineQueue";
+import { createAndAppend, updateAndReplace, deleteAndFilter, throwIfNotOk } from "../lib/apiMutations";
 
 /**
  * Mutations-Funktionen für Schichten & Zuordnungen (Shifts/Assignments),
@@ -13,6 +14,11 @@ import { queuedFetch } from "../lib/offlineQueue";
  * Konflikte hängen von Zeiten/Kapazität/Zuordnungen ab und werden deshalb
  * gezielt über den einzelnen /api/conflicts-Endpunkt neu berechnet, statt
  * die Logik aus server/conflicts.ts im Client zu duplizieren.
+ *
+ * handleAddAssignment (Sonder-Fehlerform bei 409-Konflikten) und
+ * handleUpdateAssignmentStatus (Offline-Queue mit synthetischer
+ * 202-Antwort) bleiben handgeschrieben statt den generischen Helfer aus
+ * lib/apiMutations.ts zu nutzen - siehe Kommentare dort dazu.
  */
 export function useShiftsData(
   setShifts: React.Dispatch<React.SetStateAction<Shift[]>>,
@@ -20,33 +26,17 @@ export function useShiftsData(
   refreshConflicts: () => Promise<void>
 ) {
   const handleAddShift = async (shiftPayload: Omit<Shift, "id">) => {
-    const res = await fetch("/api/shifts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(shiftPayload),
-    });
-    if (!res.ok) throw new Error("Adding shift failed");
-    const newShift: Shift = await res.json();
-    setShifts((prev) => [...prev, newShift]);
+    await createAndAppend("/api/shifts", shiftPayload, setShifts, "Adding shift failed");
   };
 
   const handleUpdateShift = async (id: string, shiftPayload: Partial<Shift>) => {
-    const res = await fetch(`/api/shifts/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(shiftPayload),
-    });
-    if (!res.ok) throw new Error("Updating shift failed");
-    const updatedShift: Shift = await res.json();
-    setShifts((prev) => prev.map((s) => (s.id === id ? updatedShift : s)));
+    await updateAndReplace("/api/shifts/" + id, shiftPayload, id, setShifts, "Updating shift failed");
     // Zeiten-/Kapazitätsänderungen können Konflikte auslösen oder auflösen.
     await refreshConflicts();
   };
 
   const handleDeleteShift = async (id: string) => {
-    const res = await fetch(`/api/shifts/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Deleting shift failed");
-    setShifts((prev) => prev.filter((s) => s.id !== id));
+    await deleteAndFilter<Shift>("/api/shifts/" + id, setShifts, (s) => s.id !== id, "Deleting shift failed");
     // Server löscht kaskadierend auch alle Zuweisungen dieser Schicht (server/routes/shifts.ts).
     setAssignments((prev) => prev.filter((a) => a.shift_id !== id));
     await refreshConflicts();
@@ -59,15 +49,14 @@ export function useShiftsData(
       body: JSON.stringify({ shift_id: shiftId, user_id: userId, force }),
     });
 
+    // Sonder-Fehlerform statt normalem Error: der Aufrufer (CalendarCard.tsx
+    // etc.) nutzt {status, message}, um bei Konflikten ein "Trotzdem
+    // zuweisen?"-Nachfragen anzubieten - passt nicht in throwIfNotOk().
     if (res.status === 409) {
       const data = await res.json();
       throw { status: 409, message: data.message };
     }
-
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Adding assignment failed");
-    }
+    await throwIfNotOk(res, "Adding assignment failed");
 
     const newAssignment: ShiftAssignment = await res.json();
     setAssignments((prev) => [...prev, newAssignment]);
@@ -75,25 +64,24 @@ export function useShiftsData(
   };
 
   const handleRemoveAssignment = async (shiftId: string, userId: string) => {
-    const res = await fetch("/api/assignments", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ shift_id: shiftId, user_id: userId }),
-    });
-    if (!res.ok) throw new Error("Removing assignment failed");
-    setAssignments((prev) => prev.filter((a) => !(a.shift_id === shiftId && a.user_id === userId)));
+    await deleteAndFilter<ShiftAssignment>(
+      "/api/assignments",
+      setAssignments,
+      (a) => !(a.shift_id === shiftId && a.user_id === userId),
+      "Removing assignment failed",
+      { shift_id: shiftId, user_id: userId }
+    );
     await refreshConflicts();
   };
 
   const handleToggleAssignmentAccepted = async (assignmentId: string, accepted: boolean) => {
-    const res = await fetch(`/api/assignments/${assignmentId}/accepted`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accepted }),
-    });
-    if (!res.ok) throw new Error("Toggling assignment accepted state failed");
-    const updated: ShiftAssignment = await res.json();
-    setAssignments((prev) => prev.map((a) => (a.id === assignmentId ? updated : a)));
+    await updateAndReplace(
+      `/api/assignments/${assignmentId}/accepted`,
+      { accepted },
+      assignmentId,
+      setAssignments,
+      "Toggling assignment accepted state failed"
+    );
   };
 
   const handleUpdateAssignmentStatus = async (
@@ -103,9 +91,11 @@ export function useShiftsData(
   ) => {
     // Unkritische, konfliktarme Aktion (eigener Status) -> offline-fähig via
     // queuedFetch: wird bei fehlender Verbindung lokal gespeichert und
-    // automatisch nachgesendet, statt sofort zu scheitern.
+    // automatisch nachgesendet, statt sofort zu scheitern. Nutzt deshalb
+    // NICHT updateAndReplace() aus lib/apiMutations.ts (das kennt nur echtes
+    // fetch(), keine synthetische 202-Antwort ohne Server-Objekt).
     const res = await queuedFetch("PUT", `/api/assignments/${assignmentId}/status`, { status, decline_reason: declineReason }, "Schicht-Status ändern");
-    if (!res.ok) throw new Error("Updating assignment status failed");
+    await throwIfNotOk(res, "Updating assignment status failed");
 
     if (res.status === 202) {
       // Offline gequeut - der Server hat noch nicht wirklich geantwortet.

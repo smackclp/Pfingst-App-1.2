@@ -1,5 +1,6 @@
 import React from "react";
 import { SogTeamGroup, SogStation, SogSettings } from "../types";
+import { throwIfNotOk } from "../lib/apiMutations";
 
 /**
  * Mutations-Funktionen für "Spiel ohne Grenzen" (Gruppen, Stationen,
@@ -21,7 +22,7 @@ export function useSogData(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ groups }),
     });
-    if (!res.ok) throw new Error("Updating SoG groups failed");
+    await throwIfNotOk(res, "Updating SoG groups failed");
     setSogGroups(groups);
   };
 
@@ -31,7 +32,7 @@ export function useSogData(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stations }),
     });
-    if (!res.ok) throw new Error("Updating SoG stations failed");
+    await throwIfNotOk(res, "Updating SoG stations failed");
     setSogStations(stations);
   };
 
@@ -41,7 +42,7 @@ export function useSogData(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
     });
-    if (!res.ok) throw new Error("Updating SoG settings failed");
+    await throwIfNotOk(res, "Updating SoG settings failed");
     // Server wendet bei ungültigen Typen Defaults an (server/routes/program.ts)
     // - die zurückgegebenen sogSettings sind daher maßgeblich, nicht das
     // ungeprüfte Eingabe-Argument.

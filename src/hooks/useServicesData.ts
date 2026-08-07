@@ -1,5 +1,6 @@
 import React from "react";
 import { Service, Shift, ShiftAssignment } from "../types";
+import { createAndAppend, updateAndReplace, deleteAndFilter } from "../lib/apiMutations";
 
 /**
  * Mutations-Funktionen für Dienste (Services), extrahiert aus useZeltlagerData.
@@ -19,37 +20,21 @@ export function useServicesData(
   refreshConflicts: () => Promise<void>
 ) {
   const handleAddService = async (servicePayload: Omit<Service, "id">) => {
-    const res = await fetch("/api/services", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(servicePayload),
-    });
-    if (!res.ok) throw new Error("Adding service failed");
-    const newService: Service = await res.json();
-    setServices((prev) => [...prev, newService]);
+    await createAndAppend("/api/services", servicePayload, setServices, "Adding service failed");
   };
 
   const handleUpdateService = async (id: string, servicePayload: Partial<Service>) => {
-    const res = await fetch(`/api/services/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(servicePayload),
-    });
-    if (!res.ok) throw new Error("Updating service failed");
-    const updatedService: Service = await res.json();
-    setServices((prev) => prev.map((s) => (s.id === id ? updatedService : s)));
+    await updateAndReplace("/api/services/" + id, servicePayload, id, setServices, "Updating service failed");
     // min_persons/max_persons-Änderungen können Überbelegungs-Konflikte auslösen/auflösen.
     await refreshConflicts();
   };
 
   const handleDeleteService = async (id: string) => {
-    const res = await fetch(`/api/services/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Deleting service failed");
-    setServices((prev) => prev.filter((s) => s.id !== id));
     // Server löscht kaskadierend auch alle Schichten dieses Diensts und
     // deren Zuweisungen (server/routes/shifts.ts) - hier mit derselben
     // Logik anhand des VOR der Löschung bekannten shifts-Stands nachgezogen.
     const deletedShiftIds = new Set(shifts.filter((s) => s.service_id === id).map((s) => s.id));
+    await deleteAndFilter<Service>("/api/services/" + id, setServices, (s) => s.id !== id, "Deleting service failed");
     setShifts((prev) => prev.filter((s) => s.service_id !== id));
     setAssignments((prev) => prev.filter((a) => !deletedShiftIds.has(a.shift_id)));
     await refreshConflicts();

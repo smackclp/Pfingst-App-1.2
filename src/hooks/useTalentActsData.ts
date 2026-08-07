@@ -1,6 +1,7 @@
 import React from "react";
 import { TalentAct } from "../types";
 import { queuedFetch } from "../lib/offlineQueue";
+import { throwIfNotOk } from "../lib/apiMutations";
 
 /**
  * Mutations-Funktionen für Talentshow-Beiträge, extrahiert aus useZeltlagerData.
@@ -14,7 +15,7 @@ import { queuedFetch } from "../lib/offlineQueue";
 export function useTalentActsData(setTalentActs: React.Dispatch<React.SetStateAction<TalentAct[]>>) {
   const handleAddTalentAct = async (actPayload: Omit<TalentAct, "id">) => {
     const res = await queuedFetch("POST", "/api/talent-acts", actPayload, "Talentshow-Beitrag eintragen");
-    if (!res.ok) throw new Error("Adding talent act failed");
+    await throwIfNotOk(res, "Adding talent act failed");
     if (res.status === 202) {
       // Offline gequeut: der Server hat noch keine ID vergeben, daher kein
       // optimistischer Eintrag.
@@ -26,7 +27,7 @@ export function useTalentActsData(setTalentActs: React.Dispatch<React.SetStateAc
 
   const handleUpdateTalentAct = async (id: string, actPayload: Partial<TalentAct>) => {
     const res = await queuedFetch("PUT", `/api/talent-acts/${id}`, actPayload, "Talentshow-Beitrag ändern");
-    if (!res.ok) throw new Error("Updating talent act failed");
+    await throwIfNotOk(res, "Updating talent act failed");
     if (res.status === 202) {
       setTalentActs((prev) => prev.map((a) => (a.id === id ? { ...a, ...actPayload } : a)));
       return;
@@ -37,7 +38,7 @@ export function useTalentActsData(setTalentActs: React.Dispatch<React.SetStateAc
 
   const handleDeleteTalentAct = async (id: string) => {
     const res = await queuedFetch("DELETE", `/api/talent-acts/${id}`, undefined, "Talentshow-Beitrag löschen");
-    if (!res.ok) throw new Error("Deleting talent act failed");
+    await throwIfNotOk(res, "Deleting talent act failed");
     setTalentActs((prev) => prev.filter((a) => a.id !== id));
   };
 
@@ -47,7 +48,7 @@ export function useTalentActsData(setTalentActs: React.Dispatch<React.SetStateAc
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orders }),
     });
-    if (!res.ok) throw new Error("Reordering talent acts failed");
+    await throwIfNotOk(res, "Reordering talent acts failed");
     setTalentActs((prev) =>
       prev.map((a) => (orders[a.id] !== undefined ? { ...a, order_index: Number(orders[a.id]) } : a))
     );
@@ -57,7 +58,7 @@ export function useTalentActsData(setTalentActs: React.Dispatch<React.SetStateAc
     const res = await fetch("/api/talent-acts/clear", {
       method: "POST",
     });
-    if (!res.ok) throw new Error("Clearing talent acts failed");
+    await throwIfNotOk(res, "Clearing talent acts failed");
     // GET /talent-acts liefert bereits nur die Beiträge des aktiven
     // Lagerjahrs (server/routes/program.ts) - "leeren" heißt hier schlicht "alles weg".
     setTalentActs([]);

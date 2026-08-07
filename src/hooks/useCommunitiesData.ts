@@ -1,5 +1,6 @@
 import React from "react";
 import { Community } from "../types";
+import { createAndAppend, updateAndReplace, deleteAndFilter, throwIfNotOk } from "../lib/apiMutations";
 
 /**
  * Mutations-Funktionen für Gemeinden (Communities), extrahiert aus
@@ -9,33 +10,15 @@ import { Community } from "../types";
  */
 export function useCommunitiesData(setCommunities: React.Dispatch<React.SetStateAction<Community[]>>) {
   const handleAddCommunity = async (community: Omit<Community, "id">) => {
-    const res = await fetch("/api/communities", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(community),
-    });
-    if (!res.ok) throw new Error("Adding community failed");
-    const newCommunity: Community = await res.json();
-    setCommunities((prev) => [...prev, newCommunity]);
+    await createAndAppend("/api/communities", community, setCommunities, "Adding community failed");
   };
 
   const handleUpdateCommunity = async (id: string, payload: Partial<Community>) => {
-    const res = await fetch(`/api/communities/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error("Updating community failed");
-    const updated: Community = await res.json();
-    setCommunities((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    await updateAndReplace("/api/communities/" + id, payload, id, setCommunities, "Updating community failed");
   };
 
   const handleDeleteCommunity = async (id: string) => {
-    const res = await fetch(`/api/communities/${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Deleting community failed");
-    setCommunities((prev) => prev.filter((c) => c.id !== id));
+    await deleteAndFilter<Community>("/api/communities/" + id, setCommunities, (c) => c.id !== id, "Deleting community failed");
   };
 
   const handleImportCommunities = async (items: Omit<Community, "id" | "camp_id">[]) => {
@@ -44,7 +27,7 @@ export function useCommunitiesData(setCommunities: React.Dispatch<React.SetState
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(items),
     });
-    if (!res.ok) throw new Error("Importing communities failed");
+    await throwIfNotOk(res, "Importing communities failed");
     const data: { imported: Community[] } = await res.json();
     setCommunities((prev) => [...prev, ...data.imported]);
   };
@@ -53,7 +36,7 @@ export function useCommunitiesData(setCommunities: React.Dispatch<React.SetState
     const res = await fetch("/api/communities/clear", {
       method: "POST",
     });
-    if (!res.ok) throw new Error("Clearing communities failed");
+    await throwIfNotOk(res, "Clearing communities failed");
     // GET /communities liefert bereits nur die Gemeinden des aktiven
     // Lagerjahrs (server/routes/people.ts) - der lokale State enthält also
     // nie welche aus anderen Jahren, "leeren" heißt hier schlicht "alles weg".

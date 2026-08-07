@@ -1,6 +1,7 @@
 import React from "react";
 import { User, ShiftAssignment } from "../types";
 import type { AccessRole } from "../lib/apiAuth";
+import { createAndAppend, updateAndReplace, deleteAndFilter } from "../lib/apiMutations";
 
 /**
  * Mutations-Funktionen für Helfer*innen (Users), extrahiert aus useZeltlagerData.
@@ -13,48 +14,29 @@ export function useUsersData(
   setAssignments: React.Dispatch<React.SetStateAction<ShiftAssignment[]>>
 ) {
   const handleAddUser = async (userPayload: Omit<User, "id">) => {
-    const res = await fetch("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userPayload),
-    });
-    if (!res.ok) throw new Error("Adding user failed");
-    const newUser: User = await res.json();
-    setUsers((prev) => [...prev, newUser]);
+    await createAndAppend("/api/users", userPayload, setUsers, "Adding user failed");
   };
 
   const handleUpdateUser = async (id: string, userPayload: Partial<User>) => {
-    const res = await fetch(`/api/users/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userPayload),
-    });
-    if (!res.ok) throw new Error("Updating user failed");
-    const updatedUser: User = await res.json();
-    setUsers((prev) => prev.map((u) => (u.id === id ? updatedUser : u)));
+    await updateAndReplace("/api/users/" + id, userPayload, id, setUsers, "Updating user failed");
   };
 
   const handleDeleteUser = async (id: string) => {
-    const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Deleting user failed");
-    setUsers((prev) => prev.filter((u) => u.id !== id));
+    await deleteAndFilter<User>("/api/users/" + id, setUsers, (u) => u.id !== id, "Deleting user failed");
     // Server löscht kaskadierend auch alle Zuweisungen dieser Person (server/routes/people.ts).
     setAssignments((prev) => prev.filter((a) => a.user_id !== id));
   };
 
   // Nur Lagerleitung: Zugriffsrolle einer Person ändern (Helfer/Bereichsleiter/Lagerleitung)
   const handleUpdateAccessRole = async (id: string, role: AccessRole) => {
-    const res = await fetch(`/api/auth/admin/access-role/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_role: role }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.error || "Rolle konnte nicht geändert werden.");
-    }
-    const updatedUser: User = data.user;
-    setUsers((prev) => prev.map((u) => (u.id === id ? updatedUser : u)));
+    await updateAndReplace(
+      "/api/auth/admin/access-role/" + id,
+      { access_role: role },
+      id,
+      setUsers,
+      "Rolle konnte nicht geändert werden.",
+      (data) => data.user
+    );
   };
 
   return { handleAddUser, handleUpdateUser, handleDeleteUser, handleUpdateAccessRole };
