@@ -454,6 +454,29 @@ Regeln:
   prüfen. AUDIT.md enthält den Mechanismus dafür (Diff seit letztem
   Audit-Commit, Ausnahmen für übergreifende Themen).
 
+---
+
+16. Abhängigkeiten aktualisieren (Supply-Chain-Schutz)
+
+`.npmrc` erzwingt einen 10-Tage-Cooldown (`min-release-age=10`): npm
+installiert/aktualisiert nur Paketversionen, die mindestens 10 Tage alt
+sind. Schutz vor kompromittierten npm-Accounts, die kurzlebige bösartige
+Versionen veröffentlichen.
+
+WICHTIG: Diese Einstellung wird nur ab npm >= 11.10.0 durchgesetzt (per
+Bisektion gegen die echte npm-Registry getestet) - ältere npm-Versionen
+ignorieren sie stillschweigend, ohne Fehler oder Warnung. Vor jedem
+`npm install <paket>` oder `npm update`:
+
+- `npm --version` prüfen.
+- Falls < 11.10.0: erst `npm install -g npm@latest` ausführen.
+- Danach zur Kontrolle `npm config get min-release-age` prüfen (sollte
+  `10` zurückgeben).
+
+`npm ci` (z. B. in CI, `.github/workflows/test.yml`) ist davon nicht
+betroffen, da dabei ohnehin nichts neu aufgelöst, sondern exakt die
+`package-lock.json` installiert wird - dort ist keine Prüfung nötig.
+
 # Technologie-Stack
 
 Die Anwendung basiert ausschließlich auf:
