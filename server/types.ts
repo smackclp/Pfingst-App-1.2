@@ -73,6 +73,8 @@ export interface Notification {
 }
 
 export interface PushSubscriptionItem {
+  /** Stabile Dokument-ID für die Firestore-Spiegelung (server/firebase.ts) - unabhängig vom Endpoint, damit ein Update der Subscription nicht die ID ändert. */
+  id: string;
   userId: string;
   subscription: any;
 }

@@ -2,6 +2,12 @@ import { readDB, writeDB } from "./db";
 import { Notification } from "./types";
 import webpush from "web-push";
 
+// Ohne Aufräumen wächst die notifications-Collection unbegrenzt über
+// Lagerjahre hinweg (jede Benachrichtigung erzeugt ein neues Dokument, siehe
+// AUDIT.md) und vergrößert jeden vollständigen Firestore-Reload (Serverstart).
+// 90 Tage decken ein Lagerjahr inkl. Nachbereitung großzügig ab.
+const NOTIFICATION_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+
 /**
  * Dispatches a notification to a user. Saves to db.json for local UI polling
  * and sends standard Web Push notification to any registered mobile or browser subscriptions.
@@ -23,6 +29,15 @@ export async function sendNotificationToUser(userId: string, title: string, body
       read: false,
     };
     db.notifications.push(newNotification);
+
+    // Alte Benachrichtigungen jenseits der Aufbewahrungsfrist entfernen, statt
+    // die Collection unbegrenzt wachsen zu lassen.
+    const cutoff = Date.now() - NOTIFICATION_RETENTION_MS;
+    db.notifications = db.notifications.filter((n) => {
+      const ts = n?.timestamp ? new Date(n.timestamp).getTime() : 0;
+      return !ts || ts >= cutoff;
+    });
+
     writeDB(db);
 
     // Find user

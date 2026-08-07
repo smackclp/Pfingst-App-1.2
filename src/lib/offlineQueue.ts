@@ -53,10 +53,16 @@ function isNetworkError(err: unknown): boolean {
   return err instanceof TypeError;
 }
 
-async function performRequest(method: string, url: string, body?: any): Promise<Response> {
+async function performRequest(method: string, url: string, body?: any, idempotencyKey?: string): Promise<Response> {
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  // Nur beim erneuten Nachsenden gesetzt (siehe flushOfflineQueue): erlaubt
+  // dem Server, eine Aktion zu erkennen, deren Antwort beim ersten Versuch
+  // nicht mehr ankam, und sie nicht ein zweites Mal auszuführen (server/idempotency.ts).
+  if (idempotencyKey) headers["X-Idempotency-Key"] = idempotencyKey;
   return fetch(url, {
     method,
-    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 }
@@ -109,7 +115,7 @@ export async function flushOfflineQueue(): Promise<void> {
     while (queue.length > 0) {
       const action = queue[0];
       try {
-        const res = await performRequest(action.method, action.url, action.body);
+        const res = await performRequest(action.method, action.url, action.body, action.id);
         if (!res.ok && res.status !== 404) {
           throw new Error(`Nachsenden fehlgeschlagen (Status ${res.status})`);
         }

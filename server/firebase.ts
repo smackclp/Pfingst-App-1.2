@@ -57,7 +57,7 @@ export function isFirebaseEnabled(): boolean {
 
 // Alle DB-Arrays, die 1:1 als eigene Firestore-Collection gespiegelt werden
 // (Dokument-ID = item.id). Zentrale Stelle statt 3 identischer Kopien.
-export const FIRESTORE_COLLECTIONS = ["users", "services", "shifts", "assignments", "camps", "materials", "functionalRoles", "communities", "talentActs", "notifications"] as const;
+export const FIRESTORE_COLLECTIONS = ["users", "services", "shifts", "assignments", "camps", "materials", "functionalRoles", "communities", "talentActs", "notifications", "pushSubscriptions", "sogStations"] as const;
 
 // In-Memory Database Cache to reduce Firestore read costs to absolute zero for client fetches!
 let localCache: DB | null = null;
@@ -188,6 +188,43 @@ export async function getUnifiedDB(forceRefresh = false): Promise<DB> {
     if (!dbState.communities) dbState.communities = [];
     if (!dbState.talentActs) dbState.talentActs = [];
     if (!dbState.notifications) dbState.notifications = [];
+
+    // Einmalige Übernahme: pushSubscriptions/sogStations wurden erst mit
+    // diesem Fix in FIRESTORE_COLLECTIONS aufgenommen (vorher nur im lokalen
+    // db.json-Backup, nie in Firestore selbst - gingen dadurch bei jedem
+    // Serverneustart verloren, siehe AUDIT.md). Falls Firestore für diese
+    // beiden Felder noch leer ist, aber die lokale Backup-Datei noch Daten
+    // aus der Zeit vor dem Fix enthält, werden sie einmalig hochgeladen,
+    // statt sie stillschweigend zu verlieren.
+    if (!dbState.pushSubscriptions || dbState.pushSubscriptions.length === 0) {
+      const localFallback = loadLocalDBFallback();
+      const localSubs = localFallback.pushSubscriptions || [];
+      if (localSubs.length > 0) {
+        console.log(`Migrating ${localSubs.length} pre-existing push subscription(s) from local backup to Firestore...`);
+        for (const sub of localSubs) {
+          if (!sub) continue;
+          // Abos aus der Zeit vor diesem Fix hatten noch keine eigene ID.
+          if (!sub.id) sub.id = `pushsub-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+          await writeFirestoreDoc("pushSubscriptions", sub.id, sub);
+        }
+        dbState.pushSubscriptions = localSubs;
+      } else {
+        dbState.pushSubscriptions = [];
+      }
+    }
+    if (!dbState.sogStations || dbState.sogStations.length === 0) {
+      const localFallback = loadLocalDBFallback();
+      const localStations = localFallback.sogStations || [];
+      if (localStations.length > 0) {
+        console.log(`Migrating ${localStations.length} pre-existing SoG station(s) from local backup to Firestore...`);
+        for (const station of localStations) {
+          if (station && station.id) await writeFirestoreDoc("sogStations", station.id, station);
+        }
+        dbState.sogStations = localStations;
+      } else {
+        dbState.sogStations = [];
+      }
+    }
 
     // Ensure default camp and active camp exists
     if (!dbState.camps || dbState.camps.length === 0) {

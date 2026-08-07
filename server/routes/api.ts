@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { recordApiHit } from "../firebase";
 import { authMiddleware } from "../auth";
+import { idempotencyMiddleware } from "../idempotency";
 
 import authRouter from "./auth";
 import peopleRouter from "./people";
@@ -26,6 +27,11 @@ router.use(authRouter);
 
 // Ab hier ist für ALLE Routen eine gültige Session erforderlich.
 router.use(authMiddleware);
+
+// Verhindert doppelte Verarbeitung erneut gesendeter Offline-Warteschlangen-
+// Aktionen (siehe server/idempotency.ts). Betrifft nur Requests mit dem
+// X-Idempotency-Key-Header - normale Anfragen bleiben unverändert.
+router.use(idempotencyMiddleware);
 
 // Register domain sub-routers
 router.use(peopleRouter);

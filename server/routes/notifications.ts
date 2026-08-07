@@ -125,7 +125,11 @@ router.post("/notifications/push-subscribe", (req, res) => {
     if (existingIndex > -1) {
       db.pushSubscriptions[existingIndex].subscription = subscription;
     } else {
-      db.pushSubscriptions.push({ userId, subscription });
+      db.pushSubscriptions.push({
+        id: `pushsub-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        userId,
+        subscription,
+      });
     }
     writeDB(db);
     res.json({ success: true, message: "Abo erfolgreich registriert!" });
