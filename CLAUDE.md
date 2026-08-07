@@ -319,6 +319,14 @@ Bereichsleitungen entlasten.
 
 Branch-Struktur
 
+<<<<<<< HEAD
+=======
+
+main = stabile Version
+beta = Entwicklungszweig
+
+
+>>>>>>> 98cfab0f5e5fc1a435a1f8a14672b249517d7879
 main
 
 Produktionsversion.
@@ -331,7 +339,7 @@ Regeln:
 
 ---
 
-Beta
+beta
 
 Entwicklungs- und Testversion.
 
@@ -346,11 +354,11 @@ Vor jeder Änderung:
 Prüfen:
 
 - Welcher Branch ist aktiv?
-- Ist es Beta?
+- Ist es beta?
 
 Falls nicht:
 
-Auf Beta wechseln oder darauf hinweisen.
+Auf beta wechseln oder darauf hinweisen.
 
 ---
 
@@ -369,7 +377,7 @@ Veröffentlichung
 
 Eine Änderung darf erst nach Freigabe:
 
-Beta → main
+beta → main
 
 übernommen werden.
 
