@@ -108,55 +108,56 @@ Sicherheits-Rückbau, kein einfacher Gewinn.
   Erinnerungen im Jahr, oder automatisiert per Cloud Scheduler (auch
   Blaze-pflichtig, aber bei dieser Nutzung im Gratiskontingent).
 
-## Neu vorgeschlagen, noch nicht tief geprüft
+## Geprüft und verworfen (mit Recherche, nicht nur Einschätzung)
 
-### Eigene Synology NAS (DS212j) - vermutlich technisch nicht machbar
-- DS212j ist ein sehr altes (~2012), leistungsschwaches Einsteigermodell:
-  Single-Core-ARM-CPU, typischerweise nur 128 MB RAM, nicht erweiterbar.
-- "j"-Serie unterstützt nach Kenntnisstand KEIN Docker/Container Manager
-  (Hardware-Voraussetzungen dafür fehlen bei diesem Modell) - Deployment
-  über das sonst übliche Docker-Image wäre nicht möglich.
-- Auch ohne Docker (z.B. Node.js über SynoCommunity-Pakete direkt
-  installiert) fraglich, ob Express + firebase-admin (gRPC-Abhängigkeit)
-  in 128 MB RAM überhaupt zuverlässig läuft.
-- DSM-Update-Support für ein Gerät dieses Alters ist mit hoher
-  Wahrscheinlichkeit bereits ausgelaufen (Sicherheitsrisiko bei
-  öffentlicher Erreichbarkeit).
-- Öffentliche Erreichbarkeit vom Zuhause aus (Portfreigabe/DynDNS) bringt
-  eigene Zuverlässigkeits-/Sicherheitsfragen mit (Heimnetz-Uptime,
-  Bandbreite, Angriffsfläche) - passt schlecht zu CLAUDE.mds
-  Stabilitäts-Anspruch für echte Festivalbedingungen.
-- Kosten: 0 € (Hardware vorhanden), aber technische Machbarkeit sehr
-  fraglich. Müsste vor Ort am Gerät geprüft werden (RAM-Ausbau nicht
-  möglich, Docker-Fähigkeit im DSM-Paketzentrum prüfen), bevor das als
-  ernsthafte Option gilt.
+### Eigene Synology NAS (DS212j) - technisch definitiv nicht machbar
+Recherchiert (Webrecherche in dieser Sitzung, Quellen siehe Chat-Verlauf):
+- Hardware: Marvell 6281 CPU, 1 Kern, 1,2 GHz, 256 MB RAM (fest verbaut,
+  nicht erweiterbar).
+- Docker/Container Manager verlangt zwingend Intel/AMD-CPU UND
+  mindestens 1 GB RAM - die DS212j erfüllt keine der beiden
+  Voraussetzungen (ARM-CPU, ein Viertel des nötigen RAMs). Kein
+  Docker-Deployment möglich.
+- Fest auf DSM 6.2 begrenzt (kann nicht auf DSM 7.x aktualisiert werden),
+  seit Oktober 2024 offiziell End-of-Life - keine Sicherheitsupdates mehr.
+  Öffentliche Erreichbarkeit eines ungepatchten, abgekündigten Systems
+  wäre ein echtes Sicherheitsrisiko für die Helfer-Daten.
+- **Verdict: ausgeschlossen.** Nicht "müsste geprüft werden", sondern
+  klar belegt nicht geeignet - weder für Docker noch mit vertretbarem
+  Sicherheitsniveau für einen direkten Node-Betrieb.
 
-### all-inkl.com - technisch prüfenswert, aber kostenpflichtig
-- Deutscher Hoster, Kerngeschäft klassisches Shared-Hosting
-  (PHP/MySQL/Apache) - klassische Tarife unterstützen normalerweise
-  KEINEN durchgehend laufenden Node.js-Prozess.
-- Manche Tarife bieten mittlerweile Node.js-Unterstützung (z.B. über
-  Passenger-artige Prozess-Verwaltung) - müsste direkt bei all-inkl
-  erfragt werden: welcher Tarif, welche Node-Version, ob native
-  npm-Abhängigkeiten wie `firebase-admin` dort installierbar sind,
-  welche Speicher-/CPU-Grenzen gelten.
-- WICHTIGER Unterschied zum Kostenrisiko bei Cloud Run: all-inkl-Tarife
-  sind FESTE, im Voraus bekannte monatliche/jährliche Preise - kein
-  nutzungsabhängiges "könnte theoretisch mehr werden"-Risiko wie bei
-  Cloud-Diensten. Das trifft die eigentliche Sorge des Nutzers
-  (unkalkulierbare Kosten) anders als eine harte "0€"-Vorgabe - ggf. wert,
-  das nochmal explizit abzufragen, ob ein kleiner, aber PLANBARER
-  Fixpreis akzeptabel wäre.
-- Noch offen: aktuelle Tarife/Preise bei all-inkl direkt nachsehen
-  (nicht recherchiert in dieser Sitzung).
+### all-inkl.com - technisch möglich, aber unzuverlässiger als Render
+Recherchiert (Webrecherche in dieser Sitzung):
+- Node.js nur ab dem Premium-Tarif (9,95 €/Monat) via SSH (kein
+  Root-Zugriff) nutzbar.
+- Entscheidender Fund: All-Inkls Shared-Hosting-Infrastruktur hat einen
+  "Reaper"-Mechanismus, der lang laufende Prozesse alle ca. 11-12 Minuten
+  automatisch beendet - unabhängig von echtem Traffic. Dokumentierte
+  Community-Lösung: ein PHP-Cronjob als "Wächter", der den Node-Prozess
+  minütlich prüft und bei Bedarf neu startet, mit genauem Timing, um dem
+  Reaper zuvorzukommen (fragiles Workaround, keine offizielle
+  Unterstützung für Dauerbetrieb).
+- Für diese App bedeutet das: HÄUFIGERE Neustarts als bei Render (dort
+  nur bei echter Inaktivität), und jeder Neustart löscht wie immer den
+  In-Memory-Sessions-/Cache-Speicher - aktive Helfer könnten mitten in
+  der Nutzung ausgeloggt werden, nicht nur nach einer Pause.
+- **Verdict: schlechtere Zuverlässigkeit als das kostenlose Render bei
+  zusätzlichen 9,95 €/Monat.** Kein sinnvoller Kandidat, außer die
+  feste, planbare Preisstruktur (kein nutzungsabhängiges Risiko wie bei
+  Cloud Run) wäre aus anderen Gründen wichtiger als Zuverlässigkeit.
 
 ## Offene Fragen für die finale Bewertung
 
-1. Ist ein kleiner, aber garantiert FESTER monatlicher Betrag (z.B.
-   all-inkl) grundsätzlich akzeptabel, oder muss es wirklich 0€ sein?
-   (Ändert die Bewertung von all-inkl stark.)
-2. Falls NAS: technische Prüfung vor Ort nötig (Docker-Fähigkeit,
-   RAM-Grenzen, DSM-Support-Status).
-3. Falls doch Cloud Run: soll das komplette Absicherungspaket
+1. Falls doch Cloud Run: soll das komplette Absicherungspaket
    (Budget-Alarm + Auto-Abschaltung + Artifact-Registry-Aufräumregel +
    saisonales Umschalten) mit aufgesetzt werden?
+2. NAS und all-inkl.com sind nach dieser Recherche ausgeschieden - nur
+   erneut aufgreifen, falls sich etwas an den Rahmenbedingungen ändert
+   (z.B. neue NAS-Hardware angeschafft).
+
+## Aktueller Favorit
+
+**Render.com (Gratis-Tarif) + externer Keep-Alive-Ping** (UptimeRobot
+oder cron-job.org, beide kostenlos ohne Kreditkarte). Passt zur
+bestehenden Architektur ohne Code-Änderung, garantiert 0 €, und mit dem
+Keep-Alive-Ping entfällt auch die Aufweck-Wartezeit im Praxisbetrieb.
