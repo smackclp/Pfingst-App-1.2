@@ -106,11 +106,36 @@ einer Gesamtbewertung der App als offen identifiziert wurden. Passend zu den
 - [ ] **Automatische Erinnerungen bei unbestätigten Schichten.** Wenn ein
   Helfer eine Schicht lange nicht bestätigt, soll automatisch eine
   freundliche Erinnerung verschickt werden (entlastet Bereichsleitungen,
-  siehe CLAUDE.md Abschnitt 10).
+  siehe CLAUDE.md Abschnitt 10). Kann die für das Fehler-Monitoring gebaute
+  Push-Infrastruktur (`sendNotificationToUser()`) wiederverwenden.
 - [ ] **Wetter-Hinweis auf dem Dashboard.** Für die Outdoor-Nutzung beim
-  Festival relevant (siehe CLAUDE.md Abschnitt 4, Outdoor-Fokus).
+  Festival relevant (siehe CLAUDE.md Abschnitt 4, Outdoor-Fokus). Ließe sich
+  z. B. über eine kostenlose Wetter-API ohne API-Key (Open-Meteo) umsetzen.
 - [ ] **Kurzes Feedback-/Fehlermelde-Formular für Helfer.** Niedrigschwellige
-  Möglichkeit, Probleme oder Feedback direkt aus der App zu melden.
+  Möglichkeit, Probleme oder Feedback direkt aus der App zu melden - die
+  menschliche Ergänzung zum technischen Fehler-Monitoring.
+
+### Weitere professionelle nächste Schritte (Vorschlag 2026-08-07)
+
+- [ ] **Health-Check-Endpoint (`/api/health`) + externes Uptime-Monitoring.**
+  Aktuell kein Endpoint, der von außen prüfbar ist, ob der Server überhaupt
+  noch antwortet. Kombiniert mit einem kostenlosen externen Monitor (z. B.
+  UptimeRobot) würde ein kompletter Ausfall während des Festivals sofort
+  auffallen - ergänzt das interne Fehler-Monitoring um den Fall, dass der
+  Server gar nicht mehr reagiert.
+- [ ] **Automatisiertes, regelmäßiges Firestore-Backup.** Bisher gibt es nur
+  den manuellen Backup-Mechanismus beim Lagerjahr-Reset. Ein täglicher
+  automatischer Export wäre ein echtes Sicherheitsnetz gegen Datenverlust
+  während des laufenden Lagers.
+- [ ] **Admin-Änderungsprotokoll (Audit-Log).** Wer hat wann eine Schicht
+  gelöscht, eine Person entfernt, eine Rolle geändert? Aktuell nicht
+  nachvollziehbar. Schafft Vertrauen bei mehreren Bereichsleitungen und
+  hilft beim Klären von Missverständnissen.
+- [ ] **Test-Coverage erweitern.** Die E2E-Suite (`tests/`) deckt nur
+  Login/Material/Schicht-Status/Undo-Flows ab (5 Spec-Dateien). Gemeinden-
+  Import, Programm/Talentshow, Spiel ohne Grenzen, PDF-/Druck-Export und das
+  neue Fehler-Monitoring haben keinen einzigen Test - vor dem nächsten
+  echten Festival-Einsatz die verlässlichste Absicherung gegen Regressionen.
 
 ---
 
