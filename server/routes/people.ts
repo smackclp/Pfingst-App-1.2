@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { readDB, writeDB } from "../db";
 import { User, FunctionalRole, Community } from "../types";
-import { requireRole, requireMinRole, sanitizeUsers, isAtLeast } from "../auth";
+import { requireRole, requireMinRole, sanitizeUser, sanitizeUsers, isAtLeast } from "../auth";
 
 const router = Router();
 
@@ -45,7 +45,7 @@ router.post("/users", requireRole("lagerleitung"), (req, res) => {
   };
   db.users.push(newUser);
   writeDB(db);
-  res.status(201).json(newUser);
+  res.status(201).json(sanitizeUser(newUser as any));
 });
 
 router.put("/users/:id", requireRole("lagerleitung"), (req, res) => {
@@ -63,7 +63,7 @@ router.put("/users/:id", requireRole("lagerleitung"), (req, res) => {
     id: req.params.id,
   };
   writeDB(db);
-  res.json(db.users[index]);
+  res.json(sanitizeUser(db.users[index] as any));
 });
 
 router.delete("/users/:id", requireRole("lagerleitung"), (req, res) => {

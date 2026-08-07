@@ -218,15 +218,19 @@ export function useZeltlagerData() {
   }, [authStatus]);
 
   // --- Fachliche Mutations-Hooks (siehe use<Domain>Data.ts) ---
-  const usersData = useUsersData(loadDatabase);
-  const servicesData = useServicesData(loadDatabase);
+  const usersData = useUsersData(setUsers, setAssignments);
+  const servicesData = useServicesData(shifts, setServices, setShifts, setAssignments, refreshConflicts);
   const shiftsData = useShiftsData(setShifts, setAssignments, refreshConflicts);
+  // Camp-Wechsel/-Anlage bleibt bewusst beim vollen Reload: betrifft nahezu
+  // alle camp-gebundenen Daten auf einmal (Schichten, Zuweisungen, Material,
+  // Gemeinden, Talentshow, SoG), ist selten (Admin-Aktion) und zeigt ohnehin
+  // einen Ladezustand - kein Fall für lokale Einzel-State-Updates.
   const campsData = useCampsData(loadDatabase);
-  const materialsData = useMaterialsData(loadDatabase);
-  const rolesData = useRolesData(loadDatabase);
-  const communitiesData = useCommunitiesData(loadDatabase);
-  const talentActsData = useTalentActsData(loadDatabase);
-  const sogData = useSogData(loadDatabase);
+  const materialsData = useMaterialsData(setMaterials);
+  const rolesData = useRolesData(setFunctionalRoles);
+  const communitiesData = useCommunitiesData(setCommunities);
+  const talentActsData = useTalentActsData(setTalentActs);
+  const sogData = useSogData(setSogGroups, setSogStations, setSogSettings);
 
   // Jumping to calendar view with highligh focus
   const handleSelectShift = (shiftId: string) => {

@@ -1,7 +1,13 @@
+import React from "react";
 import { Community } from "../types";
 
-/** Mutations-Funktionen für Gemeinden (Communities), extrahiert aus useZeltlagerData. */
-export function useCommunitiesData(loadDatabase: (silent?: boolean) => Promise<void>) {
+/**
+ * Mutations-Funktionen für Gemeinden (Communities), extrahiert aus
+ * useZeltlagerData. Aktualisiert den lokalen State direkt aus der Server-
+ * Antwort statt nach jeder Mutation alle 13 API-Endpunkte neu zu laden
+ * (siehe AUDIT.md, "Mutation-Reload"-Fund).
+ */
+export function useCommunitiesData(setCommunities: React.Dispatch<React.SetStateAction<Community[]>>) {
   const handleAddCommunity = async (community: Omit<Community, "id">) => {
     const res = await fetch("/api/communities", {
       method: "POST",
@@ -9,7 +15,8 @@ export function useCommunitiesData(loadDatabase: (silent?: boolean) => Promise<v
       body: JSON.stringify(community),
     });
     if (!res.ok) throw new Error("Adding community failed");
-    await loadDatabase(true);
+    const newCommunity: Community = await res.json();
+    setCommunities((prev) => [...prev, newCommunity]);
   };
 
   const handleUpdateCommunity = async (id: string, payload: Partial<Community>) => {
@@ -19,7 +26,8 @@ export function useCommunitiesData(loadDatabase: (silent?: boolean) => Promise<v
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error("Updating community failed");
-    await loadDatabase(true);
+    const updated: Community = await res.json();
+    setCommunities((prev) => prev.map((c) => (c.id === id ? updated : c)));
   };
 
   const handleDeleteCommunity = async (id: string) => {
@@ -27,7 +35,7 @@ export function useCommunitiesData(loadDatabase: (silent?: boolean) => Promise<v
       method: "DELETE",
     });
     if (!res.ok) throw new Error("Deleting community failed");
-    await loadDatabase(true);
+    setCommunities((prev) => prev.filter((c) => c.id !== id));
   };
 
   const handleImportCommunities = async (items: Omit<Community, "id" | "camp_id">[]) => {
@@ -37,7 +45,8 @@ export function useCommunitiesData(loadDatabase: (silent?: boolean) => Promise<v
       body: JSON.stringify(items),
     });
     if (!res.ok) throw new Error("Importing communities failed");
-    await loadDatabase(true);
+    const data: { imported: Community[] } = await res.json();
+    setCommunities((prev) => [...prev, ...data.imported]);
   };
 
   const handleClearCommunities = async () => {
@@ -45,7 +54,10 @@ export function useCommunitiesData(loadDatabase: (silent?: boolean) => Promise<v
       method: "POST",
     });
     if (!res.ok) throw new Error("Clearing communities failed");
-    await loadDatabase(true);
+    // GET /communities liefert bereits nur die Gemeinden des aktiven
+    // Lagerjahrs (server/routes/people.ts) - der lokale State enthält also
+    // nie welche aus anderen Jahren, "leeren" heißt hier schlicht "alles weg".
+    setCommunities([]);
   };
 
   return { handleAddCommunity, handleUpdateCommunity, handleDeleteCommunity, handleImportCommunities, handleClearCommunities };
