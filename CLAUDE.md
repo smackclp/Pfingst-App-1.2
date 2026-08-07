@@ -477,6 +477,44 @@ ignorieren sie stillschweigend, ohne Fehler oder Warnung. Vor jedem
 betroffen, da dabei ohnehin nichts neu aufgelöst, sondern exakt die
 `package-lock.json` installiert wird - dort ist keine Prüfung nötig.
 
+---
+
+Ausnahme: dringende Sicherheits-Patches
+
+Der 10-Tage-Cooldown darf für ein einzelnes Paket gezielt übersprungen
+werden, wenn ein dringender Sicherheits-Patch vorliegt - aber niemals
+automatisch nur weil eine neue Version existiert. Erst recherchieren und
+bewerten, dann erst installieren:
+
+1. **Recherche auf einschlägigen Quellen, bevor irgendetwas installiert
+   wird:**
+   - `npm audit` (offizielle npm-Advisory-Datenbank für die aktuell
+     installierten Versionen)
+   - GitHub Security Advisories (github.com/advisories bzw. das Advisory
+     im Repository des betroffenen Pakets)
+   - OSV.dev (Open Source Vulnerabilities)
+   - NVD (nvd.nist.gov) für CVE-Details, falls eine CVE-Nummer vorliegt
+   - Das offizielle Changelog/die Release Notes des Pakets selbst (GitHub
+     Releases), um zu bestätigen, dass die neuere Version tatsächlich vom
+     legitimen Maintainer stammt und den Fix enthält - "neuer" allein ist
+     kein Beleg. Gerade vorgetäuschte "Sicherheits-Updates" sind ein
+     bekanntes Muster bei Supply-Chain-Angriffen.
+2. **Vor dem Überspringen des Cooldowns bewerten:**
+   - Ist die Schwachstelle als kritisch oder hoch eingestuft (nicht nur
+     niedrig/mittel)?
+   - Betrifft sie tatsächlich den in dieser App genutzten
+     Versionsbereich/Codepfad, nicht nur das Paket theoretisch?
+   - Bestätigt das offizielle Release/Changelog den Fix?
+3. **Technische Umsetzung:** die committete `.npmrc` NICHT dauerhaft
+   ändern, sondern pro Installation gezielt überschreiben (getestet, wirkt
+   nur für diesen einen Aufruf):
+   `npm install <paket>@<version> --min-release-age=0`
+4. **Dokumentationspflicht:** im Commit kurz vermerken, welche
+   CVE/welches Advisory betroffen war und welche Quellen geprüft wurden.
+5. Bei Unsicherheit über Schweregrad oder Echtheit des Fixes: den Nutzer
+   informieren statt eigenmächtig zu entscheiden (siehe Abschnitt 14, "Bei
+   Unsicherheit nachfragen").
+
 # Technologie-Stack
 
 Die Anwendung basiert ausschließlich auf:
