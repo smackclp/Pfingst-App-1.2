@@ -20,8 +20,65 @@ import { useCommunitiesData } from "./useCommunitiesData";
 import { useTalentActsData } from "./useTalentActsData";
 import { useSogData } from "./useSogData";
 import { throwIfNotOk } from "../lib/apiMutations";
+import { safeStorage } from "../utils";
+import { STORAGE_KEYS } from "../constants";
 
 export type { AccessRole };
+
+/**
+ * Zuletzt geladener Datenstand fürs sofortige Anzeigen beim App-Start
+ * (bevor die echte Sitzungsprüfung/Datenabfrage durch ist - relevant bei
+ * einem gerade erst "aufgewachten" Gratis-Hosting-Server). An eine
+ * userId gebunden, damit auf einem geteilten Gerät nie versehentlich der
+ * Stand der vorherigen Person angezeigt wird, falls sich jemand anderes
+ * mit einem neuen Token anmeldet.
+ */
+interface AppSnapshot {
+  userId: string;
+  authUser: AuthUser;
+  accessRole: AccessRole;
+  lastChange: number;
+  data: {
+    users: User[];
+    services: Service[];
+    shifts: Shift[];
+    assignments: ShiftAssignment[];
+    conflicts: Conflict[];
+    camps: Camp[];
+    activeCampId: string;
+    materials: MaterialItem[];
+    functionalRoles: FunctionalRole[];
+    communities: Community[];
+    talentActs: TalentAct[];
+    sogGroups: SogTeamGroup[];
+    sogStations: SogStation[];
+    sogSettings: SogSettings;
+  };
+}
+
+function loadSnapshot(): AppSnapshot | null {
+  const raw = safeStorage.getItem(STORAGE_KEYS.APP_SNAPSHOT);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.userId && parsed.data) return parsed as AppSnapshot;
+  } catch (e) {
+    console.warn("Konnte App-Snapshot nicht lesen:", e);
+  }
+  return null;
+}
+
+function saveSnapshot(snapshot: AppSnapshot) {
+  try {
+    safeStorage.setItem(STORAGE_KEYS.APP_SNAPSHOT, JSON.stringify(snapshot));
+  } catch (e) {
+    console.warn("Konnte App-Snapshot nicht speichern:", e);
+  }
+}
+
+function clearSnapshot() {
+  safeStorage.removeItem(STORAGE_KEYS.APP_SNAPSHOT);
+}
 
 /**
  * Zentraler Datenzustand & Orchestrator. Hält bewusst alle Rohdaten
@@ -31,7 +88,7 @@ export type { AccessRole };
  * Fachbereich in eigene Hooks ausgelagert (use<Domain>Data.ts), die
  * loadDatabase als Parameter bekommen und danach ein Neuladen auslösen.
  */
-export function useZeltlagerData() {
+export function useZeltlagerData(onDataUpdated?: () => void) {
   const [currentTab, setCurrentTab] = React.useState<string>("dashboard");
 
   // --- Auth-Status: kommt ausschließlich vom Server (kein clientseitiger Bypass mehr) ---
@@ -41,59 +98,6 @@ export function useZeltlagerData() {
 
   const currentUserId = authUser?.id || null;
   const isAdmin = accessRole === "lagerleitung";
-
-  // Beim Start: vorhandenes Login-Token prüfen (falls jemand die App neu öffnet).
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const token = getAuthToken();
-      if (!token) {
-        if (!cancelled) setAuthStatus("unauthenticated");
-        return;
-      }
-      try {
-        const session = await fetchCurrentSession();
-        if (cancelled) return;
-        if (session) {
-          setAuthUser(session.user);
-          setAccessRole(session.accessRole);
-          setAuthStatus("authenticated");
-        } else {
-          setAuthStatus("unauthenticated");
-        }
-      } catch {
-        if (!cancelled) setAuthStatus("unauthenticated");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Zentrale Reaktion auf abgelaufene/ungültige Session (z.B. Token abgelaufen,
-  // Account deaktiviert): meldet automatisch ab und zeigt den Login-Bildschirm.
-  React.useEffect(() => {
-    setUnauthorizedHandler(() => {
-      setAuthUser(null);
-      setAccessRole("helfer");
-      setAuthStatus("unauthenticated");
-    });
-  }, []);
-
-  const login = React.useCallback(async (userId: string, pin: string) => {
-    const { token, accessRole: role, user } = await loginWithPin(userId, pin);
-    setAuthToken(token);
-    setAuthUser(user);
-    setAccessRole(role);
-    setAuthStatus("authenticated");
-  }, []);
-
-  const logoutUser = React.useCallback(async () => {
-    await apiLogout().catch(() => {});
-    setAuthUser(null);
-    setAccessRole("helfer");
-    setAuthStatus("unauthenticated");
-  }, []);
 
   // API State
   const [users, setUsers] = React.useState<User[]>([]);
@@ -117,6 +121,113 @@ export function useZeltlagerData() {
   const [selectShiftId, setSelectShiftId] = React.useState<string | null>(null);
 
   const lastChangeRef = React.useRef<number>(0);
+  // true, solange die aktuell angezeigten Daten (noch) nur aus dem lokalen
+  // Schnappschuss vom letzten Besuch stammen und noch nicht vom Server
+  // bestätigt wurden (siehe Auth-Effekt unten).
+  const hydratedFromSnapshotRef = React.useRef(false);
+
+  /** Übernimmt einen gespeicherten Schnappschuss sofort in den React-State,
+   * damit beim App-Start (z.B. während ein eingeschlafener Gratis-Server erst
+   * aufwacht) sofort der zuletzt bekannte Stand sichtbar ist statt eines
+   * leeren Ladebildschirms. */
+  const hydrateFromSnapshot = React.useCallback((snapshot: AppSnapshot) => {
+    setUsers(snapshot.data.users);
+    setServices(snapshot.data.services);
+    setShifts(snapshot.data.shifts);
+    setAssignments(snapshot.data.assignments);
+    setConflicts(snapshot.data.conflicts);
+    setCamps(snapshot.data.camps);
+    setActiveCampId(snapshot.data.activeCampId);
+    setMaterials(snapshot.data.materials);
+    setFunctionalRoles(snapshot.data.functionalRoles);
+    setCommunities(snapshot.data.communities);
+    setTalentActs(snapshot.data.talentActs);
+    setSogGroups(snapshot.data.sogGroups);
+    setSogStations(snapshot.data.sogStations);
+    setSogSettings(snapshot.data.sogSettings);
+    lastChangeRef.current = snapshot.lastChange;
+    setLoading(false);
+    hydratedFromSnapshotRef.current = true;
+  }, []);
+
+  // Beim Start: vorhandenes Login-Token prüfen (falls jemand die App neu öffnet).
+  // Liegt zusätzlich ein lokaler Schnappschuss vor, wird sofort damit
+  // gerendert - die echte Sitzungsprüfung läuft parallel im Hintergrund und
+  // bestätigt/korrigiert das Ergebnis anschließend (siehe hydrateFromSnapshot).
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const token = getAuthToken();
+      if (!token) {
+        if (!cancelled) setAuthStatus("unauthenticated");
+        return;
+      }
+
+      const snapshot = loadSnapshot();
+      if (snapshot) {
+        setAuthUser(snapshot.authUser);
+        setAccessRole(snapshot.accessRole);
+        hydrateFromSnapshot(snapshot);
+        setAuthStatus("authenticated");
+      }
+
+      try {
+        const session = await fetchCurrentSession();
+        if (cancelled) return;
+        if (session) {
+          setAuthUser(session.user);
+          setAccessRole(session.accessRole);
+          setAuthStatus("authenticated");
+        } else if (snapshot) {
+          // Token war ungültig, obwohl ein Schnappschuss vorlag (z.B. Konto
+          // zwischenzeitlich deaktiviert) - gecachten Stand verwerfen.
+          clearSnapshot();
+          setAuthUser(null);
+          setAccessRole("helfer");
+          setAuthStatus("unauthenticated");
+        } else {
+          setAuthStatus("unauthenticated");
+        }
+      } catch {
+        if (cancelled) return;
+        // Netzwerkfehler/Server noch nicht erreichbar: ohne Schnappschuss wie
+        // bisher abmelden; mit Schnappschuss stattdessen mit dem gecachten
+        // Stand weiterarbeiten lassen (wird automatisch bestätigt, sobald der
+        // Server wieder antwortet - siehe Datenlade-Effekt/Polling unten).
+        if (!snapshot) setAuthStatus("unauthenticated");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrateFromSnapshot]);
+
+  // Zentrale Reaktion auf abgelaufene/ungültige Session (z.B. Token abgelaufen,
+  // Account deaktiviert): meldet automatisch ab und zeigt den Login-Bildschirm.
+  React.useEffect(() => {
+    setUnauthorizedHandler(() => {
+      clearSnapshot();
+      setAuthUser(null);
+      setAccessRole("helfer");
+      setAuthStatus("unauthenticated");
+    });
+  }, []);
+
+  const login = React.useCallback(async (userId: string, pin: string) => {
+    const { token, accessRole: role, user } = await loginWithPin(userId, pin);
+    setAuthToken(token);
+    setAuthUser(user);
+    setAccessRole(role);
+    setAuthStatus("authenticated");
+  }, []);
+
+  const logoutUser = React.useCallback(async () => {
+    await apiLogout().catch(() => {});
+    clearSnapshot();
+    setAuthUser(null);
+    setAccessRole("helfer");
+    setAuthStatus("unauthenticated");
+  }, []);
 
   // Fetch all db tables
   const safeFetchJson = async (url: string, fallback: any) => {
@@ -143,7 +254,7 @@ export function useZeltlagerData() {
     setConflicts(data);
   };
 
-  const loadDatabase = async (isSilent = false, checkSync = false) => {
+  const loadDatabase = async (isSilent = false, checkSync = false, notifyIfChanged = false) => {
     if (checkSync) {
       try {
         const syncCheck = await safeFetchJson("/api/sync-check", { lastChange: 0 });
@@ -158,6 +269,8 @@ export function useZeltlagerData() {
 
     if (!isSilent) setLoading(true);
     else setRefreshing(true);
+
+    const previousLastChange = lastChangeRef.current;
 
     try {
       const [rUsers, rServices, rShifts, rAssignments, rConflicts, rCampsInfo, rMaterials, rRoles, rCommunities, rTalentActs, rSogGroups, rSogStations, rSogSettings, rSync] = await Promise.all([
@@ -177,23 +290,62 @@ export function useZeltlagerData() {
         safeFetchJson("/api/sync-check", { lastChange: 0 })
       ]);
 
+      const nextCamps = rCampsInfo.camps || [];
+      const nextActiveCampId = rCampsInfo.activeCampId || "camp-2026";
+      const nextSogSettings = rSogSettings || { startTime: "10:00", roundDuration: 15, breakDuration: 5 };
+
       setUsers(rUsers);
       setServices(rServices);
       setShifts(rShifts);
       setAssignments(rAssignments);
       setConflicts(rConflicts);
-      setCamps(rCampsInfo.camps || []);
-      setActiveCampId(rCampsInfo.activeCampId || "camp-2026");
+      setCamps(nextCamps);
+      setActiveCampId(nextActiveCampId);
       setMaterials(rMaterials || []);
       setFunctionalRoles(rRoles || []);
       setCommunities(rCommunities || []);
       setTalentActs(rTalentActs || []);
       setSogGroups(rSogGroups || []);
       setSogStations(rSogStations || []);
-      setSogSettings(rSogSettings || { startTime: "10:00", roundDuration: 15, breakDuration: 5 });
+      setSogSettings(nextSogSettings);
 
-      if (rSync && rSync.lastChange) {
-        lastChangeRef.current = rSync.lastChange;
+      const nextLastChange = rSync && rSync.lastChange ? rSync.lastChange : lastChangeRef.current;
+      lastChangeRef.current = nextLastChange;
+
+      // Für den nächsten App-Start lokal sichern (an die aktuelle Person
+      // gebunden, siehe hydrateFromSnapshot oben), damit dort sofort mit dem
+      // letzten bekannten Stand gerendert werden kann statt eines leeren
+      // Ladebildschirms.
+      if (currentUserId && authUser) {
+        saveSnapshot({
+          userId: currentUserId,
+          authUser,
+          accessRole,
+          lastChange: nextLastChange,
+          data: {
+            users: rUsers,
+            services: rServices,
+            shifts: rShifts,
+            assignments: rAssignments,
+            conflicts: rConflicts,
+            camps: nextCamps,
+            activeCampId: nextActiveCampId,
+            materials: rMaterials || [],
+            functionalRoles: rRoles || [],
+            communities: rCommunities || [],
+            talentActs: rTalentActs || [],
+            sogGroups: rSogGroups || [],
+            sogStations: rSogStations || [],
+            sogSettings: nextSogSettings,
+          },
+        });
+      }
+
+      // Nur hinweisen, wenn wirklich vorher schon ein (gecachter) Stand
+      // sichtbar war UND sich seitdem tatsächlich etwas geändert hat - sonst
+      // wäre der Hinweis bei jedem ganz normalen ersten Laden unnötiges Rauschen.
+      if (notifyIfChanged && previousLastChange > 0 && nextLastChange !== previousLastChange) {
+        onDataUpdated?.();
       }
     } catch (err) {
       console.error("Failed to load zeltlager database API states", err);
@@ -204,10 +356,20 @@ export function useZeltlagerData() {
   };
 
   // Daten erst laden, sobald eine gültige Session besteht - vorher würden alle
-  // Aufrufe ohnehin 401 zurückbekommen (siehe server/auth.ts).
+  // Aufrufe ohnehin 401 zurückbekommen (siehe server/auth.ts). War die Ansicht
+  // bereits optimistisch aus einem lokalen Schnappschuss befüllt (siehe
+  // hydrateFromSnapshot oben), lädt dieser erste Durchlauf still im
+  // Hintergrund nach (checkSync=true bricht sogar ganz ab, falls sich seit
+  // dem Schnappschuss serverseitig nichts geändert hat) statt erneut einen
+  // Ladezustand zu zeigen.
   React.useEffect(() => {
     if (authStatus !== "authenticated") return;
-    loadDatabase();
+    const wasHydratedFromCache = hydratedFromSnapshotRef.current;
+    hydratedFromSnapshotRef.current = false;
+    // Ohne Schnappschuss: Verhalten wie zuvor (normal laden, Ladezustand
+    // zeigen). Mit Schnappschuss: still im Hintergrund abgleichen und nur
+    // bei echten Änderungen etwas tun/anzeigen.
+    loadDatabase(wasHydratedFromCache, wasHydratedFromCache, wasHydratedFromCache);
 
     // Automatisches Polling alle 5 Minuten (300.000 ms)
     const interval = setInterval(() => {
