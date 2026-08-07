@@ -3,6 +3,7 @@ import { readDB, writeDB, saveResetBackup, readResetBackup, clearResetBackup } f
 import { getDefaultSeedDB } from "../seed";
 import { getLastChange, getStats } from "../firebase";
 import { requireMinRole, requireRole } from "../auth";
+import { recordError, getErrorLog } from "../errorLog";
 
 const router = Router();
 
@@ -93,6 +94,32 @@ router.get("/stats", requireMinRole("bereichsleiter"), (req, res) => {
 // Sync checker endpoint for light polling
 router.get("/sync-check", (req, res) => {
   res.json({ lastChange: getLastChange() });
+});
+
+// --- FEHLER-MONITORING ---
+// Nimmt vom Client gemeldete Laufzeitfehler entgegen (ErrorBoundary, globale
+// window.onerror/unhandledrejection-Handler in main.tsx). Für jede
+// angemeldete Person offen (kein Rollen-Zwang), da jeder Fehler melden
+// können soll, aber nur Lagerleitung die Übersicht einsehen darf.
+router.post("/client-error", (req, res) => {
+  const { message, stack, path: clientPath } = req.body || {};
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "Fehlende Fehlermeldung." });
+  }
+  // Fire-and-forget: die Antwort soll nicht auf Protokollierung/Push warten.
+  recordError({
+    source: "frontend",
+    message: message.slice(0, 500),
+    stack: typeof stack === "string" ? stack.slice(0, 2000) : undefined,
+    path: typeof clientPath === "string" ? clientPath.slice(0, 200) : undefined,
+    userId: req.authUser?.id,
+  }).catch((err) => console.error("Failed to record client error:", err));
+  res.status(202).json({ success: true });
+});
+
+// Letzte Fehler (Backend + Frontend) für das Admin-Panel ("Lager verwalten").
+router.get("/error-log", requireRole("lagerleitung"), (req, res) => {
+  res.json({ errors: getErrorLog() });
 });
 
 // Backup database endpoint

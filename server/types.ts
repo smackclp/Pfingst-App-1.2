@@ -11,6 +11,8 @@ export interface User {
   active: boolean;
   notes?: string;
   is_buyer?: boolean;
+  /** Erhält Push-Benachrichtigungen bei neu erkannten App-Fehlern (Fehler-Monitoring). */
+  is_error_monitor?: boolean;
   /** App-Zugriffsrolle (Berechtigungsstufe), unabhängig vom fachlichen "role"-Feld oben. */
   access_role?: AccessRole;
   /** Serverseitig gehashte PIN ("salt:hash"). Wird NIE an den Client gesendet. */

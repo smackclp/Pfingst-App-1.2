@@ -27,7 +27,7 @@ router.get("/users", (req, res) => {
 
 router.post("/users", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
-  const { first_name, last_name, display_name, email, phone, role, active, notes, is_buyer } = req.body;
+  const { first_name, last_name, display_name, email, phone, role, active, notes, is_buyer, is_error_monitor } = req.body;
   if (!first_name || !last_name || !display_name) {
     return res.status(400).json({ error: "Missing required fields: first_name, last_name, display_name" });
   }
@@ -42,6 +42,7 @@ router.post("/users", requireRole("lagerleitung"), (req, res) => {
     active: active !== undefined ? active : true,
     notes: notes || "",
     is_buyer: !!is_buyer,
+    is_error_monitor: !!is_error_monitor,
   };
   db.users.push(newUser);
   writeDB(db);

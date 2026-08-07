@@ -104,8 +104,6 @@ einer Gesamtbewertung der App als offen identifiziert wurden. Passend zu den
   Helfer eine Schicht lange nicht bestätigt, soll automatisch eine
   freundliche Erinnerung verschickt werden (entlastet Bereichsleitungen,
   siehe CLAUDE.md Abschnitt 10).
-- [ ] **Einfaches Fehler-Monitoring in Produktion.** Bislang kein
-  zentrales Logging/Alerting für Laufzeitfehler im Live-Betrieb.
 - [ ] **Wetter-Hinweis auf dem Dashboard.** Für die Outdoor-Nutzung beim
   Festival relevant (siehe CLAUDE.md Abschnitt 4, Outdoor-Fokus).
 - [ ] **Kurzes Feedback-/Fehlermelde-Formular für Helfer.** Niedrigschwellige
@@ -153,6 +151,19 @@ einer Gesamtbewertung der App als offen identifiziert wurden. Passend zu den
   in Express 5 behoben). `/seed/restore` verlor das unnötige `async`
   (kein `await` im Body), `/materials` bekam ein eigenes try/catch für den
   Teil vor dem Notification-Versand.
+
+- **Fehlende `@types/react`/`@types/react-dom` (`package.json`):** Im
+  gesamten Projekt nirgends installiert (auch nicht transitiv). Da
+  `tsconfig.json` weder `strict` noch `noImplicitAny` setzt, behandelt
+  TypeScript `react`-Importe stillschweigend als `any` - u. a. verliert eine
+  Klassenkomponente, die `React.Component<P,S>` erweitert, dadurch die
+  Typprüfung für `this.props`/`this.state` (aufgefallen bei
+  `src/components/ErrorBoundary.tsx`, dort per `declare props`/`declare
+  state`-Redeklaration umgangen statt eine neue Abhängigkeit einzuführen).
+  Echter Fix (`@types/react`+`@types/react-dom` installieren, optional
+  `strict` aktivieren) wäre eine Abhängigkeits-/Architekturentscheidung und
+  braucht Nutzer-Freigabe (siehe CLAUDE.md Technologie-Stack-Abschnitt) -
+  hier nur dokumentiert, nicht behoben.
 
 *Nicht als Fund gewertet (geprüft, aber unproblematisch): PIN-Hashing
 (scrypt + Salt + timingSafeEqual), Rollenprüfungen auf allen anderen

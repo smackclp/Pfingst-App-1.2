@@ -32,6 +32,7 @@ export default function PersonFormModal({
   const [active, setActive] = React.useState(true);
   const [notes, setNotes] = React.useState("");
   const [isBuyer, setIsBuyer] = React.useState(false);
+  const [isErrorMonitor, setIsErrorMonitor] = React.useState(false);
   const [errors, setErrors] = React.useState<{ firstName?: string; lastName?: string; displayName?: string }>({});
 
   // Populate when editingUser changes
@@ -46,6 +47,7 @@ export default function PersonFormModal({
       setActive(editingUser.active);
       setNotes(editingUser.notes || "");
       setIsBuyer(!!editingUser.is_buyer);
+      setIsErrorMonitor(!!editingUser.is_error_monitor);
     } else {
       setFirstName("");
       setLastName("");
@@ -56,6 +58,7 @@ export default function PersonFormModal({
       setActive(true);
       setNotes("");
       setIsBuyer(false);
+      setIsErrorMonitor(false);
     }
     setErrors({});
   }, [editingUser, isOpen]);
@@ -99,6 +102,7 @@ export default function PersonFormModal({
       active,
       notes,
       is_buyer: isBuyer,
+      is_error_monitor: isErrorMonitor,
     };
 
     try {
@@ -236,6 +240,18 @@ export default function PersonFormModal({
                   />
                   <label htmlFor="user-buyer-checkbox" className="text-xs text-slate-300 font-semibold select-none cursor-pointer flex items-center gap-1.5">
                     Ist Einkäufer 📦 <span className="text-[9px] font-normal text-amber-400 font-mono">(erhält Push)</span>
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="user-error-monitor-checkbox"
+                    checked={isErrorMonitor}
+                    onChange={(e) => setIsErrorMonitor(e.target.checked)}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 bg-slate-950 border-slate-800 rounded"
+                  />
+                  <label htmlFor="user-error-monitor-checkbox" className="text-xs text-slate-300 font-semibold select-none cursor-pointer flex items-center gap-1.5">
+                    Erhält Fehler-Alerts ⚠️ <span className="text-[9px] font-normal text-amber-400 font-mono">(erhält Push)</span>
                   </label>
                 </div>
               </div>

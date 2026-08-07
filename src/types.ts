@@ -14,6 +14,7 @@ export interface User {
   active: boolean;
   notes?: string;
   is_buyer?: boolean;
+  is_error_monitor?: boolean; // Erhält Push-Benachrichtigungen bei neu erkannten App-Fehlern
   access_role?: AccessRole; // Berechtigungsstufe, s.o. (pin_hash bleibt serverseitig, kommt nie zum Client)
 }
 

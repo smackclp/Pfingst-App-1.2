@@ -1,9 +1,11 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+import ErrorBoundary from './components/ErrorBoundary.tsx';
 import './index.css';
 import { hasServiceWorkerSupport } from './utils.ts';
 import { installAuthFetchInterceptor } from './lib/apiAuth.ts';
+import { reportClientError } from './lib/errorReporting.ts';
 
 // Muss vor jedem API-Aufruf laufen: hängt automatisch den Login-Token an alle
 // /api/*-Requests an und meldet bei abgelaufener Session zentral ab.
@@ -47,6 +49,12 @@ if (typeof window !== 'undefined') {
       event.stopPropagation();
       event.stopImmediatePropagation();
       console.log('[Suppressed Benign Iframe/SW/WS Error]:', event.message);
+    } else {
+      // Echter, nicht als harmlos erkannter Fehler -> ans Fehler-Monitoring
+      // melden (siehe AUDIT.md), statt ihn nur in der für Nutzer unsichtbaren
+      // Browser-Konsole verschwinden zu lassen. window.onerror oben meldet
+      // bewusst NICHT zusätzlich, um denselben Fehler nicht doppelt zu senden.
+      reportClientError(event.message, event.error?.stack);
     }
   }, true);
 
@@ -71,6 +79,11 @@ if (typeof window !== 'undefined') {
       event.stopPropagation();
       event.stopImmediatePropagation();
       console.log('[Suppressed Benign Rejection]:', reason?.message || reason);
+    } else {
+      // Echte, nicht als harmlos erkannte Ablehnung -> ans Fehler-Monitoring
+      // melden. window.onunhandledrejection unten ist nur ein Suppression-
+      // Fallback und meldet bewusst NICHT zusätzlich (sonst doppelt gemeldet).
+      reportClientError(reason?.message || String(reason), reason?.stack);
     }
   }, true);
 
@@ -111,6 +124,8 @@ if (hasServiceWorkerSupport()) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );

@@ -11,6 +11,7 @@ import exportRouter from "./server/routes/export";
 // Firebase Bootstrapping Imports
 import { getUnifiedDB, initFirestoreSync } from "./server/firebase";
 import { setCachedDB } from "./server/db";
+import { loadErrorLog, recordError } from "./server/errorLog";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -91,6 +92,8 @@ app.get("/logo-512.png", (req, res) => {
 
 // Live Server/Asset Middleware fallback
 async function startServer() {
+  loadErrorLog();
+
   console.log("Initializing server database state...");
   try {
     const cloudDB = await getUnifiedDB(true);
@@ -130,6 +133,15 @@ async function startServer() {
   // API bereits nutzt) statt Express' Standard-HTML-Fehlerseite.
   app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error(`Unbehandelter Fehler bei ${req.method} ${req.path}:`, err);
+    // Fire-and-forget: die Antwort an den Client soll nicht auf die
+    // Fehler-Protokollierung/Push-Alerts warten müssen.
+    recordError({
+      source: "backend",
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      path: `${req.method} ${req.path}`,
+      userId: req.authUser?.id,
+    }).catch((logErr) => console.error("Failed to record server error:", logErr));
     if (res.headersSent) {
       return next(err);
     }

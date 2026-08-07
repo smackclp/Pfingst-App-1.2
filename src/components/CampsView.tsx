@@ -28,6 +28,10 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
     apiHits: 0
   });
   const [loadingStats, setLoadingStats] = React.useState(false);
+  const [errorLog, setErrorLog] = React.useState<
+    { id: string; timestamp: string; source: "backend" | "frontend"; message: string; path?: string }[]
+  >([]);
+  const [showErrorLog, setShowErrorLog] = React.useState(false);
 
   // Datum/Uhrzeit des letzten Code-Commits (NICHT der letzten Datenänderung),
   // zur Build-Zeit von vite.config.ts injiziert.
@@ -121,7 +125,12 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
       const res = await fetch("/api/stats");
       if (res.ok) {
         const data = await res.json();
-        setStats(data);
+        setStats(data.serverStats);
+      }
+      const errRes = await fetch("/api/error-log");
+      if (errRes.ok) {
+        const errData = await errRes.json();
+        setErrorLog(errData.errors || []);
       }
     } catch (err) {
       console.warn("Failed to fetch stats:", err);
@@ -326,6 +335,54 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
               <span>Programm-Stand (letzte Code-Änderung):</span>
               <span className="text-slate-400 font-mono">{buildStampLabel}</span>
             </div>
+          </div>
+
+          {/* Error Monitoring */}
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold font-mono text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4" />
+                  Fehler-Monitoring
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Zuletzt erkannte App-Fehler (Server &amp; Browser). Personen mit "Erhält Fehler-Alerts" werden per Push benachrichtigt.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowErrorLog((prev) => !prev)}
+                className="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded-lg text-xs font-bold font-mono text-slate-300 transition cursor-pointer whitespace-nowrap"
+              >
+                {errorLog.length} {errorLog.length === 1 ? "Fehler" : "Fehler"}
+              </button>
+            </div>
+
+            {showErrorLog && (
+              errorLog.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-4">Keine Fehler protokolliert - alles läuft rund. 🎉</p>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+                  {errorLog.map((entry) => (
+                    <div key={entry.id} className="bg-slate-950 p-3 rounded-xl border border-slate-850 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`font-mono text-[9px] uppercase px-1.5 py-0.5 rounded ${
+                            entry.source === "backend" ? "bg-amber-950/40 text-amber-400" : "bg-cyan-950/40 text-cyan-400"
+                          }`}
+                        >
+                          {entry.source === "backend" ? "Server" : "App"}
+                        </span>
+                        <span className="text-slate-500 text-[10px] font-mono">
+                          {new Date(entry.timestamp).toLocaleString("de-DE")}
+                        </span>
+                      </div>
+                      <p className="text-slate-300 mt-1.5 break-words">{entry.message}</p>
+                      {entry.path && <p className="text-slate-500 text-[10px] mt-1 font-mono">{entry.path}</p>}
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
           </div>
         </div>
 
