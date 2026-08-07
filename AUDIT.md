@@ -89,11 +89,44 @@ _Keine offenen Punkte mehr - siehe Audit-Historie._
 
 ### Mittel
 
-_Keine offenen Punkte mehr - siehe Audit-Historie._
+- [ ] **Keine zentrale Input-Validierung** (`server/routes/*.ts`). Kein
+  `zod`/`joi`/vergleichbares Schema - jede Route validiert Eingaben manuell
+  und verstreut mit eigenen `if`-Checks. Fehleranfällig (leicht einen Fall
+  zu vergessen), schwer vollständig zu auditieren.
+- [ ] **Hauptbundle relativ groß** (`vite.config.ts`, Build-Output
+  `dist/assets/index-*.js`). 522 KB / 154 KB gzip im immer geladenen
+  Haupt-Chunk (plus ein weiteres, immer geladenes 53-KB-gzip-Chunk),
+  obwohl die großen Libraries (xlsx/jspdf/html2canvas) bereits korrekt
+  lazy-geladen werden. Widerspricht dem in CLAUDE.md Abschnitt 4 explizit
+  genannten Fokus auf langsame Internetverbindungen/schlechte
+  Netzabdeckung.
+- [ ] **Transitive `uuid`-Schwachstelle über `firebase-admin`**
+  (`package.json`, `firebase-admin: ^14.2.0`). `npm audit` meldet moderate
+  Severity (fehlende Buffer-Bounds-Prüfung in `uuid` v3/v5/v6, erreicht
+  über `@google-cloud/storage` → `gaxios`/`teeny-request`). Anders als beim
+  bereits bewusst akzeptierten `xlsx`-Risiko unten wurde diese noch nicht
+  bewertet - insbesondere ob der App-Codepfad `@google-cloud/storage`
+  überhaupt erreicht (diese App nutzt nur Firestore, nicht Cloud Storage)
+  oder es eine rein transitive, nie ausgeführte Abhängigkeit ist.
+- [ ] **Rate-Limiting nur beim Login** (`server/auth.ts`). Alle anderen
+  authentifizierten Routen haben keine Drosselung - ein gültiges (z. B.
+  gestohlenes) Token könnte die API ungebremst belasten.
 
 ### Niedrig (Aufräumen, kein akutes Risiko)
 
-_Keine offenen Punkte mehr - siehe Audit-Historie._
+- [ ] **Kein Graceful Shutdown** (`server.ts:151`, `app.listen(...)`).
+  Keine `SIGTERM`/`SIGINT`-Handler. Bei einem Neustart/Deploy kann eine
+  laufende Anfrage mitten in einem Firestore-Write abgebrochen werden
+  statt sauber zu Ende geführt zu werden.
+- [ ] **Unstrukturiertes Logging** (`server.ts`, `server/*.ts`). 52
+  verstreute `console.log`/`error`/`warn`-Aufrufe, keine Log-Level, keine
+  Request-IDs. Macht Fehlersuche in Produktion schwerer, besonders in
+  Kombination mit dem fehlenden Health-Check-Endpoint (siehe "Geplante
+  Verbesserungen" unten).
+- [ ] **`tsconfig.json` weiterhin ohne `strict`/`noImplicitAny`.** Der
+  `@types/react`-Fix (siehe Audit-Historie) hat nur die React-Symptome
+  behoben; der Rest der Codebase (Backend, Utility-Funktionen) läuft
+  weiterhin ohne echte Nullchecks/strikte Typprüfung.
 
 ---
 
