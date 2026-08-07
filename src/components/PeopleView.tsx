@@ -1,20 +1,21 @@
 import React from "react";
-import { 
-  Users, 
-  Search, 
-  Plus, 
-  AlertTriangle,
-  Info,
+import {
+  Users,
+  Search,
+  Plus,
   Shield,
   Trash2,
   Calendar,
-  ShoppingBag,
-  UserCheck
+  ShoppingBag
 } from "lucide-react";
 import { User, FunctionalRole } from "../types";
 import PersonCard from "./PersonCard";
 import PersonFormModal from "./PersonFormModal";
 import AccessRoleManager from "./AccessRoleManager";
+import ConfirmDialog from "./ConfirmDialog";
+import UndoToast from "./UndoToast";
+import FieldError from "./FieldError";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 
 interface PeopleViewProps {
   users: User[];
@@ -52,6 +53,7 @@ export default function PeopleView({
   // Add dynamic role form states
   const [newRoleName, setNewRoleName] = React.useState("");
   const [newRoleUserId, setNewRoleUserId] = React.useState("");
+  const [newRoleNameError, setNewRoleNameError] = React.useState<string | undefined>();
 
   // ModalsState for people management
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -81,6 +83,8 @@ export default function PeopleView({
     roleId: string;
     roleName: string;
   } | null>(null);
+
+  const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
 
   const roles = React.useMemo(() => {
     const list = new Set(users.map(u => u.role).filter(Boolean));
@@ -125,20 +129,25 @@ export default function PeopleView({
     setDeleteConfirm({ isOpen: true, id, name });
   };
 
-  const handleConfirmDelete = async () => {
-    const { id } = deleteConfirm;
+  const handleConfirmDelete = () => {
+    const { id, name } = deleteConfirm;
     setDeleteConfirm({ isOpen: false, id: "", name: "" });
-    try {
-      await onDeleteUser(id);
-    } catch (err) {
-      console.error(err);
-      setAlertState({
-        isOpen: true,
-        title: "Fehler beim Löschen",
-        message: "Fehler beim Löschen der Person."
-      });
-    }
+    scheduleDelete(id, name, async () => {
+      try {
+        await onDeleteUser(id);
+      } catch (err) {
+        console.error(err);
+        setAlertState({
+          isOpen: true,
+          title: "Fehler beim Löschen",
+          message: "Fehler beim Löschen der Person."
+        });
+      }
+    });
   };
+
+  const visibleUsers = filteredUsers.filter((u) => !isPending(u.id));
+  const visibleRoles = (functionalRoles || []).filter((r) => !isPending(r.id));
 
   return (
     <div className="space-y-6">
@@ -177,7 +186,7 @@ export default function PeopleView({
             onClick={() => setSubTab("roles")}
             className={`pb-3 font-mono font-bold text-xs uppercase tracking-wider transition ${subTab === "roles" ? "border-b-2 border-emerald-500 text-emerald-400" : "text-slate-400 hover:text-slate-200"}`}
           >
-            🛡️ Lager-Rollen ({(functionalRoles || []).length})
+            🛡️ Lager-Rollen ({visibleRoles.length})
           </button>
           {isAdmin && (
             <button
@@ -242,14 +251,14 @@ export default function PeopleView({
           </div>
 
           {/* Grid of Persons */}
-          {filteredUsers.length === 0 ? (
+          {visibleUsers.length === 0 ? (
             <div className="text-center py-20 bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xs animate-fade-in">
               <p className="text-white font-semibold text-sm">Keine Personen gefunden</p>
               <p className="text-xs text-slate-400 mt-1">Passen Sie Ihre Filter an oder errichten Sie einen neuen Eintrag.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="people-list-grid">
-              {filteredUsers.map((u) => (
+              {visibleUsers.map((u) => (
                 <PersonCard
                   key={u.id}
                   u={u}
@@ -268,7 +277,11 @@ export default function PeopleView({
             <form 
               onSubmit={async (e) => {
                 e.preventDefault();
-                if (!newRoleName.trim()) return;
+                if (!newRoleName.trim()) {
+                  setNewRoleNameError("Bitte eine Rollenbezeichnung eingeben.");
+                  return;
+                }
+                setNewRoleNameError(undefined);
                 try {
                   await onAddRole(newRoleName.trim(), newRoleUserId || null);
                   setNewRoleName("");
@@ -301,13 +314,18 @@ export default function PeopleView({
                   </label>
                   <input
                     type="text"
-                    required
                     placeholder="z.B. Einkauf, Schichtplanung, Küchenchef..."
                     value={newRoleName}
-                    onChange={(e) => setNewRoleName(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border border-slate-800 rounded-xl bg-slate-950/65 text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-0"
+                    onChange={(e) => {
+                      setNewRoleName(e.target.value);
+                      setNewRoleNameError(undefined);
+                    }}
+                    className={`w-full text-xs px-3 py-2 border rounded-xl bg-slate-950/65 text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:ring-0 ${
+                      newRoleNameError ? "border-rose-500/60" : "border-slate-800"
+                    }`}
                     id="input-new-role-name"
                   />
+                  <FieldError message={newRoleNameError} />
                 </div>
 
                 <div className="md:col-span-5 space-y-1">
@@ -345,7 +363,7 @@ export default function PeopleView({
 
           {/* List Roles Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="roles-cards-grid">
-            {(functionalRoles || []).map((role) => {
+            {visibleRoles.map((role) => {
               const assignedUser = users.find((u) => u.id === role.user_id);
               const isCoreRole = role.id === "role-einkauf" || role.id === "role-schichtplanung" || role.name.toLowerCase() === "einkauf" || role.name.toLowerCase() === "schichtplanung";
               
@@ -464,161 +482,96 @@ export default function PeopleView({
       />
 
       {/* DELETE HELPER CONFIRMATION */}
-      {deleteConfirm.isOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="delete-people-confirm-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-rose-950/40 rounded-xl border border-rose-900/30 text-rose-500 shrink-0">
-                <AlertTriangle className="h-6 w-6 text-rose-500" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">Person löschen?</h4>
-                <p className="text-xs text-slate-350 leading-relaxed">
-                  Möchten Sie <strong className="text-white font-semibold">{deleteConfirm.name}</strong> wirklich löschen? Alle entsprechenden Schichten-Zuweisungen gehen verloren.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm({ isOpen: false, id: "", name: "" })}
-                className="px-3.5 py-2 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition"
-              >
-                Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                Ja, Löschen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="delete-people-confirm-dialog"
+        isOpen={deleteConfirm.isOpen}
+        title="Person löschen?"
+        message={
+          <>
+            Möchten Sie <strong className="text-white font-semibold">{deleteConfirm.name}</strong> wirklich löschen? Alle entsprechenden Schichten-Zuweisungen gehen verloren.
+          </>
+        }
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteConfirm({ isOpen: false, id: "", name: "" })}
+      />
 
       {/* CONFIRM ROLE UPDATE MODAL */}
-      {confirmRoleUpdate && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="confirm-role-update-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-emerald-950/40 rounded-xl border border-emerald-900/30 text-emerald-400 shrink-0">
-                <UserCheck className="h-6 w-6 text-emerald-400" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">Zuweisung ändern?</h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Möchten Sie die Rolle <strong className="text-white font-bold">"{confirmRoleUpdate.roleName}"</strong> der Person <strong className="text-emerald-400 font-bold">"{confirmRoleUpdate.newUserName}"</strong> zuweisen?
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setConfirmRoleUpdate(null)}
-                className="px-3.5 py-2 hover:bg-slate-850 border border-slate-800 text-slate-300 text-xs font-semibold rounded-lg transition"
-              >
-                Nein, Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await onUpdateRole(confirmRoleUpdate.roleId, { user_id: confirmRoleUpdate.newUserId });
-                    setConfirmRoleUpdate(null);
-                  } catch (err) {
-                    console.error(err);
-                    setConfirmRoleUpdate(null);
-                    setAlertState({
-                      isOpen: true,
-                      title: "Systemfehler",
-                      message: "Die Änderung konnte nicht gespeichert werden."
-                    });
-                  }
-                }}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                Ja, Zuordnen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="confirm-role-update-dialog"
+        isOpen={confirmRoleUpdate !== null}
+        variant="info"
+        title="Zuweisung ändern?"
+        message={
+          confirmRoleUpdate && (
+            <>
+              Möchten Sie die Rolle <strong className="text-white font-bold">"{confirmRoleUpdate.roleName}"</strong> der Person{" "}
+              <strong className="text-emerald-400 font-bold">"{confirmRoleUpdate.newUserName}"</strong> zuweisen?
+            </>
+          )
+        }
+        confirmLabel="Ja, Zuordnen"
+        cancelLabel="Nein, Abbrechen"
+        onConfirm={async () => {
+          if (!confirmRoleUpdate) return;
+          try {
+            await onUpdateRole(confirmRoleUpdate.roleId, { user_id: confirmRoleUpdate.newUserId });
+            setConfirmRoleUpdate(null);
+          } catch (err) {
+            console.error(err);
+            setConfirmRoleUpdate(null);
+            setAlertState({
+              isOpen: true,
+              title: "Systemfehler",
+              message: "Die Änderung konnte nicht gespeichert werden."
+            });
+          }
+        }}
+        onCancel={() => setConfirmRoleUpdate(null)}
+      />
 
       {/* CONFIRM ROLE DELETE MODAL */}
-      {confirmRoleDelete && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="confirm-role-delete-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-rose-950/40 rounded-xl border border-rose-900/30 text-rose-500 shrink-0">
-                <AlertTriangle className="h-6 w-6 text-rose-500" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">Rolle löschen?</h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Möchten Sie die funktionale Rolle <strong className="text-white font-bold">"{confirmRoleDelete.roleName}"</strong> wirklich dauerhaft löschen?
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setConfirmRoleDelete(null)}
-                className="px-3.5 py-2 hover:bg-slate-850 border border-slate-800 text-slate-300 text-xs font-semibold rounded-lg transition"
-              >
-                Nein, Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await onDeleteRole(confirmRoleDelete.roleId);
-                    setConfirmRoleDelete(null);
-                  } catch (err) {
-                    console.error(err);
-                    setConfirmRoleDelete(null);
-                    setAlertState({
-                      isOpen: true,
-                      title: "Systemfehler",
-                      message: "Die Rolle konnte nicht gelöscht werden."
-                    });
-                  }
-                }}
-                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                Ja, Löschen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="confirm-role-delete-dialog"
+        isOpen={confirmRoleDelete !== null}
+        title="Rolle löschen?"
+        message={
+          confirmRoleDelete && (
+            <>
+              Möchten Sie die funktionale Rolle <strong className="text-white font-bold">"{confirmRoleDelete.roleName}"</strong> wirklich dauerhaft löschen?
+            </>
+          )
+        }
+        cancelLabel="Nein, Abbrechen"
+        onConfirm={() => {
+          if (!confirmRoleDelete) return;
+          const { roleId, roleName } = confirmRoleDelete;
+          setConfirmRoleDelete(null);
+          scheduleDelete(roleId, roleName, async () => {
+            try {
+              await onDeleteRole(roleId);
+            } catch (err) {
+              console.error(err);
+              setAlertState({
+                isOpen: true,
+                title: "Systemfehler",
+                message: "Die Rolle konnte nicht gelöscht werden."
+              });
+            }
+          });
+        }}
+        onCancel={() => setConfirmRoleDelete(null)}
+      />
 
       {/* ALERT DIALOG */}
-      {alertState.isOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="alert-people-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-slate-950 rounded-xl border border-slate-800 text-emerald-450 shrink-0">
-                <Info className="h-6 w-6 text-emerald-400" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">{alertState.title || "Hinweis"}</h4>
-                <p className="text-xs text-slate-350 leading-relaxed">{alertState.message}</p>
-              </div>
-            </div>
-            <div className="flex justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setAlertState({ isOpen: false, message: "" })}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="alert-people-dialog"
+        isOpen={alertState.isOpen}
+        variant="info"
+        title={alertState.title || "Hinweis"}
+        message={alertState.message}
+        onCancel={() => setAlertState({ isOpen: false, message: "" })}
+      />
+      <UndoToast toast={activeToast} onUndo={undo} />
     </div>
   );
 }

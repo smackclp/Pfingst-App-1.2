@@ -1,11 +1,12 @@
 import React from "react";
-import { AlertTriangle, X, RefreshCw } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 interface ResetModalProps {
   isOpen: boolean;
   mode: "full" | "shifts_only" | "clear_assignments";
   year: number;
-  submitting: boolean;
   onYearChange: (year: number) => void;
   onConfirm: () => void;
   onClose: () => void;
@@ -15,15 +16,25 @@ export default function ResetModal({
   isOpen,
   mode,
   year,
-  submitting,
   onYearChange,
   onConfirm,
   onClose,
 }: ResetModalProps) {
+  const titleId = React.useId();
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen);
+  useEscapeKey(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-slate-950/80 animate-fade-in" id="reset-modal-overlay">
+    <div
+      ref={focusTrapRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-slate-950/80 animate-fade-in"
+      id="reset-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <div className="relative w-full max-w-lg bg-slate-900 border border-rose-500/30 rounded-2xl overflow-hidden shadow-2xl space-y-6 p-6">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-2.5">
@@ -31,7 +42,7 @@ export default function ResetModal({
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider">
+              <h3 id={titleId} className="text-sm font-bold text-white font-mono uppercase tracking-wider">
                 {mode === "full" ? "Vollständiger Datenbank-Reset" : mode === "shifts_only" ? "Standard-Muster einspielen" : "Zuweisungen zurücksetzen"}
               </h3>
               <p className="text-[10px] text-slate-400">Sicherheitsabfrage vor Ausführung</p>
@@ -40,8 +51,9 @@ export default function ResetModal({
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-white p-1 rounded-lg transition cursor-pointer"
+            aria-label="Schließen"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -50,7 +62,7 @@ export default function ResetModal({
             <div className="p-3 bg-rose-950/30 border border-rose-500/20 rounded-xl text-rose-200">
               <p className="font-bold">⚠️ Achtung: Vollständiger Reset!</p>
               <p className="mt-1">
-                Alle aktuellen Benutzer, Schichten, Dienste, Materialien und Zuordnungen werden unwiderruflich durch die werkseitigen Beispieldaten (Muster-Helfer Maria, Jonas, etc.) ersetzt.
+                Alle aktuellen Benutzer, Schichten, Dienste, Materialien und Zuordnungen werden durch die werkseitigen Beispieldaten (Muster-Helfer Maria, Jonas, etc.) ersetzt. Der bisherige Stand wird automatisch gesichert und kann danach über "Letzten Stand wiederherstellen" zurückgeholt werden.
               </p>
             </div>
           )}
@@ -101,7 +113,6 @@ export default function ResetModal({
           </button>
           <button
             type="button"
-            disabled={submitting}
             onClick={onConfirm}
             className={`px-4 py-2 text-xs font-mono font-bold rounded-xl transition cursor-pointer flex items-center gap-2 ${
               mode === "full"
@@ -111,14 +122,7 @@ export default function ResetModal({
                 : "bg-amber-600 hover:bg-amber-500 text-white"
             }`}
           >
-            {submitting ? (
-              <>
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                <span>Ausführen...</span>
-              </>
-            ) : (
-              <span>Bestätigen & Ausführen</span>
-            )}
+            <span>Bestätigen & Ausführen</span>
           </button>
         </div>
       </div>

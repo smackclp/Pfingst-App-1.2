@@ -1,9 +1,12 @@
 import React from "react";
-import { Compass, Calendar, CheckCircle2, Layers, AlertCircle, Database, RefreshCw, TrendingUp, RotateCcw, Download, Eraser, AlertTriangle } from "lucide-react";
+import { Compass, Calendar, CheckCircle2, Layers, AlertCircle, Database, RefreshCw, TrendingUp, RotateCcw, Download, Eraser, AlertTriangle, History } from "lucide-react";
 import { Camp } from "../types";
 import { formatDateGerman, addDays } from "../utils";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import CreateCampForm from "./camps/CreateCampForm";
 import ResetModal from "./camps/ResetModal";
+import ConfirmDialog from "./ConfirmDialog";
+import UndoToast from "./UndoToast";
 
 interface CampsViewProps {
   camps: Camp[];
@@ -11,9 +14,10 @@ interface CampsViewProps {
   onSetActiveCamp: (campId: string) => Promise<void>;
   onCreateCamp: (year: number, copyFromCampId?: string) => Promise<void>;
   onResetDatabase?: (year?: number, mode?: "full" | "shifts_only" | "clear_assignments") => Promise<string>;
+  onRestoreLastReset?: () => Promise<string>;
 }
 
-export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCreateCamp, onResetDatabase }: CampsViewProps) {
+export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCreateCamp, onResetDatabase, onRestoreLastReset }: CampsViewProps) {
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
   const [stats, setStats] = React.useState<{ date: string; reads: number; writes: number; deletes: number; apiHits: number }>({
@@ -24,32 +28,94 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
     apiHits: 0
   });
   const [loadingStats, setLoadingStats] = React.useState(false);
+  const [errorLog, setErrorLog] = React.useState<
+    { id: string; timestamp: string; source: "backend" | "frontend"; message: string; path?: string }[]
+  >([]);
+  const [showErrorLog, setShowErrorLog] = React.useState(false);
+
+  // Datum/Uhrzeit des letzten Code-Commits (NICHT der letzten Datenänderung),
+  // zur Build-Zeit von vite.config.ts injiziert.
+  const lastCommitDate = new Date(__LAST_COMMIT_DATE__);
+  const buildStampLabel = isNaN(lastCommitDate.getTime())
+    ? "unbekannt"
+    : `${lastCommitDate.toLocaleDateString("de-DE")}, ${lastCommitDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`;
 
   // Reset modal state
   const [resetModalOpen, setResetModalOpen] = React.useState(false);
   const [resetMode, setResetMode] = React.useState<"full" | "shifts_only" | "clear_assignments">("shifts_only");
   const [resetYear, setResetYear] = React.useState<number>(2026);
-  const [resetSubmitting, setResetSubmitting] = React.useState(false);
+
+  // Ein Lagerjahr-Reset ist die folgenreichste Aktion der App - deshalb
+  // zusätzlich zum Bestätigungsmodal noch der gleiche 6-Sekunden-Rückgängig-
+  // Vorlauf wie bei anderen Löschungen, PLUS eine echte serverseitige
+  // Sicherung (siehe backupStatus unten), die auch dann noch hilft, wenn
+  // der Fehler erst später auffällt statt in den ersten 6 Sekunden.
+  const { scheduleDelete, undo, activeToast } = useUndoableDelete();
+  const [backupStatus, setBackupStatus] = React.useState<{ available: boolean; timestamp: string | null }>({
+    available: false,
+    timestamp: null
+  });
+  const [restoreConfirmOpen, setRestoreConfirmOpen] = React.useState(false);
+  const [restoring, setRestoring] = React.useState(false);
+
+  const fetchBackupStatus = async () => {
+    try {
+      const res = await fetch("/api/seed/backup-status");
+      if (res.ok) {
+        setBackupStatus(await res.json());
+      }
+    } catch (err) {
+      console.warn("Failed to fetch backup status:", err);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchBackupStatus();
+  }, []);
+
+  const resetModeLabel: Record<"full" | "shifts_only" | "clear_assignments", string> = {
+    full: "Werks-Reset",
+    shifts_only: "Muster-Schichten laden",
+    clear_assignments: "Einteilungen leeren"
+  };
 
   const openResetModal = (mode: "full" | "shifts_only" | "clear_assignments") => {
     setResetMode(mode);
     setResetModalOpen(true);
   };
 
-  const handleExecuteReset = async () => {
+  const handleExecuteReset = () => {
     if (!onResetDatabase) return;
-    setResetSubmitting(true);
+    setResetModalOpen(false);
+    setError(null);
+    setSuccess(null);
+    scheduleDelete(`camp-reset-${resetMode}`, resetModeLabel[resetMode], async () => {
+      try {
+        const msg = await onResetDatabase(resetYear, resetMode);
+        setSuccess(msg);
+        setTimeout(() => setSuccess(null), 5000);
+        fetchBackupStatus();
+      } catch (err: any) {
+        setError(err?.message || "Fehler beim Zurücksetzen der Daten.");
+      }
+    });
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!onRestoreLastReset) return;
+    setRestoreConfirmOpen(false);
+    setRestoring(true);
     setError(null);
     setSuccess(null);
     try {
-      const msg = await onResetDatabase(resetYear, resetMode);
+      const msg = await onRestoreLastReset();
       setSuccess(msg);
-      setResetModalOpen(false);
       setTimeout(() => setSuccess(null), 5000);
+      fetchBackupStatus();
     } catch (err: any) {
-      setError(err?.message || "Fehler beim Zurücksetzen der Daten.");
+      setError(err?.message || "Fehler beim Wiederherstellen des vorherigen Standes.");
     } finally {
-      setResetSubmitting(false);
+      setRestoring(false);
     }
   };
 
@@ -59,7 +125,12 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
       const res = await fetch("/api/stats");
       if (res.ok) {
         const data = await res.json();
-        setStats(data);
+        setStats(data.serverStats);
+      }
+      const errRes = await fetch("/api/error-log");
+      if (errRes.ok) {
+        const errData = await errRes.json();
+        setErrorLog(errData.errors || []);
       }
     } catch (err) {
       console.warn("Failed to fetch stats:", err);
@@ -259,6 +330,59 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
                 98% Quotenersparnis durch Cache
               </span>
             </div>
+
+            <div className="text-[10px] text-slate-500 flex justify-between items-center" title={`Commit ${__LAST_COMMIT_HASH__}`}>
+              <span>Programm-Stand (letzte Code-Änderung):</span>
+              <span className="text-slate-400 font-mono">{buildStampLabel}</span>
+            </div>
+          </div>
+
+          {/* Error Monitoring */}
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold font-mono text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4" />
+                  Fehler-Monitoring
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Zuletzt erkannte App-Fehler (Server &amp; Browser). Personen mit "Erhält Fehler-Alerts" werden per Push benachrichtigt.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowErrorLog((prev) => !prev)}
+                className="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded-lg text-xs font-bold font-mono text-slate-300 transition cursor-pointer whitespace-nowrap"
+              >
+                {errorLog.length} {errorLog.length === 1 ? "Fehler" : "Fehler"}
+              </button>
+            </div>
+
+            {showErrorLog && (
+              errorLog.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-4">Keine Fehler protokolliert - alles läuft rund. 🎉</p>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+                  {errorLog.map((entry) => (
+                    <div key={entry.id} className="bg-slate-950 p-3 rounded-xl border border-slate-850 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`font-mono text-[9px] uppercase px-1.5 py-0.5 rounded ${
+                            entry.source === "backend" ? "bg-amber-950/40 text-amber-400" : "bg-cyan-950/40 text-cyan-400"
+                          }`}
+                        >
+                          {entry.source === "backend" ? "Server" : "App"}
+                        </span>
+                        <span className="text-slate-500 text-[10px] font-mono">
+                          {new Date(entry.timestamp).toLocaleString("de-DE")}
+                        </span>
+                      </div>
+                      <p className="text-slate-300 mt-1.5 break-words">{entry.message}</p>
+                      {entry.path && <p className="text-slate-500 text-[10px] mt-1 font-mono">{entry.path}</p>}
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
           </div>
         </div>
 
@@ -295,6 +419,30 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
               <span>Backup herunterladen (.json)</span>
             </a>
           </div>
+
+          {backupStatus.available && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-cyan-950/25 border border-cyan-500/25 rounded-xl px-4 py-3">
+              <div className="flex items-start gap-2.5">
+                <History className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-cyan-200 leading-relaxed">
+                  Automatische Sicherung vom{" "}
+                  <b className="font-mono">
+                    {backupStatus.timestamp &&
+                      new Date(backupStatus.timestamp).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })}
+                  </b>{" "}
+                  verfügbar (vor dem letzten Reset).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRestoreConfirmOpen(true)}
+                disabled={restoring}
+                className="shrink-0 px-3.5 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-mono font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
+              >
+                Letzten Stand wiederherstellen
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
             <div className="bg-slate-950 p-5 rounded-2xl border border-slate-850 hover:border-slate-800 transition flex flex-col justify-between space-y-4">
@@ -370,11 +518,26 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
         isOpen={resetModalOpen}
         mode={resetMode}
         year={resetYear}
-        submitting={resetSubmitting}
         onYearChange={setResetYear}
         onConfirm={handleExecuteReset}
         onClose={() => setResetModalOpen(false)}
       />
+
+      <ConfirmDialog
+        isOpen={restoreConfirmOpen}
+        variant="danger"
+        title="Letzten Stand wiederherstellen?"
+        message={
+          backupStatus.timestamp
+            ? `Der Stand von ${new Date(backupStatus.timestamp).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })} wird wiederhergestellt. Alle Änderungen seitdem gehen dabei verloren.`
+            : "Der zuletzt gesicherte Stand wird wiederhergestellt."
+        }
+        confirmLabel="Ja, wiederherstellen"
+        onConfirm={handleConfirmRestore}
+        onCancel={() => setRestoreConfirmOpen(false)}
+      />
+
+      <UndoToast toast={activeToast} onUndo={undo} />
     </div>
   );
 }

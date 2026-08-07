@@ -1,5 +1,5 @@
 import React from "react";
-import { User, Service, Shift, ShiftAssignment, Conflict, Camp, MaterialItem, FunctionalRole, Community, TalentAct } from "../types";
+import { User, Service, Shift, ShiftAssignment, Conflict, Camp, MaterialItem, FunctionalRole, Community, TalentAct, SogTeamGroup, SogStation, SogSettings } from "../types";
 import {
   getAuthToken,
   setAuthToken,
@@ -10,9 +10,27 @@ import {
   type AuthUser,
   type AccessRole,
 } from "../lib/apiAuth";
+import { useUsersData } from "./useUsersData";
+import { useServicesData } from "./useServicesData";
+import { useShiftsData } from "./useShiftsData";
+import { useCampsData } from "./useCampsData";
+import { useMaterialsData } from "./useMaterialsData";
+import { useRolesData } from "./useRolesData";
+import { useCommunitiesData } from "./useCommunitiesData";
+import { useTalentActsData } from "./useTalentActsData";
+import { useSogData } from "./useSogData";
+import { throwIfNotOk } from "../lib/apiMutations";
 
 export type { AccessRole };
 
+/**
+ * Zentraler Datenzustand & Orchestrator. Hält bewusst alle Rohdaten
+ * (users, shifts, ...) und das gemeinsame loadDatabase() selbst, da ein
+ * einziger Fetch-Batch alles zusammen befüllt (siehe loadDatabase unten).
+ * Die reinen Mutations-Funktionen (handleAdd/Update/Delete...) sind nach
+ * Fachbereich in eigene Hooks ausgelagert (use<Domain>Data.ts), die
+ * loadDatabase als Parameter bekommen und danach ein Neuladen auslösen.
+ */
 export function useZeltlagerData() {
   const [currentTab, setCurrentTab] = React.useState<string>("dashboard");
 
@@ -91,6 +109,9 @@ export function useZeltlagerData() {
   const [functionalRoles, setFunctionalRoles] = React.useState<FunctionalRole[]>([]);
   const [communities, setCommunities] = React.useState<Community[]>([]);
   const [talentActs, setTalentActs] = React.useState<TalentAct[]>([]);
+  const [sogGroups, setSogGroups] = React.useState<SogTeamGroup[]>([]);
+  const [sogStations, setSogStations] = React.useState<SogStation[]>([]);
+  const [sogSettings, setSogSettings] = React.useState<SogSettings>({ startTime: "10:00", roundDuration: 15, breakDuration: 5 });
 
   // Focus highlighed shift state
   const [selectShiftId, setSelectShiftId] = React.useState<string | null>(null);
@@ -113,6 +134,15 @@ export function useZeltlagerData() {
     }
   };
 
+  // Gezielter Nachlade-Helfer für den Konflikt-Endpunkt allein - genutzt von
+  // Mutations-Hooks, die den State lokal aus der Server-Antwort aktualisieren
+  // (siehe useShiftsData.ts) statt der kompletten Datenbank neu zu laden,
+  // aber trotzdem wissen müssen, ob sich dadurch Konflikte ergeben haben.
+  const refreshConflicts = async () => {
+    const data = await safeFetchJson("/api/conflicts", []);
+    setConflicts(data);
+  };
+
   const loadDatabase = async (isSilent = false, checkSync = false) => {
     if (checkSync) {
       try {
@@ -130,7 +160,7 @@ export function useZeltlagerData() {
     else setRefreshing(true);
 
     try {
-      const [rUsers, rServices, rShifts, rAssignments, rConflicts, rCampsInfo, rMaterials, rRoles, rCommunities, rTalentActs, rSync] = await Promise.all([
+      const [rUsers, rServices, rShifts, rAssignments, rConflicts, rCampsInfo, rMaterials, rRoles, rCommunities, rTalentActs, rSogGroups, rSogStations, rSogSettings, rSync] = await Promise.all([
         safeFetchJson("/api/users", []),
         safeFetchJson("/api/services", []),
         safeFetchJson("/api/shifts", []),
@@ -141,6 +171,9 @@ export function useZeltlagerData() {
         safeFetchJson("/api/roles", []),
         safeFetchJson("/api/communities", []),
         safeFetchJson("/api/talent-acts", []),
+        safeFetchJson("/api/sog-groups", []),
+        safeFetchJson("/api/sog-stations", []),
+        safeFetchJson("/api/sog-settings", { startTime: "10:00", roundDuration: 15, breakDuration: 5 }),
         safeFetchJson("/api/sync-check", { lastChange: 0 })
       ]);
 
@@ -155,6 +188,9 @@ export function useZeltlagerData() {
       setFunctionalRoles(rRoles || []);
       setCommunities(rCommunities || []);
       setTalentActs(rTalentActs || []);
+      setSogGroups(rSogGroups || []);
+      setSogStations(rSogStations || []);
+      setSogSettings(rSogSettings || { startTime: "10:00", roundDuration: 15, breakDuration: 5 });
 
       if (rSync && rSync.lastChange) {
         lastChangeRef.current = rSync.lastChange;
@@ -182,336 +218,25 @@ export function useZeltlagerData() {
     return () => clearInterval(interval);
   }, [authStatus]);
 
-  // --- API Mutators ---
-  // Users
-  const handleAddUser = async (userPayload: Omit<User, "id">) => {
-    const res = await fetch("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userPayload),
-    });
-    if (!res.ok) throw new Error("Adding user failed");
-    await loadDatabase(true);
-  };
-
-  const handleUpdateUser = async (id: string, userPayload: Partial<User>) => {
-    const res = await fetch(`/api/users/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userPayload),
-    });
-    if (!res.ok) throw new Error("Updating user failed");
-    await loadDatabase(true);
-  };
-
-  const handleDeleteUser = async (id: string) => {
-    const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Deleting user failed");
-    await loadDatabase(true);
-  };
-
-  // Nur Lagerleitung: Zugriffsrolle einer Person ändern (Helfer/Bereichsleiter/Lagerleitung)
-  const handleUpdateAccessRole = async (id: string, role: AccessRole) => {
-    const res = await fetch(`/api/auth/admin/access-role/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_role: role }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || "Rolle konnte nicht geändert werden.");
-    }
-    await loadDatabase(true);
-  };
-
-  // Services
-  const handleAddService = async (servicePayload: Omit<Service, "id">) => {
-    const res = await fetch("/api/services", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(servicePayload),
-    });
-    if (!res.ok) throw new Error("Adding service failed");
-    await loadDatabase(true);
-  };
-
-  const handleUpdateService = async (id: string, servicePayload: Partial<Service>) => {
-    const res = await fetch(`/api/services/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(servicePayload),
-    });
-    if (!res.ok) throw new Error("Updating service failed");
-    await loadDatabase(true);
-  };
-
-  const handleDeleteService = async (id: string) => {
-    const res = await fetch(`/api/services/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Deleting service failed");
-    await loadDatabase(true);
-  };
-
-  // Shifts
-  const handleAddShift = async (shiftPayload: Omit<Shift, "id">) => {
-    const res = await fetch("/api/shifts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(shiftPayload),
-    });
-    if (!res.ok) throw new Error("Adding shift failed");
-    await loadDatabase(true);
-  };
-
-  const handleUpdateShift = async (id: string, shiftPayload: Partial<Shift>) => {
-    const res = await fetch(`/api/shifts/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(shiftPayload),
-    });
-    if (!res.ok) throw new Error("Updating shift failed");
-    await loadDatabase(true);
-  };
-
-  const handleDeleteShift = async (id: string) => {
-    const res = await fetch(`/api/shifts/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Deleting shift failed");
-    await loadDatabase(true);
-  };
-
-  // Assignments
-  const handleAddAssignment = async (shiftId: string, userId: string, force = false) => {
-    const res = await fetch("/api/assignments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ shift_id: shiftId, user_id: userId, force }),
-    });
-
-    if (res.status === 409) {
-      const data = await res.json();
-      throw { status: 409, message: data.message };
-    }
-
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Adding assignment failed");
-    }
-
-    await loadDatabase(true);
-  };
-
-  const handleRemoveAssignment = async (shiftId: string, userId: string) => {
-    const res = await fetch("/api/assignments", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ shift_id: shiftId, user_id: userId }),
-    });
-    if (!res.ok) throw new Error("Removing assignment failed");
-    await loadDatabase(true);
-  };
-
-  const handleToggleAssignmentAccepted = async (assignmentId: string, accepted: boolean) => {
-    const res = await fetch(`/api/assignments/${assignmentId}/accepted`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accepted }),
-    });
-    if (!res.ok) throw new Error("Toggling assignment accepted state failed");
-    await loadDatabase(true);
-  };
-
-  const handleUpdateAssignmentStatus = async (
-    assignmentId: string, 
-    status: 'pending' | 'accepted' | 'declined' | 'maybe', 
-    declineReason?: string
-  ) => {
-    const res = await fetch(`/api/assignments/${assignmentId}/status`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, decline_reason: declineReason }),
-    });
-    if (!res.ok) throw new Error("Updating assignment status failed");
-    await loadDatabase(true);
-  };
-
-  const handleSetActiveCamp = async (campId: string) => {
-    const res = await fetch("/api/camps/active", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ activeCampId: campId }),
-    });
-    if (!res.ok) throw new Error("Setting active camp failed");
-    await loadDatabase(false);
-  };
-
-  const handleCreateCamp = async (year: number, copyFromCampId?: string) => {
-    const res = await fetch("/api/camps", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ year, copyFromCampId }),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Creating camp failed");
-    }
-    await loadDatabase(false);
-  };
+  // --- Fachliche Mutations-Hooks (siehe use<Domain>Data.ts) ---
+  const usersData = useUsersData(setUsers, setAssignments);
+  const servicesData = useServicesData(shifts, setServices, setShifts, setAssignments, refreshConflicts);
+  const shiftsData = useShiftsData(setShifts, setAssignments, refreshConflicts);
+  // Camp-Wechsel/-Anlage bleibt bewusst beim vollen Reload: betrifft nahezu
+  // alle camp-gebundenen Daten auf einmal (Schichten, Zuweisungen, Material,
+  // Gemeinden, Talentshow, SoG), ist selten (Admin-Aktion) und zeigt ohnehin
+  // einen Ladezustand - kein Fall für lokale Einzel-State-Updates.
+  const campsData = useCampsData(loadDatabase);
+  const materialsData = useMaterialsData(setMaterials);
+  const rolesData = useRolesData(setFunctionalRoles);
+  const communitiesData = useCommunitiesData(setCommunities);
+  const talentActsData = useTalentActsData(setTalentActs);
+  const sogData = useSogData(setSogGroups, setSogStations, setSogSettings);
 
   // Jumping to calendar view with highligh focus
   const handleSelectShift = (shiftId: string) => {
     setSelectShiftId(shiftId);
     setCurrentTab("calendar");
-  };
-
-  // --- Materials Ordering List Handlers ---
-  const handleAddMaterial = async (materialPayload: Omit<MaterialItem, "id" | "created_at">) => {
-    const res = await fetch("/api/materials", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(materialPayload),
-    });
-    if (!res.ok) throw new Error("Adding material item failed");
-    await loadDatabase(true);
-  };
-
-  const handleUpdateMaterial = async (id: string, materialPayload: Partial<MaterialItem>) => {
-    const res = await fetch(`/api/materials/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(materialPayload),
-    });
-    if (!res.ok) throw new Error("Updating material item failed");
-    await loadDatabase(true);
-  };
-
-  const handleDeleteMaterial = async (id: string) => {
-    const res = await fetch(`/api/materials/${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Deleting material item failed");
-    await loadDatabase(true);
-  };
-
-  // --- Functional Roles Handlers ---
-  const handleAddRole = async (name: string, userId: string | null) => {
-    const res = await fetch("/api/roles", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, user_id: userId }),
-    });
-    if (!res.ok) throw new Error("Adding role failed");
-    await loadDatabase(true);
-  };
-
-  const handleUpdateRole = async (id: string, payload: Partial<FunctionalRole>) => {
-    const res = await fetch(`/api/roles/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error("Updating role failed");
-    await loadDatabase(true);
-  };
-
-  const handleDeleteRole = async (id: string) => {
-    const res = await fetch(`/api/roles/${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Deleting role failed");
-    await loadDatabase(true);
-  };
-
-  // Communities Handlers
-  const handleAddCommunity = async (community: Omit<Community, "id">) => {
-    const res = await fetch("/api/communities", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(community),
-    });
-    if (!res.ok) throw new Error("Adding community failed");
-    await loadDatabase(true);
-  };
-
-  const handleUpdateCommunity = async (id: string, payload: Partial<Community>) => {
-    const res = await fetch(`/api/communities/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error("Updating community failed");
-    await loadDatabase(true);
-  };
-
-  const handleDeleteCommunity = async (id: string) => {
-    const res = await fetch(`/api/communities/${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Deleting community failed");
-    await loadDatabase(true);
-  };
-
-  const handleImportCommunities = async (items: Omit<Community, "id" | "camp_id">[]) => {
-    const res = await fetch("/api/communities/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(items),
-    });
-    if (!res.ok) throw new Error("Importing communities failed");
-    await loadDatabase(true);
-  };
-
-  const handleClearCommunities = async () => {
-    const res = await fetch("/api/communities/clear", {
-      method: "POST",
-    });
-    if (!res.ok) throw new Error("Clearing communities failed");
-    await loadDatabase(true);
-  };
-
-  // Talent Acts
-  const handleAddTalentAct = async (actPayload: Omit<TalentAct, "id">) => {
-    const res = await fetch("/api/talent-acts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(actPayload),
-    });
-    if (!res.ok) throw new Error("Adding talent act failed");
-    await loadDatabase(true);
-  };
-
-  const handleUpdateTalentAct = async (id: string, actPayload: Partial<TalentAct>) => {
-    const res = await fetch(`/api/talent-acts/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(actPayload),
-    });
-    if (!res.ok) throw new Error("Updating talent act failed");
-    await loadDatabase(true);
-  };
-
-  const handleDeleteTalentAct = async (id: string) => {
-    const res = await fetch(`/api/talent-acts/${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Deleting talent act failed");
-    await loadDatabase(true);
-  };
-
-  const handleReorderTalentActs = async (orders: { [id: string]: number }) => {
-    const res = await fetch("/api/talent-acts/reorder", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orders }),
-    });
-    if (!res.ok) throw new Error("Reordering talent acts failed");
-    await loadDatabase(true);
-  };
-
-  const handleClearTalentActs = async () => {
-    const res = await fetch("/api/talent-acts/clear", {
-      method: "POST",
-    });
-    if (!res.ok) throw new Error("Clearing talent acts failed");
-    await loadDatabase(true);
   };
 
   const handleResetDatabase = async (year: number = 2026, mode: "full" | "shifts_only" | "clear_assignments" = "full") => {
@@ -520,13 +245,18 @@ export function useZeltlagerData() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ year, mode }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Reset der Daten ist fehlgeschlagen");
-    }
+    await throwIfNotOk(res, "Reset der Daten ist fehlgeschlagen");
     const data = await res.json();
     await loadDatabase(false);
     return data.message || "Erfolgreich zurückgesetzt!";
+  };
+
+  const handleRestoreLastReset = async () => {
+    const res = await fetch("/api/seed/restore", { method: "POST" });
+    await throwIfNotOk(res, "Wiederherstellung ist fehlgeschlagen");
+    const data = await res.json();
+    await loadDatabase(false);
+    return data.message || "Stand wiederhergestellt!";
   };
 
   return {
@@ -552,47 +282,29 @@ export function useZeltlagerData() {
     selectShiftId,
     setSelectShiftId,
     loadDatabase,
-    handleAddUser,
-    handleUpdateUser,
-    handleUpdateAccessRole,
-    handleDeleteUser,
-    handleAddService,
-    handleUpdateService,
-    handleDeleteService,
-    handleAddShift,
-    handleUpdateShift,
-    handleDeleteShift,
-    handleAddAssignment,
-    handleRemoveAssignment,
-    handleToggleAssignmentAccepted,
-    handleUpdateAssignmentStatus,
-    handleSetActiveCamp,
-    handleCreateCamp,
+    ...usersData,
+    ...servicesData,
+    ...shiftsData,
+    ...campsData,
     handleSelectShift,
     // Materials
     materials,
-    handleAddMaterial,
-    handleUpdateMaterial,
-    handleDeleteMaterial,
+    ...materialsData,
     // Functional Roles
     functionalRoles,
-    handleAddRole,
-    handleUpdateRole,
-    handleDeleteRole,
+    ...rolesData,
     // Communities
     communities,
-    handleAddCommunity,
-    handleUpdateCommunity,
-    handleDeleteCommunity,
-    handleImportCommunities,
-    handleClearCommunities,
+    ...communitiesData,
     // Talent Acts
     talentActs,
-    handleAddTalentAct,
-    handleUpdateTalentAct,
-    handleDeleteTalentAct,
-    handleReorderTalentActs,
-    handleClearTalentActs,
+    ...talentActsData,
+    // Spiel ohne Grenzen
+    sogGroups,
+    sogStations,
+    sogSettings,
+    ...sogData,
     handleResetDatabase,
+    handleRestoreLastReset,
   };
 }

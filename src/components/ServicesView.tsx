@@ -1,15 +1,18 @@
 import React from "react";
-import { 
-  Plus, 
-  Search, 
-  Briefcase, 
-  AlertTriangle,
-  Info
+import {
+  Plus,
+  Search,
+  Briefcase,
+  UserCheck,
+  Globe
 } from "lucide-react";
 import { Service, User, Shift, Camp } from "../types";
 import { addDays } from "../utils";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import ServiceCard from "./ServiceCard";
 import ServiceFormModal from "./ServiceFormModal";
+import UndoToast from "./UndoToast";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface ServicesViewProps {
   services: Service[];
@@ -22,6 +25,8 @@ interface ServicesViewProps {
   onDeleteShift: (id: string) => Promise<void>;
   isAdmin: boolean;
   activeCamp?: Camp;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
+  currentUserId?: string | null;
 }
 
 export default function ServicesView({
@@ -34,7 +39,9 @@ export default function ServicesView({
   onAddShift,
   onDeleteShift,
   isAdmin,
-  activeCamp
+  activeCamp,
+  accessRole,
+  currentUserId
 }: ServicesViewProps) {
   const startDate = activeCamp?.start_date || "2026-05-23";
   const sunDate = addDays(startDate, 1);
@@ -58,6 +65,19 @@ export default function ServicesView({
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingService, setEditingService] = React.useState<Service | null>(null);
+  const { isPending, scheduleDelete, undo, activeToast } = useUndoableDelete();
+
+  // Bereichsleitung sieht sonst dieselbe volle Liste wie die Lagerleitung -
+  // Standardansicht auf die eigenen verantworteten Dienste fokussieren spart
+  // Klicks. Nur wenn wirklich verantwortete Dienste existieren, sonst würde
+  // der Start-Zustand eine leere, verwirrende Liste zeigen. Lagerleitung
+  // behält bewusst die volle Übersicht (kein Toggle nötig).
+  const myServicesCount = React.useMemo(
+    () => services.filter(s => s.responsible_id === currentUserId).length,
+    [services, currentUserId]
+  );
+  const isBereichsleiter = accessRole === "bereichsleiter";
+  const [showOnlyMine, setShowOnlyMine] = React.useState(() => isBereichsleiter && myServicesCount > 0);
 
   const categories = React.useMemo(() => {
     return Array.from(new Set(services.map(s => s.category).filter(Boolean)));
@@ -65,6 +85,10 @@ export default function ServicesView({
 
   const filteredServices = React.useMemo(() => {
     return services.filter(s => {
+      if (isBereichsleiter && showOnlyMine && s.responsible_id !== currentUserId) {
+        return false;
+      }
+
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         const matchesTitle = s.title.toLowerCase().includes(term) || s.description.toLowerCase().includes(term);
@@ -78,7 +102,10 @@ export default function ServicesView({
 
       return true;
     }).sort((a, b) => a.title.localeCompare(b.title));
-  }, [services, searchTerm, categoryFilter]);
+  }, [services, searchTerm, categoryFilter, isBereichsleiter, showOnlyMine, currentUserId]);
+
+  const visibleServices = filteredServices.filter(s => !isPending(s.id));
+  const visibleShifts = shifts.filter(s => !isPending(s.id));
 
   const openAddModal = () => {
     setEditingService(null);
@@ -108,22 +135,24 @@ export default function ServicesView({
     });
   };
 
-  const handleConfirmDelete = async () => {
-    const { id, type } = deleteConfirm;
+  const handleConfirmDelete = () => {
+    const { id, type, name } = deleteConfirm;
     setDeleteConfirm({ isOpen: false, type: null, id: "", name: "" });
-    try {
-      if (type === "shift") {
-        await onDeleteShift(id);
-      } else if (type === "service") {
-        await onDeleteService(id);
+    scheduleDelete(id, name, async () => {
+      try {
+        if (type === "shift") {
+          await onDeleteShift(id);
+        } else if (type === "service") {
+          await onDeleteService(id);
+        }
+      } catch (err) {
+        setAlertState({
+          isOpen: true,
+          title: "Fehler beim Löschen",
+          message: type === "shift" ? "Fehler beim Löschen der Schicht." : "Dienst konnte nicht gelöscht werden."
+        });
       }
-    } catch (err) {
-      setAlertState({
-        isOpen: true,
-        title: "Fehler beim Löschen",
-        message: type === "shift" ? "Fehler beim Löschen der Schicht." : "Dienst konnte nicht gelöscht werden."
-      });
-    }
+    });
   };
 
   return (
@@ -150,6 +179,31 @@ export default function ServicesView({
             </button>
           )}
         </div>
+
+        {isBereichsleiter && myServicesCount > 0 && (
+          <div className="flex items-center gap-1.5 bg-slate-950/60 border border-slate-800 rounded-xl p-1 w-fit" id="services-mine-toggle">
+            <button
+              type="button"
+              onClick={() => setShowOnlyMine(true)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition flex items-center gap-1.5 cursor-pointer ${
+                showOnlyMine ? "bg-emerald-600 text-white shadow-md" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <UserCheck className="h-3.5 w-3.5" />
+              <span>Meine Dienste ({myServicesCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowOnlyMine(false)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition flex items-center gap-1.5 cursor-pointer ${
+                !showOnlyMine ? "bg-slate-700 text-white shadow-md" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Globe className="h-3.5 w-3.5" />
+              <span>Alle Dienste ({services.length})</span>
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-2">
           {/* Quick Search */}
@@ -185,19 +239,19 @@ export default function ServicesView({
       </div>
 
       {/* Services List / Cards */}
-      {filteredServices.length === 0 ? (
+      {visibleServices.length === 0 ? (
         <div className="text-center py-20 bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xs">
           <p className="text-white font-semibold text-sm">Keine Diensttypen gefunden</p>
           <p className="text-xs text-slate-400 mt-1">Passen Sie Ihre Suchbegriffe an oder erstellen Sie einen neuen Diensttyp.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="services-grid">
-          {filteredServices.map(svc => (
+          {visibleServices.map(svc => (
             <ServiceCard
               key={svc.id}
               svc={svc}
               users={users}
-              shifts={shifts}
+              shifts={visibleShifts}
               isAdmin={isAdmin}
               startDate={startDate}
               sunDate={sunDate}
@@ -224,72 +278,32 @@ export default function ServicesView({
       />
 
       {/* DELETE CONFIRMATION MODAL */}
-      {deleteConfirm.isOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="delete-services-confirm-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-rose-950/40 rounded-xl border border-rose-900/30 text-rose-500 shrink-0">
-                <AlertTriangle className="h-6 w-6 text-rose-500 animate-pulse" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">
-                  {deleteConfirm.type === "shift" ? "Schicht löschen?" : "Dienst löschen?"}
-                </h4>
-                <p className="text-xs text-slate-350 leading-relaxed">
-                  {deleteConfirm.type === "shift" ? (
-                    <span>Möchten Sie die Schicht <strong className="text-white font-semibold">"{deleteConfirm.name}"</strong> wirklich löschen?</span>
-                  ) : (
-                    <span>Möchten Sie Dienst <strong className="text-white font-semibold">"{deleteConfirm.name}"</strong> wirklich löschen? ACHTUNG: Hierdurch werden ALLE Schichten, die zu diesem Dienst gehören, sowie deren Einteilungen gelöscht!</span>
-                  )}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm({ isOpen: false, type: null, id: "", name: "" })}
-                className="px-3.5 py-2 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition"
-              >
-                Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                Ja, Löschen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="delete-services-confirm-dialog"
+        isOpen={deleteConfirm.isOpen}
+        title={deleteConfirm.type === "shift" ? "Schicht löschen?" : "Dienst löschen?"}
+        message={
+          deleteConfirm.type === "shift" ? (
+            <span>Möchten Sie die Schicht <strong className="text-white font-semibold">"{deleteConfirm.name}"</strong> wirklich löschen?</span>
+          ) : (
+            <span>Möchten Sie Dienst <strong className="text-white font-semibold">"{deleteConfirm.name}"</strong> wirklich löschen? ACHTUNG: Hierdurch werden ALLE Schichten, die zu diesem Dienst gehören, sowie deren Einteilungen gelöscht!</span>
+          )
+        }
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteConfirm({ isOpen: false, type: null, id: "", name: "" })}
+      />
 
       {/* ALERT DIALOG */}
-      {alertState.isOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] animate-fade-in" id="alert-services-dialog">
-          <div className="bg-slate-900 rounded-2xl p-6 text-white max-w-sm w-full border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-slate-950 rounded-xl border border-slate-800 text-emerald-450 shrink-0">
-                <Info className="h-6 w-6 text-emerald-400" />
-              </div>
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-white uppercase tracking-tight font-mono">{alertState.title}</h4>
-                <p className="text-xs text-slate-350 leading-relaxed">{alertState.message}</p>
-              </div>
-            </div>
-            <div className="flex justify-end pt-2 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setAlertState({ isOpen: false, title: "", message: "" })}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        id="alert-services-dialog"
+        isOpen={alertState.isOpen}
+        variant="info"
+        title={alertState.title}
+        message={alertState.message}
+        onCancel={() => setAlertState({ isOpen: false, title: "", message: "" })}
+      />
 
+      <UndoToast toast={activeToast} onUndo={undo} />
     </div>
   );
 }

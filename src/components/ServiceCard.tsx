@@ -188,7 +188,7 @@ export default function ServiceCard({
                       >
                         <span>{dayLabel} {sh.start_time}-{sh.end_time}</span>
                         {isAdmin && (
-                          <Tooltip content={`Arbeitsschicht ${sh.start_time}-${sh.end_time} unwiderruflich löschen`} position="top" delay={155}>
+                          <Tooltip content={`Arbeitsschicht ${sh.start_time}-${sh.end_time} löschen`} position="top" delay={155}>
                             <button
                               onClick={() => onDeleteShiftClick(sh.id, `${svc.title} (${dayLabel} ${sh.start_time}-${sh.end_time})`)}
                               className="p-0.5 hover:bg-rose-950/50 text-slate-500 hover:text-rose-500 rounded-md cursor-pointer transition-colors"

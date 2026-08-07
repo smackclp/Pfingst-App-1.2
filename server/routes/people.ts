@@ -1,21 +1,33 @@
 import { Router } from "express";
 import { readDB, writeDB } from "../db";
 import { User, FunctionalRole, Community } from "../types";
-import { requireRole, requireMinRole, sanitizeUsers } from "../auth";
+import { requireRole, requireMinRole, sanitizeUser, sanitizeUsers, isAtLeast } from "../auth";
 
 const router = Router();
 
 // --- USERS ---
 // Lesen dürfen alle angemeldeten Personen (z.B. um Namen in Auswahllisten zu sehen),
-// aber NIE die PIN-Hashes anderer Leute.
+// aber NIE die PIN-Hashes anderer Leute. "notes" ist freies Admin-Textfeld
+// (z.B. gesundheitliche Hinweise, persönliche Einschränkungen) und war
+// bisher auch für andere Helfer*innen sichtbar, nicht nur für Bereichs-/
+// Lagerleitung - jetzt nur noch für die eigene Person und Bereichsleitung+
+// sichtbar. E-Mail/Telefon bleiben bewusst für alle sichtbar (kleines,
+// bekanntes Team, wird für die Suche und Kontaktaufnahme untereinander
+// genutzt).
 router.get("/users", (req, res) => {
   const db = readDB();
-  res.json(sanitizeUsers(db.users as any));
+  const sanitized = sanitizeUsers(db.users as any) as any[];
+  const canSeeNotes = isAtLeast(req.authUser!.accessRole, "bereichsleiter");
+  if (canSeeNotes) {
+    return res.json(sanitized);
+  }
+  const ownId = req.authUser!.id;
+  res.json(sanitized.map((u) => (u.id === ownId ? u : { ...u, notes: undefined })));
 });
 
 router.post("/users", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
-  const { first_name, last_name, display_name, email, phone, role, active, notes, is_buyer } = req.body;
+  const { first_name, last_name, display_name, email, phone, role, active, notes, is_buyer, is_error_monitor } = req.body;
   if (!first_name || !last_name || !display_name) {
     return res.status(400).json({ error: "Missing required fields: first_name, last_name, display_name" });
   }
@@ -30,10 +42,11 @@ router.post("/users", requireRole("lagerleitung"), (req, res) => {
     active: active !== undefined ? active : true,
     notes: notes || "",
     is_buyer: !!is_buyer,
+    is_error_monitor: !!is_error_monitor,
   };
   db.users.push(newUser);
   writeDB(db);
-  res.status(201).json(newUser);
+  res.status(201).json(sanitizeUser(newUser as any));
 });
 
 router.put("/users/:id", requireRole("lagerleitung"), (req, res) => {
@@ -51,7 +64,7 @@ router.put("/users/:id", requireRole("lagerleitung"), (req, res) => {
     id: req.params.id,
   };
   writeDB(db);
-  res.json(db.users[index]);
+  res.json(sanitizeUser(db.users[index] as any));
 });
 
 router.delete("/users/:id", requireRole("lagerleitung"), (req, res) => {
@@ -112,7 +125,8 @@ router.delete("/roles/:id", requireRole("lagerleitung"), (req, res) => {
 // --- COMMUNITIES ---
 router.get("/communities", (req, res) => {
   const db = readDB();
-  res.json(db.communities || []);
+  const activeCampId = db.activeCampId || "camp-2026";
+  res.json((db.communities || []).filter((c) => c.camp_id === activeCampId));
 });
 
 router.post("/communities", requireMinRole("bereichsleiter"), (req, res) => {
@@ -188,7 +202,8 @@ router.delete("/communities/:id", requireMinRole("bereichsleiter"), (req, res) =
 
 router.post("/communities/clear", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
-  db.communities = [];
+  const activeCampId = db.activeCampId || "camp-2026";
+  db.communities = (db.communities || []).filter((c) => c.camp_id !== activeCampId);
   writeDB(db);
   res.json({ success: true });
 });

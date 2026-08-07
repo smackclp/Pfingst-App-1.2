@@ -2,7 +2,7 @@ import { Router } from "express";
 import { readDB, writeDB } from "../db";
 import { sendNotificationToUser } from "../notifications";
 import { MaterialItem, TalentAct } from "../types";
-import { requireMinRole, requireRole } from "../auth";
+import { requireRole } from "../auth";
 
 const router = Router();
 
@@ -17,36 +17,44 @@ function canManageMaterial(req: any, materialUserId: string): boolean {
 // --- MATERIALS ---
 router.get("/materials", (req, res) => {
   const db = readDB();
-  res.json(db.materials || []);
+  const activeCampId = db.activeCampId || "camp-2026";
+  res.json((db.materials || []).filter((m) => m.camp_id === activeCampId));
 });
 
-router.post("/materials", async (req, res) => {
-  const db = readDB();
-  const { user_id, item_name, url, purpose, quantity, price, status } = req.body;
-  if (!user_id || !item_name || !purpose) {
-    return res.status(400).json({ error: "Fehlende Pflichtfelder: Besteller (user_id), Artikel (item_name), Verwendungszweck (purpose)" });
+router.post("/materials", async (req, res, next) => {
+  let db: ReturnType<typeof readDB>;
+  let newMaterial: MaterialItem;
+  try {
+    db = readDB();
+    const { user_id, item_name, url, purpose, quantity, price, status } = req.body;
+    if (!user_id || !item_name || !purpose) {
+      return res.status(400).json({ error: "Fehlende Pflichtfelder: Besteller (user_id), Artikel (item_name), Verwendungszweck (purpose)" });
+    }
+    // Jede Person darf nur für sich selbst bestellen; Leitung darf auch für andere eintragen.
+    if (req.authUser!.id !== user_id && req.authUser!.accessRole === "helfer") {
+      return res.status(403).json({ error: "Du kannst nur für dich selbst Materialien bestellen." });
+    }
+    newMaterial = {
+      id: `material-${Date.now()}`,
+      user_id,
+      item_name,
+      url: url || "",
+      purpose,
+      quantity: quantity ? Number(quantity) : 1,
+      price: price || "",
+      created_at: new Date().toISOString(),
+      status: status || "pending",
+      camp_id: db.activeCampId || "camp-2026",
+    };
+    if (!db.materials) db.materials = [];
+    db.materials.push(newMaterial);
+    writeDB(db);
+  } catch (err) {
+    return next(err);
   }
-  // Jede Person darf nur für sich selbst bestellen; Leitung darf auch für andere eintragen.
-  if (req.authUser!.id !== user_id && req.authUser!.accessRole === "helfer") {
-    return res.status(403).json({ error: "Du kannst nur für dich selbst Materialien bestellen." });
-  }
-  const newMaterial: MaterialItem = {
-    id: `material-${Date.now()}`,
-    user_id,
-    item_name,
-    url: url || "",
-    purpose,
-    quantity: quantity ? Number(quantity) : 1,
-    price: price || "",
-    created_at: new Date().toISOString(),
-    status: status || "pending",
-  };
-  if (!db.materials) db.materials = [];
-  db.materials.push(newMaterial);
-  writeDB(db);
 
   try {
-    const requester = db.users.find((u) => u.id === user_id);
+    const requester = db.users.find((u) => u.id === newMaterial.user_id);
     const requesterName = requester ? requester.display_name : "Ein Helfer";
     const einkaufRole = (db.functionalRoles || []).find(
       (r) => r.name.toLowerCase() === "einkauf" || r.id === "role-einkauf"
@@ -117,7 +125,8 @@ router.delete("/materials/:id", (req, res) => {
 // --- TALENT ACTS (Programm-Verwaltung: mind. Bereichsleiter) ---
 router.get("/talent-acts", (req, res) => {
   const db = readDB();
-  res.json(db.talentActs || []);
+  const activeCampId = db.activeCampId || "camp-2026";
+  res.json((db.talentActs || []).filter((a) => a.camp_id === activeCampId));
 });
 
 // Programmbereich (Talentshow/Bunter Abend) ist bewusst für ALLE angemeldeten Helfer
@@ -246,9 +255,83 @@ router.delete("/talent-acts/:id", (req, res) => {
 
 router.post("/talent-acts/clear", requireRole("lagerleitung"), (req, res) => {
   const db = readDB();
-  db.talentActs = [];
+  const activeCampId = db.activeCampId || "camp-2026";
+  db.talentActs = (db.talentActs || []).filter((a) => a.camp_id !== activeCampId);
   writeDB(db);
   res.json({ success: true });
+});
+
+// --- SPIEL OHNE GRENZEN ---
+// Bewusst serverseitig statt LocalStorage: Gruppen-Einteilung und
+// Stationen-Zuordnung müssen alle Beteiligten gleich sehen. Wie bei der
+// Talentshow oben für ALLE angemeldeten Helfer bearbeitbar.
+router.get("/sog-groups", (req, res) => {
+  const db = readDB();
+  const activeCampId = db.activeCampId || "camp-2026";
+  const filtered = (db.sogGroups || []).filter((g) => g.camp_id === activeCampId);
+  res.json(filtered.map(({ camp_id, ...rest }) => rest));
+});
+
+router.post("/sog-groups", (req, res) => {
+  const db = readDB();
+  const { groups } = req.body;
+  if (!Array.isArray(groups)) {
+    return res.status(400).json({ error: "groups muss ein Array sein" });
+  }
+  const activeCampId = db.activeCampId || "camp-2026";
+  const otherCamps = (db.sogGroups || []).filter((g) => g.camp_id !== activeCampId);
+  db.sogGroups = [...otherCamps, ...groups.map((g: any) => ({ ...g, camp_id: activeCampId }))];
+  writeDB(db);
+  res.json({ success: true });
+});
+
+router.get("/sog-stations", (req, res) => {
+  const db = readDB();
+  const activeCampId = db.activeCampId || "camp-2026";
+  const filtered = (db.sogStations || []).filter((s) => s.camp_id === activeCampId);
+  res.json(filtered.map(({ camp_id, ...rest }) => rest));
+});
+
+router.post("/sog-stations", (req, res) => {
+  const db = readDB();
+  const { stations } = req.body;
+  if (!Array.isArray(stations)) {
+    return res.status(400).json({ error: "stations muss ein Array sein" });
+  }
+  const activeCampId = db.activeCampId || "camp-2026";
+  const otherCamps = (db.sogStations || []).filter((s) => s.camp_id !== activeCampId);
+  db.sogStations = [...otherCamps, ...stations.map((s: any) => ({ ...s, camp_id: activeCampId }))];
+  writeDB(db);
+  res.json({ success: true });
+});
+
+router.get("/sog-settings", (req, res) => {
+  const db = readDB();
+  const activeCampId = db.activeCampId || "camp-2026";
+  const list = Array.isArray(db.sogSettings) ? db.sogSettings : [];
+  const entry = list.find((s) => s.camp_id === activeCampId);
+  if (!entry) {
+    return res.json({ startTime: "10:00", roundDuration: 15, breakDuration: 5 });
+  }
+  const { camp_id, ...rest } = entry;
+  res.json(rest);
+});
+
+router.post("/sog-settings", (req, res) => {
+  const db = readDB();
+  const { startTime, roundDuration, breakDuration } = req.body;
+  const activeCampId = db.activeCampId || "camp-2026";
+  const newEntry = {
+    camp_id: activeCampId,
+    startTime: typeof startTime === "string" ? startTime : "10:00",
+    roundDuration: typeof roundDuration === "number" ? roundDuration : 15,
+    breakDuration: typeof breakDuration === "number" ? breakDuration : 5,
+  };
+  const list = Array.isArray(db.sogSettings) ? db.sogSettings : [];
+  db.sogSettings = [...list.filter((s) => s.camp_id !== activeCampId), newEntry];
+  writeDB(db);
+  const { camp_id, ...rest } = newEntry;
+  res.json({ success: true, sogSettings: rest });
 });
 
 export default router;

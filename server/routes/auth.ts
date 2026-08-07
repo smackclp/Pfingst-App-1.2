@@ -6,8 +6,10 @@ import {
   createSession,
   destroySession,
   sanitizeUser,
-  sanitizeUsers,
   authMiddleware,
+  isLoginLocked,
+  recordFailedLogin,
+  clearFailedLogins,
 } from "../auth";
 
 const router = Router();
@@ -28,14 +30,20 @@ router.post("/auth/login", (req, res) => {
   if (!userId || !pin) {
     return res.status(400).json({ error: "Bitte Person und PIN angeben." });
   }
+  if (isLoginLocked(userId)) {
+    return res.status(429).json({ error: "Zu viele Fehlversuche. Bitte in einer Minute erneut versuchen." });
+  }
   const db = readDB();
   const user = db.users.find((u) => u.id === userId) as any;
   if (!user || !user.active) {
+    recordFailedLogin(userId);
     return res.status(401).json({ error: "Person oder PIN ist falsch." });
   }
   if (!verifyPin(String(pin), user.pin_hash)) {
+    recordFailedLogin(userId);
     return res.status(401).json({ error: "Person oder PIN ist falsch." });
   }
+  clearFailedLogins(userId);
   const accessRole = user.access_role || "helfer";
   const token = createSession(user.id, accessRole);
   res.json({ token, accessRole, user: sanitizeUser(user) });
@@ -99,7 +107,22 @@ router.put("/auth/admin/access-role/:userId", authMiddleware, (req, res) => {
   const db = readDB();
   const idx = db.users.findIndex((u) => u.id === req.params.userId);
   if (idx === -1) return res.status(404).json({ error: "Nutzer nicht gefunden." });
-  (db.users[idx] as any).access_role = access_role;
+
+  // Gleicher Schutz wie im Frontend (AccessRoleManager.tsx), aber hier
+  // durchgesetzt: ohne diese Prüfung könnte ein direkter API-Aufruf die
+  // letzte verbleibende Lagerleitung degradieren und das ganze Team von
+  // der Admin-Verwaltung aussperren.
+  const targetUser = db.users[idx] as any;
+  if (targetUser.access_role === "lagerleitung" && access_role !== "lagerleitung") {
+    const lagerleitungCount = db.users.filter((u) => (u as any).access_role === "lagerleitung").length;
+    if (lagerleitungCount <= 1) {
+      return res.status(400).json({
+        error: `${targetUser.display_name} ist aktuell die einzige Lagerleitung. Weise zuerst einer anderen Person die Rolle Lagerleitung zu, bevor du diese hier änderst.`,
+      });
+    }
+  }
+
+  targetUser.access_role = access_role;
   writeDB(db);
   res.json({ success: true, user: sanitizeUser(db.users[idx] as any) });
 });

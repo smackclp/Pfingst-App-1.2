@@ -1,25 +1,22 @@
 import React from "react";
-import { 
-  Users, 
-  MapPin, 
-  Clock, 
-  Search, 
-  User, 
-  X, 
-  Plus, 
-  Trash2, 
-  Info, 
-  CheckCircle,
-  AlertCircle,
-  HelpCircle,
+import {
+  Search,
+  User,
+  X,
+  Plus,
   Calendar
 } from "lucide-react";
 import { User as UserType, Service, Shift, ShiftAssignment, Conflict, Camp } from "../types";
-import { addDays, formatDateGerman, getDayName, formatDateWithDayPrefix } from "../utils";
+import { addDays, getDayName, formatDateWithDayPrefix } from "../utils";
+import { useShiftSuggestions } from "../hooks/useShiftSuggestions";
+import { useToast } from "../hooks/useToast";
+import Toast from "./Toast";
 import CalendarCard from "./CalendarCard";
 import CalendarPersonStats from "./CalendarPersonStats";
 import CalendarTableView from "./CalendarTableView";
+import CalendarQuickFilters from "./CalendarQuickFilters";
 import PrintView from "./PrintView";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface CalendarViewProps {
   users: UserType[];
@@ -29,7 +26,8 @@ interface CalendarViewProps {
   conflicts: Conflict[];
   currentUserId: string;
   isAdmin: boolean;
-  onAddAssignment: (shiftId: string, userId: string) => Promise<void>;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
+  onAddAssignment: (shiftId: string, userId: string, force?: boolean) => Promise<void>;
   onRemoveAssignment: (shiftId: string, userId: string) => Promise<void>;
   onToggleAssignmentAccepted?: (assignmentId: string, accepted: boolean) => Promise<void>;
   onSelectShiftId?: string | null;
@@ -47,6 +45,7 @@ export default function CalendarView({
   conflicts,
   currentUserId,
   isAdmin,
+  accessRole,
   onAddAssignment,
   onRemoveAssignment,
   onToggleAssignmentAccepted,
@@ -70,10 +69,59 @@ export default function CalendarView({
   // bereits "Bereichsleitung oder höher" (siehe TabContentManager).
   const [viewMode, setViewMode] = React.useState<"list" | "days" | "print">(isAdmin ? "list" : "days");
   const [searchTerm, setSearchTerm] = React.useState<string>("");
+  const { toastMessage, showToast } = useToast();
   const [assignPopoverShiftId, setAssignPopoverShiftId] = React.useState<string | null>(null);
   const [expandedShifts, setExpandedShifts] = React.useState<Record<string, boolean>>({});
-  const [suggestions, setSuggestions] = React.useState<Array<{ user_id: string; year: number; camp_title: string }>>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = React.useState(false);
+  const { suggestions, loadingSuggestions } = useShiftSuggestions(assignPopoverShiftId);
+
+  // Konflikt-Übersteuern (z.B. Schicht bereits voll besetzt): eigenes Eintragen
+  // soll trotz voller Belegung möglich bleiben, mit einer Rückfrage statt
+  // stillem Scheitern - gleiches Muster wie in ShiftsView.tsx für die
+  // Schichtplanung, hier für den Selbst-Eintragen-Weg (Kalenderkarten).
+  const [overrideModal, setOverrideModal] = React.useState<{ isOpen: boolean; shiftId: string; userId: string; message: string }>({
+    isOpen: false,
+    shiftId: "",
+    userId: "",
+    message: "",
+  });
+
+  const handleAssignUser = React.useCallback(
+    async (shiftId: string, userId: string, force = false) => {
+      try {
+        await onAddAssignment(shiftId, userId, force);
+      } catch (err: any) {
+        if (err?.status === 409) {
+          setOverrideModal({ isOpen: true, shiftId, userId, message: err.message || "Es liegt ein Konflikt für diese Schicht vor." });
+        } else {
+          showToast(err?.message || "Zuordnung fehlgeschlagen.");
+        }
+      }
+    },
+    [onAddAssignment, showToast]
+  );
+
+  const handleConfirmOverride = async () => {
+    const { shiftId, userId } = overrideModal;
+    setOverrideModal({ isOpen: false, shiftId: "", userId: "", message: "" });
+    try {
+      await onAddAssignment(shiftId, userId, true);
+    } catch (err: any) {
+      showToast(err?.message || "Zuordnung fehlgeschlagen.");
+    }
+  };
+
+  // Stabile Referenzen statt Neu-Erzeugung bei jedem Render, damit
+  // CalendarCard (React.memo) beim Öffnen einer einzelnen Karte/eines
+  // Popovers nicht alle anderen, unveränderten Karten mit neu rendert.
+  const handleToggleExpand = React.useCallback((shiftId: string) => {
+    setExpandedShifts((prev) => ({ ...prev, [shiftId]: !prev[shiftId] }));
+  }, []);
+  const handleOpenPopover = React.useCallback((shiftId: string) => {
+    setAssignPopoverShiftId(shiftId);
+  }, []);
+  const handleClosePopover = React.useCallback(() => {
+    setAssignPopoverShiftId(null);
+  }, []);
 
   React.useEffect(() => {
     if (currentUserId) {
@@ -86,31 +134,6 @@ export default function CalendarView({
       setShowOnlyConflicts(false);
     }
   }, [selectedPersonId]);
-
-  React.useEffect(() => {
-    if (assignPopoverShiftId) {
-      setLoadingSuggestions(true);
-      setSuggestions([]);
-      fetch(`/api/shifts/${assignPopoverShiftId}/suggestions`)
-        .then(res => {
-          if (!res.ok) return [];
-          const contentType = res.headers.get("content-type");
-          if (contentType && contentType.includes("application/json")) {
-            return res.json();
-          }
-          return [];
-        })
-        .then(data => {
-          if (Array.isArray(data)) {
-            setSuggestions(data);
-          }
-        })
-        .catch(err => console.error("Error loading shift suggestions in CalendarView:", err))
-        .finally(() => setLoadingSuggestions(false));
-    } else {
-      setSuggestions([]);
-    }
-  }, [assignPopoverShiftId]);
 
   // Focus effect if selected shift is passed from outside (e.g. from Dashboard warnings)
   React.useEffect(() => {
@@ -138,13 +161,14 @@ export default function CalendarView({
     }
   }, [onSelectShiftId, shifts, onClearSelectShiftId]);
 
-  // Utility calculations
-  const calculateShiftDurationHours = (start: string, end: string): number => {
+  // Utility calculations - useCallback für stabile Referenzen (siehe
+  // handleToggleExpand weiter oben für die Begründung).
+  const calculateShiftDurationHours = React.useCallback((start: string, end: string): number => {
     if (start === "Dauerhaft" || !start || !end) return 0;
     try {
       const [startH, startM] = start.split(":").map(Number);
       let [endH, endM] = end.split(":").map(Number);
-      
+
       // Handles overlapping cross-midnight (e.g., 22:00 - 00:00 or 19:00 - 00:00 or 20:00 - 02:00)
       if (endH < startH || (endH === startH && endM < startM)) {
         endH += 24;
@@ -154,11 +178,12 @@ export default function CalendarView({
     } catch {
       return 1;
     }
-  };
+  }, []);
 
-  const formatDateGerman = (dateStr: string): string => {
-    return formatDateWithDayPrefix(dateStr, activeCamp);
-  };
+  const formatDateGerman = React.useCallback(
+    (dateStr: string): string => formatDateWithDayPrefix(dateStr, activeCamp),
+    [activeCamp]
+  );
 
   const getDayLabel = (dateStr: string): string => {
     if (dateStr === "Haupt") return "Allgemein";
@@ -377,15 +402,12 @@ export default function CalendarView({
         {personStats && (
           <CalendarPersonStats
             personStats={personStats}
-            startDate={startDate}
-            sunDate={sunDate}
-            endDate={endDate}
             assignments={assignments}
             shifts={shifts}
             services={services}
             users={users}
-            onClearPersonFilter={() => setSelectedPersonId("")}
             formatDateGerman={formatDateGerman}
+            showToast={showToast}
           />
         )}
       </div>
@@ -426,11 +448,7 @@ export default function CalendarView({
               </button>
               <button
                 onClick={() => setViewMode("print")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                  viewMode === "print"
-                    ? "bg-slate-900 border border-emerald-500/15 text-emerald-400 font-bold"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer text-slate-500 hover:text-slate-300"
                 id="calendar-print-toggle"
               >
                 🖨️ Drucken / Export
@@ -448,74 +466,19 @@ export default function CalendarView({
           </div>
 
           {/* Prominent Schnell-Filter Layout right beneath the heading */}
-          <div className="flex flex-wrap gap-2.5 items-center bg-slate-955/70 bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl animate-fade-in text-xs font-sans shadow-inner shadow-black/40" id="modern-filter-pills-row">
-            <div className="font-bold text-slate-100 tracking-wide mr-2 select-none flex items-center text-sm">
-              <span className="mr-1.5 text-emerald-400 animate-pulse text-base">⚡</span> 
-              <span>Schnell-Filter:</span>
-            </div>
-
-            {/* Filter 1: Noch zu bestätigen */}
-            <button
-              type="button"
-              onClick={() => setShowOnlyPending(!showOnlyPending)}
-              className={`flex items-center space-x-2.5 px-4.5 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer select-none shadow-sm ${
-                showOnlyPending
-                  ? "bg-amber-500/25 border-amber-400/80 text-amber-300 ring-2 ring-amber-500/25 scale-[1.01]"
-                  : "bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900 hover:border-slate-700"
-              }`}
-              id="toggle-only-pending-shifts"
-            >
-              <span className={`w-2 h-2 rounded-full shrink-0 ${showOnlyPending ? "bg-amber-400 animate-pulse" : "bg-slate-550"}`} />
-              <span className="flex items-center space-x-1.5">
-                <span>⏳</span>
-                <span>
-                  {selectedPersonId ? (
-                    `Noch von ${users.find(u => u.id === selectedPersonId)?.display_name || "Person"} zu bestätigen: ${assignments.filter(a => a.user_id === selectedPersonId && (a.status || (a.accepted ? 'accepted' : 'pending')) === 'pending').length}`
-                  ) : (
-                    `Gesamt unbestätigt: ${assignments.filter(a => (a.status || (a.accepted ? 'accepted' : 'pending')) === 'pending').length}`
-                  )}
-                </span>
-              </span>
-            </button>
-
-            {/* Filter 2: Doppelbelegungen */}
-            {selectedPersonId ? (
-              <button
-                type="button"
-                onClick={() => setShowOnlyConflicts(!showOnlyConflicts)}
-                className={`flex items-center space-x-2.5 px-4.5 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer select-none animate-fade-in shadow-sm ${
-                  showOnlyConflicts
-                    ? "bg-rose-500/25 border-rose-400/80 text-rose-300 ring-2 ring-rose-500/25 scale-[1.01]"
-                    : "bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900 hover:border-slate-700"
-                }`}
-                id="toggle-only-personal-conflicts"
-              >
-                <span className={`w-2 h-2 rounded-full shrink-0 ${showOnlyConflicts ? "bg-rose-400 animate-pulse" : "bg-slate-550"}`} />
-                <span className="flex items-center space-x-1.5">
-                  <span>⚠️</span>
-                  <span>Nur doppelt belegte Schichten</span>
-                </span>
-              </button>
-            ) : (
-              <div className="text-slate-500 text-[11px] select-none font-sans bg-slate-900/20 px-3 py-2 rounded-lg border border-slate-850/40 border-slate-800/40">
-                💡 Wähle eine Person oben aus, um auch nach deren Doppelbelegungen zu filtern
-              </div>
-            )}
-
-            {/* Clear Filters Indicator */}
-            {(showOnlyPending || (selectedPersonId && showOnlyConflicts)) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowOnlyPending(false);
-                  setShowOnlyConflicts(false);
-                }}
-                className="text-xs hover:text-rose-400 text-rose-450 text-rose-400 font-bold cursor-pointer pl-2 hover:underline transition-all flex items-center space-x-1 sm:ml-auto animate-fade-in"
-              >
-                <span>✕</span> <span>Filter zurücksetzen</span>
-              </button>
-            )}
-          </div>
+          <CalendarQuickFilters
+            users={users}
+            assignments={assignments}
+            selectedPersonId={selectedPersonId}
+            showOnlyPending={showOnlyPending}
+            onToggleOnlyPending={() => setShowOnlyPending(!showOnlyPending)}
+            showOnlyConflicts={showOnlyConflicts}
+            onToggleOnlyConflicts={() => setShowOnlyConflicts(!showOnlyConflicts)}
+            onResetFilters={() => {
+              setShowOnlyPending(false);
+              setShowOnlyConflicts(false);
+            }}
+          />
         </div>
 
         {filteredShifts.length === 0 ? (
@@ -546,21 +509,21 @@ export default function CalendarView({
                   assignments={assignments}
                   users={users}
                   isExpanded={!!expandedShifts[s.id]}
-                  onToggleExpand={(shiftId) =>
-                    setExpandedShifts((prev) => ({ ...prev, [shiftId]: !prev[shiftId] }))
-                  }
+                  onToggleExpand={handleToggleExpand}
                   startDate={startDate}
                   sunDate={sunDate}
                   endDate={endDate}
                   isAdmin={isAdmin}
                   isPopoverActive={assignPopoverShiftId === s.id}
-                  onOpenPopover={(shiftId) => setAssignPopoverShiftId(shiftId)}
-                  onClosePopover={() => setAssignPopoverShiftId(null)}
+                  onOpenPopover={handleOpenPopover}
+                  onClosePopover={handleClosePopover}
                   onRemoveAssignment={onRemoveAssignment}
-                  onAddAssignment={onAddAssignment}
+                  onAddAssignment={handleAssignUser}
+                  onAssignError={showToast}
                   onToggleAssignmentAccepted={onToggleAssignmentAccepted}
                   selectedPersonId={selectedPersonId}
                   currentUserId={currentUserId}
+                  accessRole={accessRole}
                   suggestions={suggestions}
                   loadingSuggestions={loadingSuggestions}
                   calculateShiftDurationHours={calculateShiftDurationHours}
@@ -577,15 +540,24 @@ export default function CalendarView({
             users={users}
             activeCamp={activeCamp}
             onToggleAssignmentAccepted={onToggleAssignmentAccepted}
+            currentUserId={currentUserId}
+            accessRole={accessRole}
           />
         )}
       </div>
+
+      <Toast message={toastMessage} />
+
+      <ConfirmDialog
+        id="calendar-assign-override-dialog"
+        isOpen={overrideModal.isOpen}
+        variant="info"
+        title="Hinweis"
+        message={overrideModal.message}
+        confirmLabel="Ja, trotzdem eintragen"
+        onConfirm={handleConfirmOverride}
+        onCancel={() => setOverrideModal({ isOpen: false, shiftId: "", userId: "", message: "" })}
+      />
     </div>
   );
-}
-
-function timeToMinutes(timeStr: string): number {
-  if (!timeStr) return 0;
-  const [h, m] = timeStr.split(":").map(Number);
-  return (h || 0) * 60 + (m || 0);
 }

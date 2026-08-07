@@ -1,6 +1,9 @@
 import React from "react";
 import { X } from "lucide-react";
 import { Service, User } from "../types";
+import FieldError from "./FieldError";
+import { useEscapeKey } from "../hooks/useEscapeKey";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface ServiceFormModalProps {
   isOpen: boolean;
@@ -44,6 +47,7 @@ export default function ServiceFormModal({
   const [minPersons, setMinPersons] = React.useState(1);
   const [maxPersons, setMaxPersons] = React.useState(3);
   const [responsibleId, setResponsibleId] = React.useState("");
+  const [errors, setErrors] = React.useState<{ title?: string; capacity?: string }>({});
 
   // Populate form states when editingService or open state changes
   React.useEffect(() => {
@@ -68,16 +72,26 @@ export default function ServiceFormModal({
       setMaxPersons(3);
       setResponsibleId("");
     }
+    setErrors({});
   }, [editingService, isOpen]);
+
+  const titleId = React.useId();
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(isOpen);
+  useEscapeKey(isOpen, onClose);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title) {
-      onShowAlert("Eingabe erforderlich", "Ein Diensttitel ist erforderlich.");
+    if (!title.trim()) {
+      setErrors({ title: "Bitte einen Diensttitel eingeben." });
       return;
     }
+    if (Number(maxPersons) < Number(minPersons)) {
+      setErrors({ capacity: "Max. Helfer*innen darf nicht kleiner als Min. Helfer*innen sein." });
+      return;
+    }
+    setErrors({});
 
     const payload = {
       title,
@@ -105,17 +119,25 @@ export default function ServiceFormModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in" id="services-modal">
+    <div
+      ref={focusTrapRef}
+      className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in"
+      id="services-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <div className="backdrop-blur-md bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-800 overflow-hidden my-8 animate-fade-in">
         <div className="bg-slate-950 px-6 py-4 text-white flex items-center justify-between border-b border-slate-800">
-          <h3 className="font-bold text-sm tracking-tight text-white font-mono">
+          <h3 id={titleId} className="font-bold text-sm tracking-tight text-white font-mono">
             {editingService ? "📟 DIENSTTYP_KONFIGURATION_EDIT" : "📟 NEUEN_DIENSTTYP_ANLEGEN"}
           </h3>
-          <button 
+          <button
             onClick={onClose}
             className="text-slate-400 hover:text-white transition"
+            aria-label="Schließen"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -125,12 +147,17 @@ export default function ServiceFormModal({
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Diensttitel *</label>
             <input
               type="text"
-              required
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-500/40 text-white font-medium"
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setErrors({});
+              }}
+              className={`w-full text-xs p-2.5 bg-slate-950 border rounded-xl focus:outline-none focus:border-cyan-500/40 text-white font-medium ${
+                errors.title ? "border-rose-500/60" : "border-slate-800"
+              }`}
               placeholder="z. B. Nachtwache, Imbiss, Kaffeezelt"
             />
+            <FieldError message={errors.title} />
           </div>
 
           <div className="space-y-1">
@@ -203,9 +230,17 @@ export default function ServiceFormModal({
                 min={1}
                 value={maxPersons}
                 onChange={(e) => setMaxPersons(Number(e.target.value))}
-                className="w-full text-xs p-2 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-500/40 font-mono text-white font-medium"
+                className={`w-full text-xs p-2 bg-slate-950 border rounded-xl focus:outline-none focus:border-cyan-500/40 font-mono text-white font-medium ${
+                  errors.capacity ? "border-rose-500/60" : "border-slate-800"
+                }`}
               />
             </div>
+
+            {errors.capacity && (
+              <div className="col-span-2">
+                <FieldError message={errors.capacity} />
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">

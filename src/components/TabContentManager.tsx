@@ -1,17 +1,35 @@
 import React from "react";
-import { User, Service, Shift, ShiftAssignment, Conflict, Camp, MaterialItem, FunctionalRole, Community, TalentAct } from "../types";
+import { User, Service, Shift, ShiftAssignment, Conflict, Camp, MaterialItem, FunctionalRole, Community, TalentAct, SogTeamGroup, SogStation, SogSettings } from "../types";
 import DashboardView from "./DashboardView";
-import CalendarView from "./CalendarView";
-import PeopleView from "./PeopleView";
-import ServicesView from "./ServicesView";
-import ShiftsView from "./ShiftsView";
-import CampsView from "./CampsView";
-import AlertsView from "./AlertsView";
-import MaterialsView from "./MaterialsView";
-import CommunitiesView from "./CommunitiesView";
-import ProgramView from "./ProgramView";
-import LagerHubView from "./LagerHubView";
-import VerwaltungHubView from "./VerwaltungHubView";
+
+// Nur die Dashboard-View (Standard-Tab direkt nach dem Login) ist statisch
+// importiert, alle anderen Tabs per React.lazy() nachgeladen - ein Helfer,
+// der nur "Mein Plan"/Dashboard nutzt, muss nicht auch alle Admin-Ansichten
+// (CampsView, VerwaltungHubView, ProgramSog* etc.) beim ersten Laden
+// mitziehen. Gleiches Prinzip wie das bereits bestehende Lazy-Loading von
+// jspdf/html2canvas/xlsx, nur für Komponenten statt Bibliotheken.
+const CalendarView = React.lazy(() => import("./CalendarView"));
+const PeopleView = React.lazy(() => import("./PeopleView"));
+const ServicesView = React.lazy(() => import("./ServicesView"));
+const ShiftsView = React.lazy(() => import("./ShiftsView"));
+const CampsView = React.lazy(() => import("./CampsView"));
+const AlertsView = React.lazy(() => import("./AlertsView"));
+const MaterialsView = React.lazy(() => import("./MaterialsView"));
+const CommunitiesView = React.lazy(() => import("./CommunitiesView"));
+const ProgramView = React.lazy(() => import("./ProgramView"));
+const LagerHubView = React.lazy(() => import("./LagerHubView"));
+const VerwaltungHubView = React.lazy(() => import("./VerwaltungHubView"));
+
+/** Kurzer, unaufdringlicher Ladeindikator beim ersten Öffnen eines noch
+ * nicht geladenen Tabs - reine Netzwerk-Ladezeit des Chunks, meist unter
+ * einer halben Sekunde, danach ist der Tab dauerhaft im Speicher. */
+function TabLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 interface TabContentManagerProps {
   currentTab: string;
@@ -27,10 +45,12 @@ interface TabContentManagerProps {
   accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
   currentUserId: string | null;
   selectShiftId: string | null;
-  
+  programJumpTarget: "talentshow" | "spiel_ohne_grenzen" | null;
+
   // Upstream state callbacks
   setCurrentTab: (tab: string) => void;
   setSelectShiftId: (id: string | null) => void;
+  setProgramJumpTarget: (target: "talentshow" | "spiel_ohne_grenzen" | null) => void;
   openStatusModal: (assignmentId: string, _accepted?: boolean) => Promise<void>;
 
   // Data update handlers from useZeltlagerData
@@ -49,6 +69,7 @@ interface TabContentManagerProps {
   
   onAddAssignment: (shiftId: string, userId: string, force?: boolean) => Promise<void>;
   onRemoveAssignment: (shiftId: string, userId: string) => Promise<void>;
+  onRemoveAssignmentImmediate?: (shiftId: string, userId: string) => Promise<void>;
   onSetActiveCamp: (id: string) => Promise<void>;
   onCreateCamp: (year: number, copyFromCampId?: string) => Promise<void>;
   onSelectShift: (id: string) => void;
@@ -83,8 +104,17 @@ interface TabContentManagerProps {
   onUpdateTalentAct: (id: string, act: Partial<TalentAct>) => Promise<void>;
   onDeleteTalentAct: (id: string) => Promise<void>;
   onReorderTalentActs: (orders: { [id: string]: number }) => Promise<void>;
-  onClearTalentActs: () => Promise<void>;
   onResetDatabase?: (year?: number, mode?: "full" | "shifts_only" | "clear_assignments") => Promise<string>;
+  onRestoreLastReset?: () => Promise<string>;
+  onUpdateAssignmentStatus: (assignmentId: string, status: "pending" | "accepted" | "declined" | "maybe", declineReason?: string) => Promise<void>;
+
+  // Spiel ohne Grenzen props
+  sogGroups: SogTeamGroup[];
+  sogStations: SogStation[];
+  sogSettings: SogSettings;
+  onUpdateSogGroups: (groups: SogTeamGroup[]) => Promise<void>;
+  onUpdateSogStations: (stations: SogStation[]) => Promise<void>;
+  onUpdateSogSettings: (settings: SogSettings) => Promise<void>;
 }
 
 export default function TabContentManager({
@@ -101,8 +131,10 @@ export default function TabContentManager({
   accessRole = "helfer",
   currentUserId,
   selectShiftId,
+  programJumpTarget,
   setCurrentTab,
   setSelectShiftId,
+  setProgramJumpTarget,
   openStatusModal,
   onAddUser,
   onUpdateUser,
@@ -116,6 +148,7 @@ export default function TabContentManager({
   onDeleteShift,
   onAddAssignment,
   onRemoveAssignment,
+  onRemoveAssignmentImmediate,
   onSetActiveCamp,
   onCreateCamp,
   onSelectShift,
@@ -141,8 +174,15 @@ export default function TabContentManager({
   onUpdateTalentAct,
   onDeleteTalentAct,
   onReorderTalentActs,
-  onClearTalentActs,
+  sogGroups,
+  sogStations,
+  sogSettings,
+  onUpdateSogGroups,
+  onUpdateSogStations,
+  onUpdateSogSettings,
   onResetDatabase,
+  onRestoreLastReset,
+  onUpdateAssignmentStatus,
 }: TabContentManagerProps) {
   // "isAdmin" ist bewusst nur Lagerleitung (Personen/Lager-Verwaltung).
   // "canManage" (Bereichsleitung ODER Lagerleitung) gilt für alle operativen Planungs-
@@ -167,6 +207,7 @@ export default function TabContentManager({
 
   return (
     <div className="animate-fade-in">
+      <React.Suspense fallback={<TabLoadingFallback />}>
       {currentTab === "dashboard" && (
         <DashboardView
           users={users}
@@ -179,12 +220,15 @@ export default function TabContentManager({
           onSelectShift={onSelectShift}
           onAddAssignment={onAddAssignment}
           onRemoveAssignment={onRemoveAssignment}
+          onRemoveAssignmentImmediate={onRemoveAssignmentImmediate}
           activeCamp={activeCamp}
           isAdmin={canManage}
           currentUserId={currentUserId}
+          accessRole={accessRole}
           pwaInstallable={pwaInstallable}
           onTriggerPwaInstall={onTriggerPwaInstall}
           onOpenPwaOnboarding={onOpenPwaOnboarding}
+          onUpdateAssignmentStatus={onUpdateAssignmentStatus}
         />
       )}
 
@@ -204,6 +248,7 @@ export default function TabContentManager({
           onClearSelectShiftId={() => setSelectShiftId(null)}
           onOpenAddShiftModal={() => setCurrentTab("shifts")}
           activeCamp={activeCamp}
+          accessRole={accessRole}
         />
       )}
 
@@ -234,6 +279,8 @@ export default function TabContentManager({
           onDeleteShift={onDeleteShift}
           isAdmin={canManage}
           activeCamp={activeCamp}
+          accessRole={accessRole}
+          currentUserId={currentUserId}
         />
       )}
 
@@ -252,6 +299,7 @@ export default function TabContentManager({
           isAdmin={canManage}
           activeCamp={activeCamp}
           currentUserId={currentUserId}
+          accessRole={accessRole}
         />
       )}
 
@@ -262,6 +310,7 @@ export default function TabContentManager({
           onSetActiveCamp={onSetActiveCamp}
           onCreateCamp={onCreateCamp}
           onResetDatabase={onResetDatabase}
+          onRestoreLastReset={onRestoreLastReset}
         />
       )}
 
@@ -269,7 +318,6 @@ export default function TabContentManager({
         <AlertsView
           currentUser={users.find((u) => u.id === currentUserId) || null}
           users={users}
-          onUpdateUser={onUpdateUser}
         />
       )}
 
@@ -308,7 +356,14 @@ export default function TabContentManager({
           onUpdateTalentAct={onUpdateTalentAct}
           onDeleteTalentAct={onDeleteTalentAct}
           onReorderTalentActs={onReorderTalentActs}
-          onClearTalentActs={onClearTalentActs}
+          sogGroups={sogGroups}
+          sogStations={sogStations}
+          sogSettings={sogSettings}
+          onUpdateSogGroups={onUpdateSogGroups}
+          onUpdateSogStations={onUpdateSogStations}
+          onUpdateSogSettings={onUpdateSogSettings}
+          initialMainTab={programJumpTarget}
+          onInitialMainTabConsumed={() => setProgramJumpTarget(null)}
         />
       )}
 
@@ -317,6 +372,7 @@ export default function TabContentManager({
       {currentTab === "verwaltung" && (
         <VerwaltungHubView setCurrentTab={setCurrentTab} accessRole={accessRole} />
       )}
+      </React.Suspense>
     </div>
   );
 }

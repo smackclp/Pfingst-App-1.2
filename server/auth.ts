@@ -50,6 +50,46 @@ export function destroySession(token: string) {
   sessions.delete(token);
 }
 
+// --- Brute-Force-Schutz für den PIN-Login ---
+// PINs sind bewusst kurz (4-stellig, siehe pin.ts), damit sie sich Helfer
+// unter Zeitdruck merken können - das macht ungebremstes Durchprobieren
+// (nur 10.000 Kombinationen) zu einer realen Gefahr, zumal die Liste der
+// gültigen userIds öffentlich einsehbar ist (/auth/login-directory). Gleiche
+// bewusst-einfache In-Memory-Lösung wie bei den Sessions oben - kein Redis/
+// externer Dienst nötig für ein Ehrenamtsprojekt dieser Größe. Sperre ist
+// pro userId (nicht pro IP), da auf dem Zeltplatz viele Helfer dasselbe
+// WLAN/dieselbe IP teilen.
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 60 * 1000; // 60 Sekunden
+
+interface LoginAttempts {
+  count: number;
+  lockedUntil: number;
+}
+
+const loginAttempts = new Map<string, LoginAttempts>();
+
+export function isLoginLocked(userId: string): boolean {
+  const entry = loginAttempts.get(userId);
+  if (!entry) return false;
+  if (entry.lockedUntil > Date.now()) return true;
+  if (entry.lockedUntil) loginAttempts.delete(userId);
+  return false;
+}
+
+export function recordFailedLogin(userId: string) {
+  const entry = loginAttempts.get(userId) || { count: 0, lockedUntil: 0 };
+  entry.count += 1;
+  if (entry.count >= LOGIN_MAX_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + LOGIN_LOCKOUT_MS;
+  }
+  loginAttempts.set(userId, entry);
+}
+
+export function clearFailedLogins(userId: string) {
+  loginAttempts.delete(userId);
+}
+
 export function getSession(token: string | undefined): Session | null {
   if (!token) return null;
   const s = sessions.get(token);
@@ -124,6 +164,30 @@ export function requireMinRole(minimum: AccessRole) {
     }
     next();
   };
+}
+
+/**
+ * Erlaubt Zugriff auf die eigenen Daten (z.B. eigene Zuordnung/Benachrichtigungen),
+ * sonst nur Bereichsleitung+. Zentrale Stelle statt vieler identischer
+ * isSelf/canManageOthers-Prüfungen in den Routen.
+ */
+export function isSelfOrManager(req: Request, targetUserId: string): boolean {
+  if (!req.authUser) return false;
+  if (req.authUser.id === targetUserId) return true;
+  return isAtLeast(req.authUser.accessRole, "bereichsleiter");
+}
+
+/**
+ * Wie isSelfOrManager, aber enger: den Zusage-/Absage-Status EINER
+ * bestehenden Zuordnung darf außer der Person selbst nur die Lagerleitung
+ * ändern (nicht bereits die Bereichsleitung) - das Zu-/Einteilen einer
+ * Schicht (POST /assignments, Schichtplanung) bleibt davon unberührt und
+ * nutzt weiterhin isSelfOrManager.
+ */
+export function isSelfOrLagerleitung(req: Request, targetUserId: string): boolean {
+  if (!req.authUser) return false;
+  if (req.authUser.id === targetUserId) return true;
+  return isAtLeast(req.authUser.accessRole, "lagerleitung");
 }
 
 /** Entfernt sensible Felder (PIN-Hash), bevor ein User-Objekt an den Client geht. */

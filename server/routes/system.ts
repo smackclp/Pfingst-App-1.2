@@ -1,17 +1,11 @@
 import { Router } from "express";
-import { readDB, writeDB } from "../db";
+import { readDB, writeDB, saveResetBackup, readResetBackup, clearResetBackup } from "../db";
 import { getDefaultSeedDB } from "../seed";
 import { getLastChange, getStats } from "../firebase";
-import { sendNotificationToUser } from "../notifications";
 import { requireMinRole, requireRole } from "../auth";
+import { recordError, getErrorLog } from "../errorLog";
 
 const router = Router();
-
-/** Erlaubt Zugriff auf eigene Notification-/Push-Daten, sonst nur Bereichsleitung+. */
-function requireSelfOrLeitung(req: any, targetUserId: string): boolean {
-  if (req.authUser.id === targetUserId) return true;
-  return req.authUser.accessRole === "bereichsleiter" || req.authUser.accessRole === "lagerleitung";
-}
 
 function calculateShiftHours(start: string, end: string): number {
   if (start === "Dauerhaft" || !start || !end) return 0;
@@ -97,177 +91,35 @@ router.get("/stats", requireMinRole("bereichsleiter"), (req, res) => {
   });
 });
 
-// --- NOTIFICATIONS ---
-router.get("/notifications", (req, res) => {
-  try {
-    const db = readDB();
-    const userId = req.query.userId as string;
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId query parameter" });
-    }
-    if (!requireSelfOrLeitung(req, userId)) {
-      return res.status(403).json({ error: "Du darfst nur deine eigenen Benachrichtigungen abrufen." });
-    }
-    const notifications = db.notifications || [];
-    const userNotifications = notifications
-      .filter((n) => n && typeof n === "object" && n.userId === userId)
-      .sort((a, b) => {
-        const timeA = a && a.timestamp ? new Date(a.timestamp).getTime() : 0;
-        const timeB = b && b.timestamp ? new Date(b.timestamp).getTime() : 0;
-        return timeB - timeA;
-      });
-    res.json(userNotifications);
-  } catch (error: any) {
-    console.error("CRITICAL ERROR IN GET /api/notifications:", error);
-    res.status(500).json({ error: error.message || String(error) });
-  }
-});
-
-router.post("/notifications/test", async (req, res) => {
-  try {
-    const { userId, title, body } = req.body;
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId" });
-    }
-    if (!requireSelfOrLeitung(req, userId)) {
-      return res.status(403).json({ error: "Du darfst nur dir selbst eine Test-Benachrichtigung senden." });
-    }
-    const t = title || "Test-Benachrichtigung 🔔";
-    const b = body || "Moin! Das ist eine Test-Benachrichtigung von deinem Pfingstlager Dienstplan-Planer. Alles funktioniert super!";
-    await sendNotificationToUser(userId, t, b);
-    res.json({ success: true, message: "Test-Benachrichtigung gesendet!" });
-  } catch (error: any) {
-    console.error("CRITICAL ERROR IN POST /api/notifications/test:", error);
-    res.status(500).json({ error: error.message || String(error) });
-  }
-});
-
-router.post("/notifications/mark-all-read", (req, res) => {
-  try {
-    const db = readDB();
-    const { userId } = req.body;
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId" });
-    }
-    if (!requireSelfOrLeitung(req, userId)) {
-      return res.status(403).json({ error: "Du darfst das nur für dich selbst tun." });
-    }
-    if (db.notifications) {
-      db.notifications = db.notifications.map((n) => {
-        if (n && typeof n === "object" && n.userId === userId) {
-          return { ...n, read: true };
-        }
-        return n;
-      });
-      writeDB(db);
-    }
-    res.json({ success: true });
-  } catch (error: any) {
-    console.error("CRITICAL ERROR IN POST /api/notifications/mark-all-read:", error);
-    res.status(500).json({ error: error.message || String(error) });
-  }
-});
-
-router.post("/notifications/clear", (req, res) => {
-  try {
-    const db = readDB();
-    const { userId } = req.body;
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId" });
-    }
-    if (!requireSelfOrLeitung(req, userId)) {
-      return res.status(403).json({ error: "Du darfst das nur für dich selbst tun." });
-    }
-    if (db.notifications) {
-      db.notifications = db.notifications.filter((n) => n && typeof n === "object" && n.userId !== userId);
-      writeDB(db);
-    }
-    res.json({ success: true });
-  } catch (error: any) {
-    console.error("CRITICAL ERROR IN POST /api/notifications/clear:", error);
-    res.status(500).json({ error: error.message || String(error) });
-  }
-});
-
-router.get("/notifications/vapid-public-key", (req, res) => {
-  try {
-    const db = readDB();
-    if (db.vapidKeys) {
-      return res.json({ publicKey: db.vapidKeys.publicKey });
-    }
-    res.status(404).json({ error: "VAPID key not found" });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message || String(error) });
-  }
-});
-
-router.post("/notifications/push-subscribe", (req, res) => {
-  try {
-    const db = readDB();
-    const { userId, subscription } = req.body;
-    if (!userId || !subscription) {
-      return res.status(400).json({ error: "Missing userId or subscription details" });
-    }
-    if (!requireSelfOrLeitung(req, userId)) {
-      return res.status(403).json({ error: "Du darfst das nur für dich selbst tun." });
-    }
-    if (!db.pushSubscriptions) {
-      db.pushSubscriptions = [];
-    }
-    const existingIndex = db.pushSubscriptions.findIndex(
-      (sub) => sub.userId === userId && sub.subscription?.endpoint === subscription?.endpoint
-    );
-    if (existingIndex > -1) {
-      db.pushSubscriptions[existingIndex].subscription = subscription;
-    } else {
-      db.pushSubscriptions.push({ userId, subscription });
-    }
-    writeDB(db);
-    res.json({ success: true, message: "Abo erfolgreich registriert!" });
-  } catch (error: any) {
-    console.error("Error in push-subscribe:", error);
-    res.status(500).json({ error: error.message || String(error) });
-  }
-});
-
-router.post("/notifications/push-unsubscribe", (req, res) => {
-  try {
-    const db = readDB();
-    const { userId, endpoint, unsubscribeAll } = req.body;
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId" });
-    }
-    if (!requireSelfOrLeitung(req, userId)) {
-      return res.status(403).json({ error: "Du darfst das nur für dich selbst tun." });
-    }
-    if (!db.pushSubscriptions) {
-      db.pushSubscriptions = [];
-    }
-    const previousCount = db.pushSubscriptions.length;
-    if (unsubscribeAll) {
-      db.pushSubscriptions = db.pushSubscriptions.filter((sub) => sub.userId !== userId);
-    } else if (endpoint) {
-      db.pushSubscriptions = db.pushSubscriptions.filter(
-        (sub) => !(sub.userId === userId && sub.subscription?.endpoint === endpoint)
-      );
-    } else {
-      db.pushSubscriptions = db.pushSubscriptions.filter((sub) => sub.userId !== userId);
-    }
-    const removedCount = previousCount - db.pushSubscriptions.length;
-    writeDB(db);
-    res.json({ 
-      success: true, 
-      message: `Abo erfolgreich deinstalliert! ${removedCount} Registrierung(en) gelöscht.` 
-    });
-  } catch (error: any) {
-    console.error("Error in push-unsubscribe:", error);
-    res.status(500).json({ error: error.message || String(error) });
-  }
-});
-
 // Sync checker endpoint for light polling
 router.get("/sync-check", (req, res) => {
   res.json({ lastChange: getLastChange() });
+});
+
+// --- FEHLER-MONITORING ---
+// Nimmt vom Client gemeldete Laufzeitfehler entgegen (ErrorBoundary, globale
+// window.onerror/unhandledrejection-Handler in main.tsx). Für jede
+// angemeldete Person offen (kein Rollen-Zwang), da jeder Fehler melden
+// können soll, aber nur Lagerleitung die Übersicht einsehen darf.
+router.post("/client-error", (req, res) => {
+  const { message, stack, path: clientPath } = req.body || {};
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "Fehlende Fehlermeldung." });
+  }
+  // Fire-and-forget: die Antwort soll nicht auf Protokollierung/Push warten.
+  recordError({
+    source: "frontend",
+    message: message.slice(0, 500),
+    stack: typeof stack === "string" ? stack.slice(0, 2000) : undefined,
+    path: typeof clientPath === "string" ? clientPath.slice(0, 200) : undefined,
+    userId: req.authUser?.id,
+  }).catch((err) => console.error("Failed to record client error:", err));
+  res.status(202).json({ success: true });
+});
+
+// Letzte Fehler (Backend + Frontend) für das Admin-Panel ("Lager verwalten").
+router.get("/error-log", requireRole("lagerleitung"), (req, res) => {
+  res.json({ errors: getErrorLog() });
 });
 
 // Backup database endpoint
@@ -284,6 +136,12 @@ router.post("/seed", requireRole("lagerleitung"), async (req, res) => {
     const { year = 2026, mode = "full" } = req.body || {};
     const targetYear = Number(year) || 2026;
     const currentDB = readDB();
+
+    // Vor jedem Reset-Modus den bisherigen Stand sichern, damit er über
+    // "Letzten Stand wiederherstellen" zurückgeholt werden kann - ein Reset
+    // ist die folgenreichste Aktion der App und verdient mehr Schutz als
+    // nur die Bestätigungsabfrage im Modal.
+    saveResetBackup(currentDB);
 
     if (mode === "clear_assignments") {
       currentDB.assignments = [];
@@ -331,6 +189,24 @@ router.post("/seed", requireRole("lagerleitung"), async (req, res) => {
     console.error("Error in /api/seed:", err);
     res.status(500).json({ error: err.message || String(err) });
   }
+});
+
+// Status der automatischen Vor-Reset-Sicherung (für den "Wiederherstellen"-Hinweis in CampsView)
+router.get("/seed/backup-status", requireRole("lagerleitung"), (req, res) => {
+  const backup = readResetBackup();
+  res.json({ available: !!backup, timestamp: backup?.timestamp || null });
+});
+
+// Letzten Stand vor dem zuletzt ausgeführten Reset wiederherstellen
+router.post("/seed/restore", requireRole("lagerleitung"), (req, res) => {
+  const backup = readResetBackup();
+  if (!backup) {
+    return res.status(404).json({ error: "Keine Sicherung zum Wiederherstellen vorhanden." });
+  }
+  writeDB(backup.db);
+  clearResetBackup();
+  const ts = new Date(backup.timestamp).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" });
+  res.json({ success: true, message: `Stand vom ${ts} wurde wiederhergestellt.`, db: backup.db });
 });
 
 export default router;

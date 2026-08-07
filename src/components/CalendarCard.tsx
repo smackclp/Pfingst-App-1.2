@@ -4,13 +4,12 @@ import { Shift, Service, User, ShiftAssignment } from "../types";
 import { Tooltip } from "./Tooltip";
 
 interface CalendarCardProps {
-  key?: any;
   s: Shift;
   svc: Service;
   services: Service[];
   shifts: Shift[];
   assignments: ShiftAssignment[];
-  users: any[];
+  users: User[];
   isExpanded: boolean;
   onToggleExpand: (shiftId: string) => void;
   startDate: string;
@@ -20,18 +19,20 @@ interface CalendarCardProps {
   isPopoverActive: boolean;
   onOpenPopover: (shiftId: string) => void;
   onClosePopover: () => void;
-  onRemoveAssignment: (shiftId: string, userId: string) => any;
-  onAddAssignment: (shiftId: string, userId: string) => any;
-  onToggleAssignmentAccepted?: (assignmentId: string, accepted: boolean) => any;
+  onRemoveAssignment: (shiftId: string, userId: string) => Promise<void>;
+  onAddAssignment: (shiftId: string, userId: string) => Promise<void>;
+  onAssignError?: (message: string) => void;
+  onToggleAssignmentAccepted?: (assignmentId: string, accepted: boolean) => Promise<void>;
   selectedPersonId?: string;
   currentUserId?: string | null;
-  suggestions: any[];
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
+  suggestions: Array<{ user_id: string; year: number; camp_title: string }>;
   loadingSuggestions: boolean;
   calculateShiftDurationHours: (start: string, end: string) => number;
   formatDateGerman: (dateStr: string) => string;
 }
 
-export default function CalendarCard({
+function CalendarCard({
   s,
   svc,
   services,
@@ -49,9 +50,11 @@ export default function CalendarCard({
   onClosePopover,
   onRemoveAssignment,
   onAddAssignment,
+  onAssignError,
   onToggleAssignmentAccepted,
   selectedPersonId,
   currentUserId,
+  accessRole,
   suggestions,
   loadingSuggestions,
   calculateShiftDurationHours,
@@ -60,8 +63,27 @@ export default function CalendarCard({
   const assigned = assignments.filter((a) => a.shift_id === s.id);
   const assignedCount = assigned.length;
 
-  const isUnderstaffed = assignedCount < svc.min_persons;
-  const isOverstaffed = assignedCount > svc.max_persons;
+  // Effektive Kapazität: Schicht-Override hat Vorrang vor dem Service-
+  // Standard (gleiches Muster wie ShiftRow.tsx) - sonst wirkt eine an
+  // dieser einzelnen Schicht angepasste Kapazität hier nicht.
+  const minPersons = s.min_persons !== undefined ? s.min_persons : svc.min_persons;
+  const maxPersons = s.max_persons !== undefined ? s.max_persons : svc.max_persons;
+
+  // onAddAssignment wurde bisher ohne Fehlerbehandlung aufgerufen - bei
+  // einem Konflikt (Zeitüberschneidung oder, seit der Server das jetzt auch
+  // prüft, Kapazität) passierte beim Klick sichtbar nichts. Hier zumindest
+  // eine Rückmeldung zeigen (kein Übersteuern-Dialog wie in der
+  // Schichtplanung, da Helfer sich hier nur selbst eintragen).
+  const handleAssign = async (userId: string) => {
+    try {
+      await onAddAssignment(s.id, userId);
+    } catch (err: any) {
+      onAssignError?.(err?.message || "Zuweisung fehlgeschlagen.");
+    }
+  };
+
+  const isUnderstaffed = assignedCount < minPersons;
+  const isOverstaffed = assignedCount > maxPersons;
 
   const borderTheme = svc.color || "#3b82f6";
 
@@ -75,6 +97,15 @@ export default function CalendarCard({
     <div
       id={`shift-card-${s.id}`}
       onClick={() => onToggleExpand(s.id)}
+      role="button"
+      tabIndex={0}
+      aria-expanded={isExpanded}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggleExpand(s.id);
+        }
+      }}
       className={`bg-slate-900/85 backdrop-blur-md rounded-2xl border transition-all duration-300 flex flex-col p-4 cursor-pointer select-none ${
         isExpanded
           ? "border-emerald-500/35 hover:border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.06)] space-y-3"
@@ -99,23 +130,23 @@ export default function CalendarCard({
           /* Status badge */
           <div className="shrink-0 flex items-center font-mono">
             {isUnderstaffed ? (
-              <Tooltip content={`Mindestbesetzung fehlt! Mindestens ${svc.min_persons} Personen benötigt für einen sicheren Ablauf.`} position="left" delay={200}>
+              <Tooltip content={`Mindestbesetzung fehlt! Mindestens ${minPersons} Personen benötigt für einen sicheren Ablauf.`} position="left" delay={200}>
                 <span
                   className="bg-amber-950 text-amber-400 border border-amber-500/20 text-[10px] font-semibold px-2 py-0.5 rounded animate-pulse cursor-help"
                 >
-                  Soll: {svc.min_persons} • Ist: {assignedCount}
+                  Soll: {minPersons} • Ist: {assignedCount}
                 </span>
               </Tooltip>
             ) : isOverstaffed ? (
-              <Tooltip content={`Maximalkapazität überschritten! Limit liegt bei ${svc.max_persons} Personen.`} position="left" delay={200}>
+              <Tooltip content={`Maximalkapazität überschritten! Limit liegt bei ${maxPersons} Personen.`} position="left" delay={200}>
                 <span
                   className="bg-rose-950 text-rose-400 border border-rose-500/25 text-[10px] font-semibold px-2 py-0.5 rounded cursor-help"
                 >
-                  Überbesetzt ({assignedCount}/{svc.max_persons})
+                  Überbesetzt ({assignedCount}/{maxPersons})
                 </span>
               </Tooltip>
             ) : (
-              <Tooltip content={`Dienst ist optimal besetzt (${assignedCount} von max. ${svc.max_persons} Plätzen).`} position="left" delay={200}>
+              <Tooltip content={`Dienst ist optimal besetzt (${assignedCount} von max. ${maxPersons} Plätzen).`} position="left" delay={200}>
                 <span className="bg-emerald-950 text-emerald-400 border border-emerald-500/20 text-[10px] font-semibold px-2 py-0.5 rounded cursor-help">
                   Vollständig ({assignedCount})
                 </span>
@@ -166,7 +197,7 @@ export default function CalendarCard({
           <div className="pt-2.5 border-t border-slate-800/60" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between text-xs text-slate-400 font-bold font-mono pb-1.5">
               <span className="uppercase tracking-wider">Helfer*innen ({assignedCount})</span>
-              <span className="text-slate-400 font-normal">Soll: {svc.min_persons}-{svc.max_persons} P.</span>
+              <span className="text-slate-400 font-normal">Soll: {minPersons}-{maxPersons} P.</span>
             </div>
 
             <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -178,22 +209,29 @@ export default function CalendarCard({
                   if (!userObj) return null;
 
                   const isUserAccepted = ass.accepted;
+                  const canToggle = ass.user_id === currentUserId || accessRole === "lagerleitung";
 
                   return (
                     <div
                       key={ass.id}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onToggleAssignmentAccepted) {
+                        if (canToggle && onToggleAssignmentAccepted) {
                           onToggleAssignmentAccepted(ass.id, !ass.accepted);
                         }
                       }}
-                      className={`flex items-center space-x-1.5 rounded-lg py-1 px-2.5 border transition-all text-xs font-bold cursor-pointer select-none ${
+                      className={`flex items-center space-x-1.5 rounded-lg py-1 px-2.5 border transition-all text-xs font-bold select-none ${canToggle ? "cursor-pointer" : "cursor-default"} ${
                         isUserAccepted
                           ? "bg-emerald-950/30 hover:bg-emerald-900/40 border-emerald-500/30 text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.05)]"
                           : "bg-slate-950 hover:bg-slate-900 border-slate-800/60 text-slate-400"
                       }`}
-                      title={isUserAccepted ? "Bestätigter Dienst (Klicken zum Ändern)" : "Offener Dienst - unbestätigt (Klicken zum Bestätigen)"}
+                      title={
+                        !canToggle
+                          ? "Nur die Lagerleitung kann Schichten für andere bestätigen."
+                          : isUserAccepted
+                          ? "Bestätigter Dienst (Klicken zum Ändern)"
+                          : "Offener Dienst - unbestätigt (Klicken zum Bestätigen)"
+                      }
                     >
                       <span className="flex items-center">
                         {isUserAccepted ? (
@@ -222,10 +260,13 @@ export default function CalendarCard({
               )}
             </div>
 
-            {/* Direct confirmation for selected filter person */}
+            {/* Direct confirmation for selected filter person - Status für eine
+                andere Person ändern darf nur die Lagerleitung (siehe
+                isSelfOrLagerleitung im Backend) */}
             {(() => {
               const myAss = selectedPersonId ? assigned.find((a) => a.user_id === selectedPersonId) : null;
               if (!myAss || !onToggleAssignmentAccepted) return null;
+              if (selectedPersonId !== currentUserId && accessRole !== "lagerleitung") return null;
               return (
                 <div className="mt-3 p-2.5 bg-slate-950/70 border border-slate-800 rounded-xl flex items-center justify-between" id={`personal-accept-area-${s.id}`}>
                   <span className="text-[11px] text-slate-400 font-mono font-medium">Status für {users.find(u => u.id === selectedPersonId)?.display_name}:</span>
@@ -302,17 +343,21 @@ export default function CalendarCard({
                       </button>
                     </div>
                   ) : (
-                    assignedCount < svc.max_persons ? (
+                    <div className="flex flex-col items-end gap-1">
+                      {assignedCount >= maxPersons && (
+                        <span className="text-[9px] text-amber-400 font-semibold flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3 shrink-0" />
+                          Schicht ist bereits gut ausgelastet ({assignedCount}/{maxPersons})
+                        </span>
+                      )}
                       <button
                         type="button"
-                        onClick={() => onAddAssignment(s.id, currentUserId)}
+                        onClick={() => handleAssign(currentUserId!)}
                         className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-slate-950 text-[10px] font-extrabold rounded-lg transition-all flex items-center justify-center space-x-1 cursor-pointer shadow-md"
                       >
                         <span>Mich für diesen Dienst eintragen 🤝</span>
                       </button>
-                    ) : (
-                      <span className="text-[10px] text-slate-500 italic shrink-0">Schicht voll belegt</span>
-                    )
+                    </div>
                   )}
                 </div>
               );
@@ -372,7 +417,7 @@ export default function CalendarCard({
                             return (
                               <button
                                 key={sug.user_id}
-                                onClick={() => onAddAssignment(s.id, sug.user_id)}
+                                onClick={() => handleAssign(sug.user_id)}
                                 className={`w-full text-left text-xs px-2.5 py-1.5 rounded-lg flex items-center justify-between transition border ${
                                   hasCollision
                                     ? "bg-rose-950/20 text-rose-400 border-rose-900/40"
@@ -423,7 +468,7 @@ export default function CalendarCard({
                         return (
                           <button
                             key={u.id}
-                            onClick={() => onAddAssignment(s.id, u.id)}
+                            onClick={() => handleAssign(u.id)}
                             title={hasCollision ? `Arbeitet bereits in: ${collisionServiceTitle}` : `Als Helfer*in für diesen Dienst eintragen`}
                             className={`w-full text-left text-xs px-2.5 py-1.5 rounded-lg flex items-center justify-between transition cursor-pointer ${
                               hasCollision
@@ -463,3 +508,9 @@ export default function CalendarCard({
     </div>
   );
 }
+
+// React.memo: verhindert unnötige Neuberechnung/Rendering einzelner Karten,
+// wenn nur eine andere Karte (z.B. per Popover/Ausklappen) betroffen ist.
+// Wirkt nur, wenn die Aufrufer stabile Callback-Referenzen übergeben (siehe
+// handleToggleExpand/handleOpenPopover/handleClosePopover in CalendarView.tsx).
+export default React.memo(CalendarCard);

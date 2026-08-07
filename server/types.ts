@@ -11,6 +11,8 @@ export interface User {
   active: boolean;
   notes?: string;
   is_buyer?: boolean;
+  /** Erhält Push-Benachrichtigungen bei neu erkannten App-Fehlern (Fehler-Monitoring). */
+  is_error_monitor?: boolean;
   /** App-Zugriffsrolle (Berechtigungsstufe), unabhängig vom fachlichen "role"-Feld oben. */
   access_role?: AccessRole;
   /** Serverseitig gehashte PIN ("salt:hash"). Wird NIE an den Client gesendet. */
@@ -71,6 +73,8 @@ export interface Notification {
 }
 
 export interface PushSubscriptionItem {
+  /** Stabile Dokument-ID für die Firestore-Spiegelung (server/firebase.ts) - unabhängig vom Endpoint, damit ein Update der Subscription nicht die ID ändert. */
+  id: string;
   userId: string;
   subscription: any;
 }
@@ -85,6 +89,7 @@ export interface MaterialItem {
   price?: string;
   created_at: string;
   status?: 'pending' | 'ordered' | 'received';
+  camp_id?: string;
 }
 
 export interface FunctionalRole {
@@ -118,6 +123,10 @@ export interface DB {
   functionalRoles?: FunctionalRole[];
   communities?: Community[];
   talentActs?: TalentAct[];
+  sogGroups?: SogTeamGroup[];
+  sogStations?: SogStation[];
+  /** Ein Eintrag pro Lagerjahr (camp_id), damit Rotationszeiten pro Jahr erhalten bleiben. */
+  sogSettings?: (SogSettings & { camp_id: string })[];
 }
 
 export interface TalentAct {
@@ -136,6 +145,33 @@ export interface TalentAct {
   spotify_link?: string;
   without_rating: boolean;
   order_index: number;
+}
+
+/** "Spiel ohne Grenzen": Gruppen-Einteilung der Gemeinden. */
+export interface SogTeamGroup {
+  id: string;
+  name: string;
+  communityIds: string[];
+  camp_id?: string;
+}
+
+/** "Spiel ohne Grenzen": einzelne Spielstation inkl. Helfer-Zuordnung. */
+export interface SogStation {
+  id: string;
+  number: number;
+  title: string;
+  description: string;
+  location: string;
+  materialNeeded: string;
+  helperIds: string[];
+  camp_id?: string;
+}
+
+/** "Spiel ohne Grenzen": Rotationszeiten für den Laufplan. */
+export interface SogSettings {
+  startTime: string;
+  roundDuration: number;
+  breakDuration: number;
 }
 
 export interface Conflict {

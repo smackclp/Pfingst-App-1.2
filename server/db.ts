@@ -1,18 +1,19 @@
 import fs from "fs";
-import path from "path";
-import webpush from "web-push";
-import { DB, Camp, Shift, ShiftAssignment } from "./types";
+import { DB } from "./types";
 import { getDefaultSeedDB } from "./seed";
-import { 
-  getUnifiedDB, 
-  isFirebaseEnabled, 
-  writeFirestoreDoc, 
-  deleteFirestoreDoc, 
+import { getDbFilePath } from "./dbPath";
+import {
+  getUnifiedDB,
+  isFirebaseEnabled,
+  writeFirestoreDoc,
+  deleteFirestoreDoc,
   writeGlobalSettings,
-  registerChangeListener
+  triggerGlobalMetadataUpdate,
+  registerChangeListener,
+  FIRESTORE_COLLECTIONS
 } from "./firebase";
 
-const DB_FILE = path.join(process.cwd(), "db.json");
+const DB_FILE = getDbFilePath();
 
 // Local module-level in-memory cache synchronized with Firestore
 let currentCachedDB: DB | null = null;
@@ -65,12 +66,18 @@ if (isFirebaseEnabled()) {
   });
 }
 
-// Synchronously serve from server-side memory cache (0ms database latency, 0 Firestore reads)
+// Synchronously serve from server-side memory cache (0ms database latency, 0 Firestore reads).
+// Gibt bewusst eine Kopie zurück (nicht die Live-Referenz): Routen mutieren das
+// zurückgegebene Objekt direkt und rufen danach writeDB() auf. Mit einer Live-
+// Referenz wäre der interne Cache zum Zeitpunkt des writeDB()-Aufrufs bereits
+// mutiert, wodurch dessen "Vorher"-Schnappschuss (für den Firestore-Diff) nie
+// einen Unterschied zum "Nachher"-Stand erkennen würde - Änderungen kämen dann
+// nie in Firestore an, obwohl sie lokal/im Speicher sichtbar sind.
 export function readDB(): DB {
   if (!currentCachedDB) {
     currentCachedDB = getInitialLocalDB();
   }
-  return currentCachedDB;
+  return JSON.parse(JSON.stringify(currentCachedDB));
 }
 
 // Set database state from Firestore on boot
@@ -83,23 +90,22 @@ export function writeDB(newData: DB) {
   const previousDB = currentCachedDB ? JSON.parse(JSON.stringify(currentCachedDB)) : getInitialLocalDB();
   currentCachedDB = newData;
 
-  // 1. Write local backup json file
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(newData, null, 2), "utf-8");
-  } catch (err) {
-    console.error("Failed to write fallback db.json", err);
-  }
+  // 1. Write local backup json file. Nicht-blockierend (fs.writeFile statt
+  // -Sync): currentCachedDB ist oben bereits synchron aktualisiert, spätere
+  // readDB()-Aufrufe sehen also unabhängig vom Abschluss dieses Schreibvorgangs
+  // immer den neuen Stand - die Datei ist nur ein Fallback/Backup für den
+  // nächsten Serverstart, kein Teil des Lese-Pfads zur Laufzeit.
+  fs.writeFile(DB_FILE, JSON.stringify(newData, null, 2), "utf-8", (err) => {
+    if (err) console.error("Failed to write fallback db.json", err);
+  });
 
   // 2. Perform intelligent incremental diff sync to Firestore to minimize write queries and ensure high scalability
   if (isFirebaseEnabled()) {
     Promise.resolve().then(async () => {
       try {
-        const collections = [
-          "users", "services", "shifts", "assignments", "camps", 
-          "materials", "functionalRoles", "communities", "talentActs", "notifications"
-        ];
+        let anyDocChanged = false;
 
-        for (const colName of collections) {
+        for (const colName of FIRESTORE_COLLECTIONS) {
           const oldItems: any[] = (previousDB as any)[colName] || [];
           const newItems: any[] = (newData as any)[colName] || [];
 
@@ -111,6 +117,7 @@ export function writeDB(newData: DB) {
             const oldItem = oldMap.get(id);
             if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(item)) {
               await writeFirestoreDoc(colName, id, item);
+              anyDocChanged = true;
             }
           }
 
@@ -118,22 +125,83 @@ export function writeDB(newData: DB) {
           for (const id of oldMap.keys()) {
             if (!newMap.has(id)) {
               await deleteFirestoreDoc(colName, id);
+              anyDocChanged = true;
             }
           }
         }
 
         // Sync settings/metadata if changed
-        if (previousDB.activeCampId !== newData.activeCampId || 
-            JSON.stringify(previousDB.vapidKeys) !== JSON.stringify(newData.vapidKeys)) {
+        const settingsChanged =
+          previousDB.activeCampId !== newData.activeCampId ||
+          JSON.stringify(previousDB.vapidKeys) !== JSON.stringify(newData.vapidKeys);
+        if (settingsChanged) {
           await writeGlobalSettings({
             activeCampId: newData.activeCampId,
             vapidKeys: newData.vapidKeys
           });
         }
+
+        // Metadata-Stempel (lastChange, für Realtime-Sync zwischen mehreren
+        // Server-Instanzen) genau EINMAL pro writeDB()-Aufruf setzen statt
+        // wie vorher pro einzelnem Dokument-Write. writeGlobalSettings()
+        // schreibt lastChange bereits selbst mit - nur wenn NUR Dokumente
+        // (keine Settings) geändert wurden, brauchen wir den separaten Stempel.
+        if (anyDocChanged && !settingsChanged) {
+          await triggerGlobalMetadataUpdate();
+        }
       } catch (syncErr) {
         console.error("Asynchronous incremental cloud sync failed:", syncErr);
       }
     });
+  }
+}
+
+// Pfad für die automatische Sicherung, die vor jedem Lagerjahr-Reset
+// angelegt wird (server/routes/system.ts, POST /seed). Getrennt von DB_FILE,
+// damit sie nicht in den normalen Firestore-Diff-Sync von writeDB() gerät -
+// das würde den alten Stand fälschlich als neue Live-Daten interpretieren.
+function getResetBackupFilePath(): string {
+  return DB_FILE.replace(/\.json$/, ".pre-reset-backup.json");
+}
+
+export interface ResetBackup {
+  timestamp: string;
+  db: DB;
+}
+
+// Sichert den Datenbankstand unmittelbar vor einem Lagerjahr-Reset lokal
+// weg, damit ein versehentlicher Reset über "Letzten Stand wiederherstellen"
+// rückgängig gemacht werden kann. Überschreibt eine evtl. vorhandene ältere
+// Sicherung bewusst (nur eine Undo-Stufe, kein Sicherungsverlauf).
+export function saveResetBackup(db: DB) {
+  const backup: ResetBackup = { timestamp: new Date().toISOString(), db };
+  try {
+    fs.writeFileSync(getResetBackupFilePath(), JSON.stringify(backup, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Failed to write pre-reset backup:", err);
+  }
+}
+
+export function readResetBackup(): ResetBackup | null {
+  try {
+    const p = getResetBackupFilePath();
+    if (!fs.existsSync(p)) return null;
+    return JSON.parse(fs.readFileSync(p, "utf-8"));
+  } catch (err) {
+    console.error("Failed to read pre-reset backup:", err);
+    return null;
+  }
+}
+
+// Nach erfolgreicher Wiederherstellung entfernt: ein zweites Mal
+// "wiederherstellen" auf denselben Stand böte keinen Mehrwert und könnte
+// eher verwirren, wenn seither schon wieder neue Änderungen gemacht wurden.
+export function clearResetBackup() {
+  try {
+    const p = getResetBackupFilePath();
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  } catch (err) {
+    console.error("Failed to clear pre-reset backup:", err);
   }
 }
 

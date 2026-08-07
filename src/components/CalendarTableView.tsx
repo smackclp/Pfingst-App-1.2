@@ -9,6 +9,8 @@ interface CalendarTableViewProps {
   users: UserType[];
   activeCamp?: Camp;
   onToggleAssignmentAccepted?: (assignmentId: string, accepted: boolean) => Promise<void>;
+  currentUserId?: string | null;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
 }
 
 export default function CalendarTableView({
@@ -17,7 +19,9 @@ export default function CalendarTableView({
   assignments,
   users,
   activeCamp,
-  onToggleAssignmentAccepted
+  onToggleAssignmentAccepted,
+  currentUserId,
+  accessRole
 }: CalendarTableViewProps) {
   const startDate = activeCamp?.start_date || "2026-05-23";
   const sunDate = addDays(startDate, 1);
@@ -87,20 +91,27 @@ export default function CalendarTableView({
                         {assigned.map(a => {
                           const u = users.find(user => user.id === a.user_id);
                           const isAccepted = a.accepted;
+                          const canToggle = a.user_id === currentUserId || accessRole === "lagerleitung";
                           return u ? (
-                            <span 
-                              key={a.id} 
+                            <span
+                              key={a.id}
                               onClick={() => {
-                                if (onToggleAssignmentAccepted) {
+                                if (canToggle && onToggleAssignmentAccepted) {
                                   onToggleAssignmentAccepted(a.id, !a.accepted);
                                 }
                               }}
-                              className={`border font-semibold text-[9px] px-1.5 py-0.5 rounded font-mono flex items-center cursor-pointer select-none transition-colors ${
-                                isAccepted 
-                                  ? "bg-emerald-950/40 hover:bg-emerald-900/40 text-emerald-300 border-emerald-500/20" 
+                              className={`border font-semibold text-[9px] px-1.5 py-0.5 rounded font-mono flex items-center select-none transition-colors ${canToggle ? "cursor-pointer" : "cursor-default"} ${
+                                isAccepted
+                                  ? "bg-emerald-950/40 hover:bg-emerald-900/40 text-emerald-300 border-emerald-500/20"
                                   : "bg-slate-950 hover:bg-slate-900 text-slate-400 border-slate-800"
                               }`}
-                              title={isAccepted ? "Bestätigter Dienst (Klicken zum Ändern)" : "Dienst unbestätigt (Klicken zum Bestätigen)"}
+                              title={
+                                !canToggle
+                                  ? "Nur die Lagerleitung kann Schichten für andere bestätigen."
+                                  : isAccepted
+                                  ? "Bestätigter Dienst (Klicken zum Ändern)"
+                                  : "Dienst unbestätigt (Klicken zum Bestätigen)"
+                              }
                             >
                               {isAccepted ? (
                                 <span className="text-emerald-450 text-emerald-400 font-bold mr-0.5">✓</span>

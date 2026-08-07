@@ -1,9 +1,9 @@
 import React from "react";
-import { Clock, MapPin, Trash2, UserCheck, AlertTriangle, UserMinus, X, AlertCircle, UserPlus, Edit, Plus } from "lucide-react";
+import { Clock, Trash2, UserCheck, AlertTriangle, UserMinus, X, Edit, Plus } from "lucide-react";
 import { Shift, Service, User, ShiftAssignment } from "../types";
+import ShiftDeployWizard from "./ShiftDeployWizard";
 
 interface ShiftRowProps {
-  key?: any;
   s: Shift;
   svc: Service;
   services: Service[];
@@ -12,20 +12,20 @@ interface ShiftRowProps {
   users: User[];
   isAdmin: boolean;
   currentUserId?: string | null;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
   activeShiftWizardId: string | null;
   onUpdateShift?: (id: string, shift: Partial<Shift>) => Promise<void>;
   onDeleteShift: (id: string, label: string) => Promise<void>;
   onRemoveAssignment: (shiftId: string, userId: string) => Promise<void>;
   onToggleAssignmentAccepted?: (assignmentId: string, accepted: boolean) => Promise<void>;
   suggestions: Array<{ user_id: string; year: number; camp_title: string }>;
-  loadingSuggestions: boolean;
   setActiveShiftWizardId: (id: string | null) => void;
   getDayLabel: (dateStr: string) => string;
   formatDateGerman: (dateStr: string) => string;
   handleAssignUser: (shiftId: string, userId: string) => Promise<void>;
 }
 
-export default function ShiftRow({
+function ShiftRow({
   s,
   svc,
   services,
@@ -34,13 +34,13 @@ export default function ShiftRow({
   users,
   isAdmin,
   currentUserId,
+  accessRole,
   activeShiftWizardId,
   onUpdateShift,
   onDeleteShift,
   onRemoveAssignment,
   onToggleAssignmentAccepted,
   suggestions,
-  loadingSuggestions,
   setActiveShiftWizardId,
   getDayLabel,
   formatDateGerman,
@@ -92,12 +92,6 @@ export default function ShiftRow({
       });
     }
     setIsEditingInline(false);
-  };
-
-  const timeToMinutes = (timeStr: string): number => {
-    if (!timeStr) return 0;
-    const [h, m] = timeStr.split(":").map(Number);
-    return (h || 0) * 60 + (m || 0);
   };
 
   return (
@@ -239,21 +233,31 @@ export default function ShiftRow({
                 if (!helperObj) return null;
 
                 const isUserAccepted = a.accepted;
+                // Status für andere bestätigen/ändern darf nur die Lagerleitung
+                // (siehe isSelfOrLagerleitung im Backend) - für die eigene
+                // Zuordnung bleibt es weiterhin möglich.
+                const canToggle = a.user_id === currentUserId || accessRole === "lagerleitung";
 
                 return (
-                  <div 
-                    key={a.id} 
+                  <div
+                    key={a.id}
                     onClick={() => {
-                      if (onToggleAssignmentAccepted) {
+                      if (canToggle && onToggleAssignmentAccepted) {
                         onToggleAssignmentAccepted(a.id, !a.accepted);
                       }
                     }}
-                    className={`p-2 border rounded-lg flex items-center justify-between cursor-pointer select-none transition-all ${
+                    className={`p-2 border rounded-lg flex items-center justify-between select-none transition-all ${canToggle ? "cursor-pointer" : "cursor-default"} ${
                       isUserAccepted
                         ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-300"
                         : "bg-slate-950 border-slate-800 text-slate-400"
                     }`}
-                    title={isUserAccepted ? "Bestätigter Dienst (Klicken zum Ändern)" : "Dienst noch nicht bestätigt (Klicken zum Bestätigen)"}
+                    title={
+                      !canToggle
+                        ? "Nur die Lagerleitung kann Schichten für andere bestätigen."
+                        : isUserAccepted
+                        ? "Bestätigter Dienst (Klicken zum Ändern)"
+                        : "Dienst noch nicht bestätigt (Klicken zum Bestätigen)"
+                    }
                   >
                     <div className="truncate pr-1.5 flex items-center">
                       {isUserAccepted ? (
@@ -287,171 +291,51 @@ export default function ShiftRow({
 
         {/* Quick 1-click Join for Active Helper if not assigned */}
         {currentUserId && !userAssignment && (
-          <div className="pt-2">
-            {assignedCount < maxPersons ? (
-              <button
-                type="button"
-                onClick={() => handleAssignUser(s.id, currentUserId)}
-                className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-400/50 rounded-xl text-xs font-extrabold transition-all shadow-lg shadow-emerald-950/60 hover:shadow-emerald-600/30 flex items-center justify-between cursor-pointer group"
-                id={`quick-join-shift-${s.id}`}
-              >
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
-                    <Plus className="h-4 w-4 text-white stroke-[3]" />
-                  </div>
-                  <span className="tracking-wide">Ich helfe bei dieser Schicht aus!</span>
-                </div>
-                <span className="text-[10px] font-mono font-bold bg-slate-950/60 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-emerald-300/40 text-emerald-200">
-                  {maxPersons - assignedCount} {maxPersons - assignedCount === 1 ? "Platz frei" : "Plätze frei"}
-                </span>
-              </button>
-            ) : (
-              <div className="py-2.5 px-3 bg-slate-950 border border-slate-800 text-slate-500 rounded-xl text-xs text-center font-semibold flex items-center justify-center space-x-1.5">
-                <span>✓ Voll besetzt</span>
-                <span className="font-mono text-[11px]">({assignedCount}/{maxPersons} Helfer)</span>
+          <div className="pt-2 space-y-1.5">
+            {assignedCount >= maxPersons && (
+              <div className="flex items-center gap-1.5 text-[10px] text-amber-400 font-semibold">
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                <span>Schicht ist bereits gut ausgelastet ({assignedCount}/{maxPersons}) - du kannst dich trotzdem eintragen.</span>
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => handleAssignUser(s.id, currentUserId)}
+              className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-400/50 rounded-xl text-xs font-extrabold transition-all shadow-lg shadow-emerald-950/60 hover:shadow-emerald-600/30 flex items-center justify-between cursor-pointer group"
+              id={`quick-join-shift-${s.id}`}
+            >
+              <div className="flex items-center space-x-2.5">
+                <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
+                  <Plus className="h-4 w-4 text-white stroke-[3]" />
+                </div>
+                <span className="tracking-wide">Ich helfe bei dieser Schicht aus!</span>
+              </div>
+              <span className="text-[10px] font-mono font-bold bg-slate-950/60 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-emerald-300/40 text-emerald-200">
+                {assignedCount < maxPersons
+                  ? `${maxPersons - assignedCount} ${maxPersons - assignedCount === 1 ? "Platz frei" : "Plätze frei"}`
+                  : `${assignedCount}/${maxPersons} belegt`}
+              </span>
+            </button>
           </div>
         )}
 
           {/* Deploy wizard toggle / card panel */}
           {isAdmin && (
-          <div className="pt-2">
-            {isWizardActive ? (
-              <div className="bg-slate-950/85 p-4 border border-slate-800 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider font-mono">
-                    Helfer*in zuordnen
-                  </span>
-                  <button onClick={() => setActiveShiftWizardId(null)} className="text-slate-405 hover:text-white p-0.5 cursor-pointer">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {/* Historical suggestions */}
-                {suggestions.length > 0 && (
-                  <div className="space-y-1.5 border-b border-slate-850 pb-3 mb-2.5">
-                    <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 font-mono tracking-wider">
-                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      💡 VORSCHLÄGE_AUS_VORJAHREN ({suggestions.length}):
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {suggestions.map((sug) => {
-                        const sugUser = users.find((u) => u.id === sug.user_id);
-                        if (!sugUser || !sugUser.active || assigned.some((a) => a.user_id === sug.user_id)) return null;
-
-                        // Check overlap warning
-                        const userDayShifts = assignments
-                          .filter((a) => a.user_id === sugUser.id)
-                          .map((a) => shifts.find((sh) => sh.id === a.shift_id))
-                          .filter((sh): sh is Shift => !!sh && sh.date === s.date);
-
-                        let overlapping = false;
-                        const sStart = timeToMinutes(s.start_time);
-                        const sEnd = timeToMinutes(s.end_time);
-
-                        for (const usd of userDayShifts) {
-                          const usdStart = timeToMinutes(usd.start_time);
-                          const usdEnd = timeToMinutes(usd.end_time);
-                          if (sStart < usdEnd && usdStart < sEnd) {
-                            overlapping = true;
-                            break;
-                          }
-                        }
-
-                        return (
-                          <button
-                            key={sug.user_id}
-                            onClick={() => handleAssignUser(s.id, sug.user_id)}
-                            className={`p-2 rounded-xl text-xs font-semibold text-left flex items-start gap-11.5 justify-between transition-all border shadow-xs cursor-pointer ${
-                              overlapping
-                                ? "bg-rose-950/40 text-rose-300 border-rose-900/40 hover:bg-rose-950/60"
-                                : "bg-emerald-950/30 hover:bg-emerald-950/60 border-emerald-950 hover:border-emerald-500/20 text-slate-100"
-                            }`}
-                          >
-                            <div>
-                              <div className="font-extrabold flex items-center gap-1.5">
-                                <span>{sugUser.display_name}</span>
-                              </div>
-                              <div className="text-[9px] font-mono font-semibold text-emerald-400 mt-0.5">
-                                Aus {sug.camp_title}
-                              </div>
-                            </div>
-
-                            {overlapping ? (
-                              <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" title="Kollision" />
-                            ) : (
-                              <UserPlus className="h-4 w-4 text-emerald-450 shrink-0 mt-0.5" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[160px] overflow-y-auto pr-1">
-                  {users
-                    .filter((u) => u.active && !assigned.some((a) => a.user_id === u.id))
-                    .map((u) => {
-                      // Compute overlap warning state
-                      const userDayShifts = assignments
-                        .filter((a) => a.user_id === u.id)
-                        .map((a) => shifts.find((sh) => sh.id === a.shift_id))
-                        .filter((sh): sh is Shift => !!sh && sh.date === s.date);
-
-                      let overlapping = false;
-                      let overlappingServiceTitle = "";
-                      const sStart = timeToMinutes(s.start_time);
-                      const sEnd = timeToMinutes(s.end_time);
-
-                      for (const usd of userDayShifts) {
-                        const usdStart = timeToMinutes(usd.start_time);
-                        const usdEnd = timeToMinutes(usd.end_time);
-                        if (sStart < usdEnd && usdStart < sEnd) {
-                          overlapping = true;
-                          const matchesSvc = services.find(sv => sv.id === usd.service_id);
-                          overlappingServiceTitle = matchesSvc ? `${matchesSvc.title} (${usd.start_time}-${usd.end_time})` : "Anderer Dienst";
-                          break;
-                        }
-                      }
-
-                      return (
-                        <button
-                          key={u.id}
-                          onClick={() => handleAssignUser(s.id, u.id)}
-                          title={overlapping ? `Kollision mit: ${overlappingServiceTitle}` : "Als Helfer*in zuteilen"}
-                          className={`p-2 rounded-lg text-xs font-semibold text-left flex items-start gap-1 justify-between transition-all border cursor-pointer ${
-                            overlapping
-                              ? "bg-rose-950/40 text-rose-300 border-rose-900/40 hover:bg-rose-950/60"
-                              : "bg-slate-900 hover:bg-emerald-950/30 text-slate-200 border-slate-800 hover:border-emerald-500/20"
-                          }`}
-                        >
-                          <div className="truncate pr-1">
-                            <span className="block truncate leading-tight font-extrabold">{u.display_name}</span>
-                          </div>
-
-                          {overlapping ? (
-                            <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" title={`Kollision mit: ${overlappingServiceTitle}`} />
-                          ) : (
-                            <UserPlus className="h-3.5 w-3.5 text-slate-500 shrink-0 mt-0.5" />
-                          )}
-                        </button>
-                      );
-                    })}
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setActiveShiftWizardId(s.id)}
-                className="px-4 py-2 bg-slate-950 hover:bg-slate-800 hover:text-emerald-400 hover:border-slate-700 border border-dashed border-slate-800 transition-all font-bold text-xs text-slate-300 rounded-xl flex items-center justify-center space-x-1.5 cursor-pointer font-mono"
-              >
-                <UserCheck className="h-4 w-4 text-emerald-450" />
-                <span>Zuordnen</span>
-              </button>
-            )}
-          </div>
-        )}
+            <div className="pt-2">
+              <ShiftDeployWizard
+                s={s}
+                assigned={assigned}
+                services={services}
+                assignments={assignments}
+                shifts={shifts}
+                users={users}
+                isWizardActive={isWizardActive}
+                suggestions={suggestions}
+                setActiveShiftWizardId={setActiveShiftWizardId}
+                handleAssignUser={handleAssignUser}
+              />
+            </div>
+          )}
       </div>
 
       </div>
@@ -566,3 +450,9 @@ export default function ShiftRow({
     </div>
   );
 }
+
+// React.memo: verhindert unnötige Neuberechnung/Rendering einzelner Zeilen,
+// wenn nur eine andere Zeile (z.B. per Zuweisungs-Assistent) betroffen ist.
+// Wirkt nur, wenn die Aufrufer stabile Callback-Referenzen übergeben (siehe
+// useCallback-Wraps in ShiftsView.tsx).
+export default React.memo(ShiftRow);

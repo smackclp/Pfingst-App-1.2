@@ -1,6 +1,14 @@
 // Date Utilities for Pfingstlager Application
 import { GERMAN_MONTHS_SHORT, GERMAN_WEEKDAYS_SHORT, GERMAN_WEEKDAYS_LONG } from "./constants";
 
+// Extrahiert die Track-ID aus einem Spotify-Song-Link (open.spotify.com/track/...
+// oder spotify:track:...), z.B. für die login-freie Einbettung des Spotify-Players.
+export function extractSpotifyTrackId(link: string): string | null {
+  if (!link) return null;
+  const match = link.match(/track[:/]([a-zA-Z0-9]{22})/);
+  return match ? match[1] : null;
+}
+
 // Detect if we are inside a sandboxed or normal iframe
 export function isInsideIframe(): boolean {
   try {
@@ -83,6 +91,15 @@ export const PFINGSTEN_DATES: Record<number, { start_date: string; end_date: str
   2034: { start_date: "2034-05-27", end_date: "2034-05-29", title: "Pfingstlager 2034" },
   2035: { start_date: "2035-05-12", end_date: "2035-05-14", title: "Pfingstlager 2035" },
 };
+
+/**
+ * Wandelt "HH:MM" in Minuten seit Mitternacht um, für Sortierung/Vergleich von Uhrzeiten.
+ */
+export function timeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
 
 /**
  * Safely adds specified days to a YYYY-MM-DD string

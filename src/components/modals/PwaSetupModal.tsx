@@ -2,6 +2,8 @@ import React from "react";
 import { Bell, Smartphone, ArrowUpRight, Download, RefreshCw, Play, Trash2, HelpCircle, Info } from "lucide-react";
 import { safeStorage, hasServiceWorkerSupport } from "../../utils";
 import { STORAGE_KEYS } from "../../constants";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 interface PwaSetupModalProps {
   pushPermStatus: string;
@@ -201,18 +203,29 @@ export default function PwaSetupModal({
     onClose();
   };
 
+  const titleId = React.useId();
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(true);
+  useEscapeKey(true, handleDismiss);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-slate-950/80 animate-fade-in" id="pwa-setup-overlay">
+    <div
+      ref={focusTrapRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-slate-950/80 animate-fade-in"
+      id="pwa-setup-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <div className="relative w-full max-w-xl bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/20 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh]">
         <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-indigo-500 shrink-0" />
-        
+
         <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6">
           {/* Header */}
           <div className="text-center space-y-2">
             <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-[10px] text-emerald-400 font-mono font-extrabold tracking-wider uppercase inline-block">
               Pfingstlager App-Setup ⛺
             </span>
-            <h2 className="text-xl md:text-2xl font-black font-display text-white tracking-tight">
+            <h2 id={titleId} className="text-xl md:text-2xl font-black font-display text-white tracking-tight">
               Hol dir das native App-Gefühl!
             </h2>
             <p className="text-slate-400 text-xs max-w-sm mx-auto leading-normal">

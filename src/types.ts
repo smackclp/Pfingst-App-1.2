@@ -14,6 +14,7 @@ export interface User {
   active: boolean;
   notes?: string;
   is_buyer?: boolean;
+  is_error_monitor?: boolean; // Erhält Push-Benachrichtigungen bei neu erkannten App-Fehlern
   access_role?: AccessRole; // Berechtigungsstufe, s.o. (pin_hash bleibt serverseitig, kommt nie zum Client)
 }
 
@@ -101,6 +102,7 @@ export interface MaterialItem {
   price?: string;      // optional Preis
   created_at: string;  // ISO timestamp
   status?: 'pending' | 'ordered' | 'received'; // optional status management
+  camp_id?: string;
 }
 
 export interface FunctionalRole {
@@ -133,6 +135,33 @@ export interface TalentAct {
   spotify_link?: string;
   without_rating: boolean;
   order_index: number;
+}
+
+/** "Spiel ohne Grenzen": Gruppen-Einteilung der Gemeinden. */
+export interface SogTeamGroup {
+  id: string;
+  name: string;
+  communityIds: string[];
+  camp_id?: string;
+}
+
+/** "Spiel ohne Grenzen": einzelne Spielstation inkl. Helfer-Zuordnung. */
+export interface SogStation {
+  id: string;
+  number: number;
+  title: string;
+  description: string;
+  location: string;
+  materialNeeded: string;
+  helperIds: string[];
+  camp_id?: string;
+}
+
+/** "Spiel ohne Grenzen": Rotationszeiten für den Laufplan. */
+export interface SogSettings {
+  startTime: string;
+  roundDuration: number;
+  breakDuration: number;
 }
 
 

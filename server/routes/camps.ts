@@ -93,6 +93,11 @@ router.post("/camps", requireRole("lagerleitung"), (req, res) => {
     }
   }
 
+  // Gemeinden, Talentshow-Beiträge, Bestellliste & Spiel-ohne-Grenzen-Daten
+  // sind jahresgebunden gespeichert (camp_id) und werden serverseitig nach
+  // aktivem Jahr gefiltert (siehe people.ts/program.ts) - ein neues Jahr
+  // startet dadurch automatisch leer, ohne dass Vorjahresdaten gelöscht
+  // werden müssen. Über den Jahres-Umschalter bleiben sie einsehbar.
   db.activeCampId = campId;
   writeDB(db);
   res.status(201).json({ camp: newCamp, activeCampId: campId });
