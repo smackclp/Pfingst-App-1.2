@@ -153,19 +153,6 @@ einer Gesamtbewertung der App als offen identifiziert wurden. Passend zu den
   (kein `await` im Body), `/materials` bekam ein eigenes try/catch für den
   Teil vor dem Notification-Versand.
 
-- **Fehlende `@types/react`/`@types/react-dom` (`package.json`):** Im
-  gesamten Projekt nirgends installiert (auch nicht transitiv). Da
-  `tsconfig.json` weder `strict` noch `noImplicitAny` setzt, behandelt
-  TypeScript `react`-Importe stillschweigend als `any` - u. a. verliert eine
-  Klassenkomponente, die `React.Component<P,S>` erweitert, dadurch die
-  Typprüfung für `this.props`/`this.state` (aufgefallen bei
-  `src/components/ErrorBoundary.tsx`, dort per `declare props`/`declare
-  state`-Redeklaration umgangen statt eine neue Abhängigkeit einzuführen).
-  Echter Fix (`@types/react`+`@types/react-dom` installieren, optional
-  `strict` aktivieren) wäre eine Abhängigkeits-/Architekturentscheidung und
-  braucht Nutzer-Freigabe (siehe CLAUDE.md Technologie-Stack-Abschnitt) -
-  hier nur dokumentiert, nicht behoben.
-
 *Nicht als Fund gewertet (geprüft, aber unproblematisch): PIN-Hashing
 (scrypt + Salt + timingSafeEqual), Rollenprüfungen auf allen anderen
 mutierenden Routen, `db.json`/`.env`/Firebase-Service-Account korrekt

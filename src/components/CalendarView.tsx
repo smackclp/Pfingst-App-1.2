@@ -409,11 +409,7 @@ export default function CalendarView({
               </button>
               <button
                 onClick={() => setViewMode("print")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                  viewMode === "print"
-                    ? "bg-slate-900 border border-emerald-500/15 text-emerald-400 font-bold"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer text-slate-500 hover:text-slate-300"
                 id="calendar-print-toggle"
               >
                 🖨️ Drucken / Export

@@ -115,7 +115,9 @@ export default function ShiftDeployWizard({
                   </div>
 
                   {overlapping ? (
-                    <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" title="Kollision" />
+                    <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5">
+                      <title>Kollision</title>
+                    </AlertCircle>
                   ) : (
                     <UserPlus className="h-4 w-4 text-emerald-450 shrink-0 mt-0.5" />
                   )}
@@ -148,7 +150,9 @@ export default function ShiftDeployWizard({
                 </div>
 
                 {overlapping ? (
-                  <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" title={`Kollision mit: ${overlappingServiceTitle}`} />
+                  <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5">
+                    <title>{`Kollision mit: ${overlappingServiceTitle}`}</title>
+                  </AlertCircle>
                 ) : (
                   <UserPlus className="h-3.5 w-3.5 text-slate-500 shrink-0 mt-0.5" />
                 )}

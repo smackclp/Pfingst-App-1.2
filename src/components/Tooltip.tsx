@@ -140,7 +140,7 @@ interface TooltipProps {
   content: React.ReactNode;
   position?: "top" | "bottom" | "left" | "right";
   delay?: number;
-  children: React.ReactElement;
+  children: React.ReactElement<Record<string, any>>;
   key?: React.Key;
 }
 
