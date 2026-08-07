@@ -319,11 +319,14 @@ Bereichsleitungen entlasten.
 
 Branch-Struktur
 
+<<<<<<< HEAD
+=======
 
 main = stabile Version
 beta = Entwicklungszweig
 
 
+>>>>>>> 98cfab0f5e5fc1a435a1f8a14672b249517d7879
 main
 
 Produktionsversion.
@@ -436,116 +439,3 @@ Regeln:
 Ziel ist nicht nur funktionierender Code.
 
 Ziel ist eine langfristig stabile, einfache und zuverlässige Helfer-App für ein echtes Festival.
-
----
-
-15. Code-Audit (AUDIT.md)
-
-Im Projekt-Root liegt AUDIT.md mit offenen Funden aus Code-Audits (Sicherheit,
-Performance, Bugs, Code-Qualität).
-
-Regeln:
-
-- Bei Sitzungsbeginn und immer wieder zwischendurch kurz prüfen, ob AUDIT.md
-  offene Punkte enthält, und den Nutzer daran erinnern (kurz, nicht bei jeder
-  einzelnen Nachricht).
-- Erledigte Punkte werden aus AUDIT.md komplett gelöscht, nicht nur abgehakt.
-- Bei einem neuen Audit-Durchlauf: nicht die gesamte Codebase blind neu
-  prüfen. AUDIT.md enthält den Mechanismus dafür (Diff seit letztem
-  Audit-Commit, Ausnahmen für übergreifende Themen).
-
----
-
-16. Abhängigkeiten aktualisieren (Supply-Chain-Schutz)
-
-`.npmrc` erzwingt einen 10-Tage-Cooldown (`min-release-age=10`): npm
-installiert/aktualisiert nur Paketversionen, die mindestens 10 Tage alt
-sind. Schutz vor kompromittierten npm-Accounts, die kurzlebige bösartige
-Versionen veröffentlichen.
-
-WICHTIG: Diese Einstellung wird nur ab npm >= 11.10.0 durchgesetzt (per
-Bisektion gegen die echte npm-Registry getestet) - ältere npm-Versionen
-ignorieren sie stillschweigend, ohne Fehler oder Warnung. Vor jedem
-`npm install <paket>` oder `npm update`:
-
-- `npm --version` prüfen.
-- Falls < 11.10.0: erst `npm install -g npm@latest` ausführen.
-- Danach zur Kontrolle `npm config get min-release-age` prüfen (sollte
-  `10` zurückgeben).
-
-`npm ci` (z. B. in CI, `.github/workflows/test.yml`) ist davon nicht
-betroffen, da dabei ohnehin nichts neu aufgelöst, sondern exakt die
-`package-lock.json` installiert wird - dort ist keine Prüfung nötig.
-
----
-
-Ausnahme: dringende Sicherheits-Patches
-
-Der 10-Tage-Cooldown darf für ein einzelnes Paket gezielt übersprungen
-werden, wenn ein dringender Sicherheits-Patch vorliegt - aber niemals
-automatisch nur weil eine neue Version existiert. Erst recherchieren und
-bewerten, dann erst installieren:
-
-1. **Recherche auf einschlägigen Quellen, bevor irgendetwas installiert
-   wird:**
-   - `npm audit` (offizielle npm-Advisory-Datenbank für die aktuell
-     installierten Versionen)
-   - GitHub Security Advisories (github.com/advisories bzw. das Advisory
-     im Repository des betroffenen Pakets)
-   - OSV.dev (Open Source Vulnerabilities)
-   - NVD (nvd.nist.gov) für CVE-Details, falls eine CVE-Nummer vorliegt
-   - Das offizielle Changelog/die Release Notes des Pakets selbst (GitHub
-     Releases), um zu bestätigen, dass die neuere Version tatsächlich vom
-     legitimen Maintainer stammt und den Fix enthält - "neuer" allein ist
-     kein Beleg. Gerade vorgetäuschte "Sicherheits-Updates" sind ein
-     bekanntes Muster bei Supply-Chain-Angriffen.
-2. **Vor dem Überspringen des Cooldowns bewerten:**
-   - Ist die Schwachstelle als kritisch oder hoch eingestuft (nicht nur
-     niedrig/mittel)?
-   - Betrifft sie tatsächlich den in dieser App genutzten
-     Versionsbereich/Codepfad, nicht nur das Paket theoretisch?
-   - Bestätigt das offizielle Release/Changelog den Fix?
-3. **Technische Umsetzung:** die committete `.npmrc` NICHT dauerhaft
-   ändern, sondern pro Installation gezielt überschreiben (getestet, wirkt
-   nur für diesen einen Aufruf):
-   `npm install <paket>@<version> --min-release-age=0`
-4. **Dokumentationspflicht:** im Commit kurz vermerken, welche
-   CVE/welches Advisory betroffen war und welche Quellen geprüft wurden.
-5. Bei Unsicherheit über Schweregrad oder Echtheit des Fixes: den Nutzer
-   informieren statt eigenmächtig zu entscheiden (siehe Abschnitt 14, "Bei
-   Unsicherheit nachfragen").
-
-# Technologie-Stack
-
-Die Anwendung basiert ausschließlich auf:
-
-- Vite
-- React
-- TypeScript
-- Node.js
-- vorhandenen Vite-Strukturen
-
-Diese Architektur darf nicht ohne meine ausdrückliche Zustimmung geändert werden.
-
-Nicht erlaubt:
-- Wechsel zu React Native
-- Wechsel zu Vue
-- Wechsel zu Angular
-- Wechsel zu einer anderen Framework-Basis (z.B. Next.js)
-- Neuaufbau der Anwendung in einer anderen Technologie
-
-Neue Funktionen müssen in die bestehende Vite-Architektur integriert werden.
-
-Vor jeder größeren Architekturänderung muss zuerst eine Analyse mit Vor- und Nachteilen erfolgen und meine Freigabe eingeholt werden.
-
-# Architekturentscheidungen
-
-Bevor größere technische Entscheidungen getroffen werden:
-
-1. Bestehende Architektur analysieren.
-2. Auswirkungen beschreiben.
-3. Alternativen vergleichen.
-4. Empfehlung aussprechen.
-5. Auf Freigabe warten.
-
-Claude darf keine grundlegenden Technologieentscheidungen eigenständig treffen.
