@@ -5,6 +5,40 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Zwischen-Farbstufen (z.B. slate-450), die im Projekt an vielen Stellen
+     verwendet werden, in Tailwinds Standardpalette aber nicht existieren -
+     ohne diese Definition erzeugen Klassen wie "text-slate-450" oder
+     "bg-slate-850" GAR KEIN CSS (stiller No-op), was App-weit an über 45
+     Stellen zu fehlenden Hintergründen/Textfarben führte. Werte linear in
+     OKLCH zwischen den beiden echten Tailwind-Nachbarstufen interpoliert. */
+  --color-slate-150: oklch(94.8% 0.010 251.70);
+  --color-slate-350: oklch(78.7% 0.031 254.84);
+  --color-slate-405: oklch(69.7% 0.040 256.82);
+  --color-slate-450: oklch(62.9% 0.043 257.10);
+  --color-slate-505: oklch(54.9% 0.046 257.41);
+  --color-slate-550: oklch(50.0% 0.044 257.35);
+  --color-slate-605: oklch(44.2% 0.043 257.28);
+  --color-slate-650: oklch(40.9% 0.043 257.28);
+  --color-slate-750: oklch(32.5% 0.042 258.66);
+  --color-slate-805: oklch(27.5% 0.041 260.32);
+  --color-slate-850: oklch(24.4% 0.042 262.89);
+  --color-slate-855: oklch(24.0% 0.042 263.18);
+  --color-slate-955: oklch(12.1% 0.042 264.59);
+  --color-emerald-350: oklch(80.5% 0.160 164.10);
+  --color-emerald-450: oklch(73.0% 0.173 162.85);
+  --color-emerald-550: oklch(64.6% 0.158 162.85);
+  --color-emerald-650: oklch(55.2% 0.132 164.42);
+  --color-amber-350: oklch(85.3% 0.179 88.02);
+  --color-amber-450: oklch(79.8% 0.189 77.25);
+  --color-amber-550: oklch(71.8% 0.183 64.20);
+  --color-amber-955: oklch(26.5% 0.073 45.61);
+  --color-rose-350: oklch(76.1% 0.155 12.53);
+  --color-rose-450: oklch(67.8% 0.220 14.93);
+  --color-rose-455: oklch(67.5% 0.223 15.08);
+  --color-rose-550: oklch(61.5% 0.249 17.01);
+  --color-rose-955: oklch(25.7% 0.100 12.28);
+  --color-indigo-850: oklch(38.4% 0.164 278.41);
 }
 
 
@@ -142,71 +176,124 @@ html.theme-sunlight {
 }
 
 /* ==========================================================================
-   STANDARD-DUNKEL-THEME: Basis-Kontrastkorrektur (WCAG AA, 4.5:1). Ohne
-   .theme-X-Wrapper, gilt also nur, solange kein anderes Theme aktiv ist -
-   die spezifischeren .theme-light/.theme-amoled/.theme-sunlight-Selektoren
-   unten haben höhere CSS-Spezifität und überschreiben das automatisch,
-   auch mit !important auf beiden Seiten (Kaskade nach Spezifität, nicht
-   nach Reihenfolge). Reines Tailwind text-slate-500/600/700 lag gegen die
-   im Projekt verwendeten dunklen Flächen (bg-slate-850/900/950) je nach
-   Kombination nur bei 1.5:1-3.75:1 statt der geforderten 4.5:1 für Text.
-   text-slate-400 (6.96-7.87:1) war bereits unproblematisch und bleibt
-   unverändert. */
-.text-slate-500 {
-  color: #7d90a8 !important;
+   DESIGN-TOKEN-SYSTEM (2026-08-07 restrukturiert)
+
+   Frühere Fassung: jedes Theme überschrieb JEDE einzelne im Code verwendete
+   Tailwind-Klasse einzeln per CSS-Selektor (z.B. ".theme-light .bg-slate-900
+   { background-color: ... !important }"). Das war strukturell fragil: jede
+   neue Komponente, die eine Farbklasse (oder auch nur eine andere
+   Opacity-Variante wie "/45" statt "/40") verwendet, die noch nicht in der
+   Liste stand, blieb in Hell-/Sonnenlicht-Modus unbemerkt bei der rohen
+   Dunkel-Modus-Farbe - während der zugehörige Text oft schon umgeschaltet
+   war. Ergebnis: mehrfach bestätigte Fälle von unlesbarem Text (z.B.
+   dunkler Text auf dunklem Hintergrund in Hell-Modus).
+
+   Neue Architektur: Tailwind v4 generiert Utility-Klassen bereits als
+   Referenz auf CSS-Variablen (".bg-slate-900 { background-color:
+   var(--color-slate-900) }", auch für Opacity-Varianten via color-mix() und
+   für Farbverläufe). Es genügt daher, die zugrunde liegenden
+   --color-<name>-<stufe>-Variablen pro Theme neu zu definieren - JEDE
+   bestehende UND jede künftige Verwendung dieser Farbstufe (jede Komponente,
+   jede Opacity-Variante, jeder Verlauf) wird dadurch automatisch korrekt neu
+   eingefärbt, ohne Enumeration und ohne "!important" (die Variable wird am
+   Theme-Wrapper neu definiert und vererbt sich normal im DOM - die
+   Utility-Klassen-Regel selbst bleibt unverändert und braucht daher keine
+   höhere Spezifität mehr).
+
+   Dabei zusätzlich entdeckt und behoben: ~26 im Code verwendete
+   Zwischen-Farbstufen (z.B. "text-slate-450", "bg-slate-850") existierten in
+   Tailwinds Standardpalette gar nicht und erzeugten dadurch an über 45
+   Stellen im Code STILLES, VOLLSTÄNDIG WIRKUNGSLOSES CSS (kein Fehler, aber
+   auch keine Farbe) - jetzt oben im @theme-Block als echte, konsistent
+   interpolierte Farbstufen definiert (siehe Kommentar dort).
+   ========================================================================== */
+
+/* Basis-Kontrastkorrektur für das Standard-Dunkel-Theme (WCAG AA, 4.5:1).
+   Unscoped (kein .theme-X nötig), gilt als Fallback-Wert für alle Themes und
+   wird von den spezifischeren .theme-amoled/.theme-light/.theme-sunlight
+   Blöcken unten automatisch überschrieben (spätere Regel gewinnt bei
+   gleicher Spezifität). Reines Tailwind text-slate-500/600/700 lag gegen die
+   im Projekt verwendeten dunklen Flächen (bg-slate-850/900/950) nur bei
+   1.5:1-3.75:1 statt der geforderten 4.5:1. text-slate-400 (6.96-7.87:1) war
+   bereits unproblematisch und bleibt unverändert (echter Tailwind-Wert). */
+:root {
+  --color-slate-500: #7d90a8;
+  --color-slate-600: #7a8ea5;
+  --color-slate-700: #7a8ea5;
 }
 
-.text-slate-600,
-.text-slate-700 {
-  color: #7a8ea5 !important;
-}
-
-/* AMOLED BLACK THEME OVERRIDES */
+/* ==========================================================================
+   AMOLED-THEME: reines Schwarz für OLED-Displays (Akku sparen, maximaler
+   Kontrast). Alle Flächenstufen (800/850/900/950) bewusst auf denselben
+   reinen Schwarzton statt gestaffelter Tiefe - das ist der gewünschte
+   AMOLED-Look. Statusfarben (emerald/rose/amber/cyan/orange/indigo) bleiben
+   wie im Standard-Dunkel-Theme, da Schwarz genug Kontrast für die
+   unveränderten Tailwind-Werte bietet.
+   ========================================================================== */
 body:has(.theme-amoled),
 .theme-amoled {
-  background-color: #000000 !important;
-  color: #f8fafc !important;
-  background-image: radial-gradient(circle, rgba(16, 185, 129, 0.05) 1px, transparent 1px) !important;
+  --color-slate-300: #d4d4d8;
+  --color-slate-350: #babac1;
+  --color-slate-400: #a1a1aa;
+  --color-slate-405: #9f9fa8;
+  --color-slate-450: #8e8e98;
+  --color-slate-500: #7a7a85;
+  --color-slate-505: #7a7a85;
+  --color-slate-550: #7a7a85;
+  --color-slate-600: #7a7a85;
+  --color-slate-605: #787883;
+  --color-slate-650: #6b6b76;
+  --color-slate-700: #5c5c66;
+  --color-slate-750: #2e2e33;
+
+  background-color: #000000;
+  color: #f8fafc;
+  background-image: radial-gradient(circle, rgba(16, 185, 129, 0.05) 1px, transparent 1px);
 }
 
-.theme-amoled .bg-slate-950,
-.theme-amoled .bg-slate-950\/90,
-.theme-amoled .bg-slate-950\/80,
-.theme-amoled .bg-slate-950\/70,
-.theme-amoled .bg-slate-950\/60,
-.theme-amoled .bg-slate-950\/50,
-.theme-amoled .bg-slate-950\/40,
-.theme-amoled .bg-slate-950\/30,
-.theme-amoled .bg-slate-950\/10,
-.theme-amoled .bg-slate-950\/45,
-.theme-amoled .bg-slate-900,
-.theme-amoled .bg-slate-900\/95,
-.theme-amoled .bg-slate-900\/90,
-.theme-amoled .bg-slate-900\/85,
-.theme-amoled .bg-slate-900\/80,
-.theme-amoled .bg-slate-900\/60,
-.theme-amoled .bg-slate-900\/40,
-.theme-amoled .bg-slate-850,
-.theme-amoled .bg-slate-850\/60,
-.theme-amoled .bg-slate-850\/40,
-.theme-amoled .bg-slate-800,
-.theme-amoled .tech-panel {
+/* slate-800/850/900/950 (+ Zwischenstufen 805/855/955) bewusst NICHT als
+   Variable umdefiniert: "text-slate-950" wird an ~35 Stellen im Code als
+   dunkle Schrift AUF kräftigen Akzent-Buttons verwendet (z.B. "bg-emerald-500
+   text-slate-950"), "text-slate-800/900" in Druckvorschau-Komponenten als
+   Fließtext auf Papier-Weiß - beides muss unabhängig vom Theme dunkel
+   bleiben. Nur die Hintergrund-/Rahmen-Nutzung dieser Stufen (die
+   eigentliche Flächen-Hierarchie) wird hier gezielt umgefärbt. In AMOLED
+   alle vier Stufen einheitlich auf reines Schwarz (kein Tiefen-Staffeln -
+   das ist der gewünschte AMOLED-Look). */
+.theme-amoled [class*="bg-slate-800"],
+.theme-amoled [class*="bg-slate-850"],
+.theme-amoled [class*="bg-slate-900"],
+.theme-amoled [class*="bg-slate-950"] {
   background-color: #000000 !important;
-  background: #000000 !important;
-  border-color: rgba(16, 185, 129, 0.25) !important;
-  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.1) !important;
 }
 
+/* slate-100/150/200 bewusst NICHT als Variable umdefiniert: wird in den
+   Druckvorschau-Komponenten (PrintScheduleTable, ProgramSogPrintCards/
+   -PrintGroups) als echte helle Papier-Fläche verwendet (bg-slate-100/150/
+   200), die themenunabhängig hell bleiben muss. Nur als Textfarbe (helle
+   Textstufe) gezielt überschrieben. */
+.theme-amoled .text-slate-100,
+.theme-amoled .text-slate-150,
+.theme-amoled .text-slate-200 {
+  color: #f8fafc;
+}
+
+/* Ränder in AMOLED bewusst nicht rein schwarz (sonst unsichtbar gegen
+   schwarzen Hintergrund) - eigene, sehr dunkle Rahmenfarbe statt der
+   slate-Variable. */
 .theme-amoled .border-slate-800,
-.theme-amoled .border-slate-800\/80,
-.theme-amoled .border-slate-800\/60,
-.theme-amoled .border-slate-800\/40,
-.theme-amoled .border-slate-900,
 .theme-amoled .border-slate-850,
+.theme-amoled .border-slate-900,
 .theme-amoled .border-emerald-500\/10,
 .theme-amoled .border-emerald-500\/20,
 .theme-amoled .border-emerald-500\/30 {
   border-color: #161616 !important;
+}
+
+.theme-amoled .tech-panel {
+  background-color: #000000 !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.1) !important;
 }
 
 .theme-amoled select,
@@ -223,184 +310,208 @@ body:has(.theme-amoled),
   border-color: #10b981 !important;
 }
 
-.theme-amoled .text-slate-400 {
-  color: #a1a1aa !important;
-}
-
-/* War bei #71717a mit 4.35:1 knapp unter WCAG AA (4.5:1) gegen reines
-   Schwarz - auf #7a7a85 angehoben (4.95:1). text-slate-600 hatte bisher
-   gar kein Remapping und blieb beim reinen Tailwind-Grau (2.77:1) -
-   gleiche Zielfarbe wie text-slate-500, da beide ohnehin kaum
-   unterscheidbar waren. */
-.theme-amoled .text-slate-500,
-.theme-amoled .text-slate-600 {
-  color: #7a7a85 !important;
-}
-
-.theme-amoled #personal-schedule-widget,
-.theme-amoled #personal-schedule-details > div,
-.theme-amoled #personal-schedule-widget .bg-slate-950,
-.theme-amoled #personal-schedule-widget .bg-slate-900,
-.theme-amoled #personal-schedule-widget .bg-slate-950\/45,
-.theme-amoled #personal-schedule-widget .bg-slate-950\/40,
-.theme-amoled #personal-schedule-widget .bg-slate-900\/60,
-.theme-amoled [class*="bg-gradient-"],
-.theme-amoled .bg-gradient-to-br,
-.theme-amoled .bg-gradient-to-r,
-.theme-amoled .bg-gradient-to-tr {
-  background-image: none !important;
-  background-color: #000000 !important;
-  background: #000000 !important;
-  border-color: rgba(16, 185, 129, 0.25) !important;
-  --tw-gradient-from: #000000 !important;
-  --tw-gradient-to: #000000 !important;
-  --tw-gradient-stops: #000000, #000000 !important;
-}
-
-/* LIGHT THEME OVERRIDES */
+/* ==========================================================================
+   HELL-THEME: warmes Off-White, ruhige Oberflächenhierarchie (Seite <
+   Karte < Hover < Rahmen), gedeckte Statusfarben mit ausreichendem
+   Kontrast auf hellem Grund. Design an moderne, zurückhaltende
+   Business-Apps angelehnt (Linear/Notion/Stripe-Stil).
+   ========================================================================== */
 body:has(.theme-light),
 .theme-light {
-  background-color: #FAFAF7 !important;
-  color: #26241C !important;
+  --color-slate-300: #4a4940;
+  --color-slate-350: #4a4940;
+  --color-slate-400: #4a4940;
+  --color-slate-405: #4c4b42;
+  --color-slate-450: #5a5a52;
+  --color-slate-500: #6b6a63;
+  --color-slate-505: #6d6c64;
+  --color-slate-550: #7b7a72;
+  --color-slate-600: #8b8a80;
+  --color-slate-605: #8c8b81;
+  --color-slate-650: #98978c;
+  --color-slate-700: #a6a499;
+  --color-slate-750: #c5c3b8;
+
+  --color-emerald-300: #0f6e56;
+  --color-emerald-350: #0f6e56;
+  --color-emerald-400: #0f6e56;
+  --color-emerald-450: #085041;
+  --color-emerald-550: #0a654e;
+  --color-emerald-650: #0b7a5b;
+  --color-emerald-950: #10b981;
+
+  --color-amber-300: #d97706;
+  --color-amber-350: #c66508;
+  --color-amber-400: #b45309;
+  --color-amber-450: #ba5a09;
+  --color-amber-550: #c6670a;
+  --color-amber-950: #f59e0b;
+  --color-amber-955: #f69f0b;
+
+  --color-rose-300: #dc2626;
+  --color-rose-350: #ca2121;
+  --color-rose-400: #b91c1c;
+  --color-rose-450: #be2020;
+  --color-rose-455: #be2020;
+  --color-rose-550: #c82727;
+  --color-rose-950: #ef4444;
+  --color-rose-955: #ef4444;
+
+  --color-cyan-400: #0369a1;
+  --color-cyan-950: #06b6d4;
+
+  --color-orange-400: #c2410c;
+
+  --color-indigo-300: #4338ca;
+  --color-indigo-850: #322f87;
+  --color-indigo-900: #312e81;
+
+  background-color: #fafaf7;
+  color: #26241c;
 }
 
-.theme-light .text-white,
-.theme-light .text-slate-100,
-.theme-light .text-slate-200,
-.theme-light h1, .theme-light h2, .theme-light h3, .theme-light h4, .theme-light h5, .theme-light h6 {
-  color: #26241C !important;
+/* slate-800/850/900/950 (+ Zwischenstufen 805/855/955) bewusst NICHT als
+   Variable umdefiniert: "text-slate-950" wird an ~35 Stellen im Code als
+   dunkle Schrift AUF kräftigen Akzent-Buttons verwendet (z.B. "bg-emerald-500
+   text-slate-950"), "text-slate-800/900" in Druckvorschau-Komponenten als
+   Fließtext auf Papier-Weiß - beides muss unabhängig vom Theme dunkel
+   bleiben. Nur die Hintergrund-/Rahmen-Nutzung dieser Stufen (die
+   eigentliche Flächen-Hierarchie: Seite < Karte < Hover < Rahmen) wird hier
+   gezielt umgefärbt, mit allen im Code tatsächlich verwendeten
+   Opacity-Varianten (per Klassen-Selektor statt Variable, damit
+   Hover-Zustände wie "hover:bg-slate-900" korrekt nur bei :hover greifen
+   statt dauerhaft). */
+.theme-light .bg-slate-800,
+.theme-light .bg-slate-800\/40,
+.theme-light .bg-slate-800\/60,
+.theme-light .bg-slate-800\/80,
+.theme-light .hover\:bg-slate-800:hover,
+.theme-light .hover\:bg-slate-800\/60:hover,
+.theme-light .hover\:bg-slate-800\/80:hover {
+  background-color: #e4e2d8 !important;
+}
+.theme-light .border-slate-800,
+.theme-light .border-slate-800\/20,
+.theme-light .border-slate-800\/40,
+.theme-light .border-slate-800\/50,
+.theme-light .border-slate-800\/60,
+.theme-light .border-slate-800\/70,
+.theme-light .border-slate-800\/80,
+.theme-light .border-slate-800\/90,
+.theme-light .hover\:border-slate-800:hover,
+.theme-light .border-transparent {
+  border-color: #e4e2d8 !important;
 }
 
-.theme-light .text-slate-300,
-.theme-light .text-slate-350,
-.theme-light .text-slate-400,
-.theme-light .text-slate-450 {
-  color: #4A4940 !important;
-}
-
-.theme-light .text-slate-500 {
-  color: #6B6A63 !important;
-}
-
-/* Background class mappings */
-.theme-light .bg-slate-950,
-.theme-light .bg-slate-950\/90,
-.theme-light .bg-slate-950\/80,
-.theme-light .bg-slate-950\/70,
-.theme-light .bg-slate-950\/60,
-.theme-light .bg-slate-950\/50,
-.theme-light .bg-slate-950\/40,
-.theme-light .bg-slate-950\/30,
-.theme-light .bg-slate-900,
-.theme-light .bg-slate-900\/95,
-.theme-light .bg-slate-900\/90,
-.theme-light .bg-slate-900\/85,
-.theme-light .bg-slate-900\/80,
-.theme-light .bg-slate-900\/60,
-.theme-light .bg-slate-900\/40,
 .theme-light .bg-slate-850,
-.theme-light .bg-amber-950\/20 {
+.theme-light .bg-slate-850\/20,
+.theme-light .bg-slate-850\/25,
+.theme-light .bg-slate-850\/40,
+.theme-light .bg-slate-850\/60,
+.theme-light .hover\:bg-slate-850:hover,
+.theme-light .hover\:bg-slate-850\/20:hover,
+.theme-light .hover\:bg-slate-850\/25:hover,
+.theme-light .hover\:bg-slate-850\/40:hover,
+.theme-light .hover\:bg-slate-850\/60:hover {
+  background-color: #f1efe8 !important;
+}
+.theme-light .border-slate-850,
+.theme-light .border-slate-850\/40,
+.theme-light .border-slate-850\/50,
+.theme-light .border-slate-850\/60,
+.theme-light .border-slate-850\/70 {
+  border-color: #f1efe8 !important;
+}
+
+.theme-light .bg-slate-900,
+.theme-light .bg-slate-900\/10,
+.theme-light .bg-slate-900\/20,
+.theme-light .bg-slate-900\/30,
+.theme-light .bg-slate-900\/40,
+.theme-light .bg-slate-900\/50,
+.theme-light .bg-slate-900\/60,
+.theme-light .bg-slate-900\/75,
+.theme-light .bg-slate-900\/80,
+.theme-light .bg-slate-900\/85,
+.theme-light .bg-slate-900\/90,
+.theme-light .bg-slate-900\/95,
+.theme-light .bg-slate-900\/98,
+.theme-light .hover\:bg-slate-900:hover,
+.theme-light .hover\:bg-slate-900\/40:hover,
+.theme-light .hover\:bg-slate-900\/50:hover,
+.theme-light .hover\:bg-slate-900\/60:hover,
+.theme-light .hover\:bg-slate-900\/95:hover {
   background-color: #ffffff !important;
 }
-
-/* Base text contrast adjustments in light theme */
-.theme-light .text-emerald-300 { color: #0F6E56 !important; }
-.theme-light .text-emerald-400 { color: #0F6E56 !important; }
-.theme-light .text-emerald-450 { color: #085041 !important; }
-.theme-light .text-amber-300 { color: #d97706 !important; }
-.theme-light .text-amber-400 { color: #b45309 !important; }
-.theme-light .text-rose-300 { color: #dc2626 !important; }
-.theme-light .text-rose-400 { color: #b91c1c !important; }
-.theme-light .text-cyan-400 { color: #0369a1 !important; }
-.theme-light .text-orange-400 { color: #c2410c !important; }
-.theme-light .text-indigo-300 { color: #4338ca !important; }
-
-/* Stats cards and list custom light override */
-.theme-light #stat-conflicts {
-  background-color: #FCEBEB !important;
-  border-color: #F09595 !important;
-  color: #791F1F !important;
-}
-.theme-light #stat-conflicts p, 
-.theme-light #stat-conflicts span {
-  color: #791F1F !important;
+.theme-light .border-slate-900,
+.theme-light .border-slate-900\/40,
+.theme-light .border-slate-900\/60 {
+  border-color: #ffffff !important;
 }
 
-.theme-light #stat-open-shifts {
-  background-color: #FAEEDA !important;
-  border-color: #EF9F27 !important;
+.theme-light .bg-slate-950,
+.theme-light .bg-slate-950\/10,
+.theme-light .bg-slate-950\/30,
+.theme-light .bg-slate-950\/35,
+.theme-light .bg-slate-950\/40,
+.theme-light .bg-slate-950\/45,
+.theme-light .bg-slate-950\/50,
+.theme-light .bg-slate-950\/60,
+.theme-light .bg-slate-950\/65,
+.theme-light .bg-slate-950\/70,
+.theme-light .bg-slate-950\/75,
+.theme-light .bg-slate-950\/80,
+.theme-light .bg-slate-950\/85,
+.theme-light .bg-slate-950\/90,
+.theme-light .bg-slate-950\/98,
+.theme-light .hover\:bg-slate-950:hover {
+  background-color: #fafaf7 !important;
 }
-.theme-light #stat-understaffed {
-  background-color: #FAEEDA !important;
-  border-color: #EF9F27 !important;
-}
-.theme-light #stat-total-people {
-  background-color: #EAF3DE !important;
-  border-color: #97C459 !important;
-}
-.theme-light #stat-total-shifts {
-  background-color: #ecfeff !important;
-  border-color: #67e8f9 !important;
-}
-.theme-light #stat-communities {
-  background-color: #EAF3DE !important;
-  border-color: #97C459 !important;
-}
-.theme-light #stat-communities:hover {
-  background-color: #E0EDD0 !important;
-  border-color: #7DB33F !important;
-}
-.theme-light #stat-participants {
-  background-color: #ecfeff !important;
-  border-color: #67e8f9 !important;
-}
-.theme-light #stat-participants:hover {
-  background-color: #d7f7fb !important;
-  border-color: #22d3ee !important;
+.theme-light .border-slate-950 {
+  border-color: #fafaf7 !important;
 }
 
-/* Hover mappings */
+/* "white" ist bewusst NICHT als globale Variable umdefiniert: bg-white
+   bedeutet im Code an mehreren Stellen eine echte weiße Fläche (Druck-Karten,
+   Overlay-Effekte) und muss auch im Hell-Theme weiß bleiben. Nur
+   "text-white" ist im Projekt als "hellste Text-Stufe" gemeint und muss
+   pro Theme umschalten - deshalb hier gezielt nur die Textfarbe. */
+.theme-light .text-white {
+  color: #26241c;
+}
+
+/* Gleiches Prinzip für slate-100/150/200: wird in den Druckvorschau-
+   Komponenten (PrintScheduleTable, ProgramSogPrintCards/-PrintGroups) als
+   echte helle Papier-Fläche verwendet (bg-slate-100/150/200), die
+   themenunabhängig hell bleiben muss. */
+.theme-light .text-slate-100,
+.theme-light .text-slate-150,
+.theme-light .text-slate-200 {
+  color: #26241c;
+}
+
+.theme-light h1, .theme-light h2, .theme-light h3,
+.theme-light h4, .theme-light h5, .theme-light h6 {
+  color: #26241c;
+}
+
 .theme-light .hover\:bg-slate-900:hover,
 .theme-light .hover\:bg-slate-850\/25:hover,
 .theme-light .hover\:bg-slate-800:hover,
 .theme-light .hover\:bg-slate-850\/60:hover {
-  background-color: #F1EFE8 !important;
-  color: #26241C !important;
+  color: #26241c;
 }
 
-/* Border mappings */
-.theme-light .border-slate-800,
-.theme-light .border-slate-800\/80,
-.theme-light .border-slate-800\/60,
-.theme-light .border-slate-800\/40,
-.theme-light .border-slate-900,
-.theme-light .border-slate-850,
-.theme-light .border-transparent {
-  border-color: #E4E2D8 !important;
-}
-
-/* Table layout adjustments */
-.theme-light table {
-  background-color: #ffffff !important;
-}
 .theme-light table thead {
-  background-color: #F1EFE8 !important;
-  border-bottom: 2px solid #E4E2D8 !important;
-}
-.theme-light table thead th {
-  color: #26241C !important;
-  font-weight: 700 !important;
-}
-.theme-light table tbody tr {
-  border-bottom: 1px solid #E4E2D8 !important;
+  border-bottom: 2px solid #e4e2d8;
 }
 
-/* Green and Amber Border adjustments */
-.theme-light .border-emerald-500\/10,
-.theme-light .border-emerald-500\/25,
-.theme-light .border-emerald-500\/20,
-.theme-light .border-emerald-500\/30 {
-  border-color: rgba(16, 185, 129, 0.4) !important;
+.theme-light table thead th {
+  font-weight: 700;
+}
+
+.theme-light table tbody tr {
+  border-bottom: 1px solid #e4e2d8;
 }
 
 .theme-light .tech-panel {
@@ -409,13 +520,12 @@ body:has(.theme-light),
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
 }
 
-/* Input / Dropdowns styling */
 .theme-light select,
 .theme-light input,
 .theme-light textarea {
   background-color: #ffffff !important;
-  color: #26241C !important;
-  border-color: #E4E2D8 !important;
+  color: #26241c !important;
+  border-color: #e4e2d8 !important;
 }
 
 .theme-light select:focus,
@@ -430,255 +540,242 @@ body:has(.theme-light),
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06) !important;
 }
 
-.theme-light .bg-emerald-950\/30 {
-  background-color: rgba(16, 185, 129, 0.12) !important;
-}
-
-/* Overrides for Light Theme Cards */
-.theme-light .bg-rose-950\/30 {
-  background-color: #fef2f2 !important;
-  color: #9f1239 !important;
-}
-
-.theme-light .bg-rose-950\/10 {
-  background-color: rgba(239, 68, 68, 0.08) !important;
-}
-.theme-light .bg-rose-950\/50 {
-  background-color: rgba(239, 68, 68, 0.12) !important;
-}
-.theme-light .bg-rose-950\/20 {
-  background-color: rgba(239, 68, 68, 0.08) !important;
-}
-
-.theme-light .bg-amber-950\/10 {
-  background-color: rgba(245, 158, 11, 0.08) !important;
-}
-.theme-light .bg-amber-950\/50 {
-  background-color: rgba(245, 158, 11, 0.12) !important;
-}
-
-/* SCOPED conflict display boxes (only active in Light Theme) */
-.theme-light #dashboard-conflicts-section .bg-rose-950\/10 {
-  background-color: #fef2f2 !important;
-  border-color: #fca5a5 !important;
-}
-.theme-light #dashboard-conflicts-section .border-rose-500\/20 {
-  border-color: #fca5a5 !important;
-}
-.theme-light #dashboard-conflicts-section .bg-amber-950\/10 {
-  background-color: #fffbeb !important;
-  border-color: #fde047 !important;
-}
-.theme-light #dashboard-conflicts-section .border-amber-500\/20 {
-  border-color: #fcd34d !important;
-}
-.theme-light #dashboard-conflicts-section button {
-  background-color: #ffffff !important;
-  color: #26241C !important;
-  border-color: #E4E2D8 !important;
-}
-.theme-light #dashboard-conflicts-section button:hover {
-  background-color: #f1f5f9 !important;
-}
-
-/* SCOPED feedback overview feedback panel (only active in Light Theme) */
-.theme-light #feedback-overview-section .bg-rose-950\/10 {
-  background-color: #fef2f2 !important;
-  border-color: #fca5a5 !important;
-}
-.theme-light #feedback-overview-section .bg-amber-950\/10 {
-  background-color: #fffbeb !important;
-  border-color: #fde047 !important;
-}
-.theme-light #feedback-overview-section .bg-rose-950\/50 {
-  background-color: #fee2e2 !important;
-}
-.theme-light #feedback-overview-section .bg-amber-950\/50 {
-  background-color: #fef3c7 !important;
-}
-.theme-light #feedback-overview-section .border-rose-500\/20 {
-  border-color: #fecaca !important;
-}
-.theme-light #feedback-overview-section .border-amber-500\/20 {
-  border-color: #fde68a !important;
-}
-
-/* Kartenhintergründe mit Tailwind-Farbverlauf (background-image, keine
-   einfache background-color) - werden von den obigen bg-*-Regeln nicht
-   erfasst und bleiben sonst dunkel. Verlauf entfernen, feste Flächenfarbe. */
-.theme-light #personal-schedule-widget {
-  background-image: none !important;
-  background-color: #ffffff !important;
-}
-.theme-light #pwa-install-alert-banner {
-  background-image: none !important;
-  background-color: #EAF3DE !important;
-}
+/* Kartenhintergründe mit Tailwind-Farbverlauf (background-image): auf sehr
+   hellem Grund wirkt ein Verlauf unruhig/unnötig - hier bewusst durch eine
+   flache Fläche ersetzt. Verlaufsfarben, die slate-800/850/900/950
+   einbeziehen (from-slate-900, to-slate-950 usw.), profitieren NICHT von
+   der Variablen-Umfärbung (siehe Kommentar weiter oben zum
+   text-slate-950-Konflikt) und müssen deshalb hier gezielt aufgeführt
+   werden. */
+.theme-light #personal-schedule-widget,
+.theme-light #dashboard-next-shift,
+.theme-light #dashboard-next-shift-empty,
+.theme-light #pwa-setup-overlay .bg-gradient-to-b,
 .theme-light .bg-gradient-to-r.from-emerald-950\/90 {
   background-image: none !important;
-  background-color: #EAF3DE !important;
+  background-color: #ffffff !important;
 }
 
+.theme-light #pwa-install-alert-banner {
+  background-image: none !important;
+  background-color: #eaf3de !important;
+}
+
+.theme-light ::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.6) !important;
+}
+
+.theme-light ::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.35) !important;
+}
+
+.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.55) !important;
+}
+
+.theme-light {
+  scrollbar-color: rgba(16, 185, 129, 0.35) rgba(226, 232, 240, 0.6) !important;
+}
 
 /* ==========================================================================
-   SONNENLICHT-MODUS: für Nutzung draußen bei praller Sonne. Spiegelt bewusst
-   dieselbe Struktur wie die LIGHT-THEME-Overrides oben (gleicher Mechanismus,
-   keine neue Architektur), aber mit deutlich kräftigeren Farben statt
-   Pastelltönen, dickeren Rahmen (2px) und fetterer Schrift, damit Kacheln bei
-   direkter Sonneneinstrahlung klar erkennbar bleiben.
+   SONNENLICHT-MODUS: für Nutzung draußen bei praller Sonne. Spiegelt
+   dieselbe Struktur wie das Hell-Theme oben (gleicher Mechanismus, keine
+   neue Architektur), aber mit deutlich kräftigeren, reineren Farben statt
+   Pastelltönen, dickeren Rahmen (2px) und fetterer Schrift, damit Inhalte
+   bei direkter Sonneneinstrahlung klar erkennbar bleiben.
    ========================================================================== */
 body:has(.theme-sunlight),
 .theme-sunlight {
-  background-color: #ffffff !important;
-  color: #000000 !important;
+  --color-slate-300: #1a1a1a;
+  --color-slate-350: #1a1a1a;
+  --color-slate-400: #1a1a1a;
+  --color-slate-405: #1b1b1b;
+  --color-slate-450: #262626;
+  --color-slate-500: #333333;
+  --color-slate-505: #343434;
+  --color-slate-550: #404040;
+  --color-slate-600: #4d4d4d;
+  --color-slate-605: #4e4e4e;
+  --color-slate-650: #5a5a5a;
+  --color-slate-700: #666666;
+  --color-slate-750: #a0a0a0;
+
+  --color-emerald-300: #065f46;
+  --color-emerald-350: #065f46;
+  --color-emerald-400: #065f46;
+  --color-emerald-450: #064e3b;
+  --color-emerald-550: #095f3e;
+  --color-emerald-650: #0c7041;
+  --color-emerald-950: #16a34a;
+
+  --color-amber-300: #92400e;
+  --color-amber-350: #853a0e;
+  --color-amber-400: #78350f;
+  --color-amber-450: #813b0e;
+  --color-amber-550: #92470d;
+  --color-amber-950: #d97706;
+  --color-amber-955: #da7806;
+
+  --color-rose-300: #b91c1c;
+  --color-rose-350: #9c1c1c;
+  --color-rose-400: #7f1d1d;
+  --color-rose-450: #871e1e;
+  --color-rose-455: #881e1e;
+  --color-rose-550: #981f1f;
+  --color-rose-950: #dc2626;
+  --color-rose-955: #dd2626;
+
+  --color-cyan-400: #164e63;
+  --color-cyan-950: #0891b2;
+
+  --color-orange-400: #9a3412;
+
+  --color-indigo-300: #3730a3;
+  --color-indigo-850: #201d52;
+  --color-indigo-900: #1e1b4b;
+
+  background-color: #ffffff;
+  color: #000000;
   font-weight: 500;
 }
 
-.theme-sunlight .text-white,
-.theme-sunlight .text-slate-100,
-.theme-sunlight .text-slate-200,
-.theme-sunlight h1, .theme-sunlight h2, .theme-sunlight h3, .theme-sunlight h4, .theme-sunlight h5, .theme-sunlight h6 {
-  color: #000000 !important;
-  font-weight: 800 !important;
+/* slate-800/850/900/950 (+ Zwischenstufen) bewusst NICHT als Variable
+   umdefiniert - siehe ausführlicher Kommentar im Hell-Theme oben (gleicher
+   Grund: text-slate-950 als dunkle Schrift auf Akzent-Buttons,
+   text-slate-800/900 in Druckvorschau-Komponenten). */
+.theme-sunlight .bg-slate-800,
+.theme-sunlight .bg-slate-800\/40,
+.theme-sunlight .bg-slate-800\/60,
+.theme-sunlight .bg-slate-800\/80,
+.theme-sunlight .hover\:bg-slate-800:hover,
+.theme-sunlight .hover\:bg-slate-800\/60:hover,
+.theme-sunlight .hover\:bg-slate-800\/80:hover {
+  background-color: #d9d9d9 !important;
+}
+.theme-sunlight .border-slate-800,
+.theme-sunlight .border-slate-800\/20,
+.theme-sunlight .border-slate-800\/40,
+.theme-sunlight .border-slate-800\/50,
+.theme-sunlight .border-slate-800\/60,
+.theme-sunlight .border-slate-800\/70,
+.theme-sunlight .border-slate-800\/80,
+.theme-sunlight .border-slate-800\/90,
+.theme-sunlight .hover\:border-slate-800:hover,
+.theme-sunlight .border-transparent {
+  border-color: #000000 !important;
 }
 
-.theme-sunlight .text-slate-300,
-.theme-sunlight .text-slate-350,
-.theme-sunlight .text-slate-400,
-.theme-sunlight .text-slate-450 {
-  color: #1F1E1A !important;
-  font-weight: 600 !important;
-}
-
-.theme-sunlight .text-slate-500 {
-  color: #33322C !important;
-  font-weight: 600 !important;
-}
-
-/* Background class mappings - reines Weiß statt Off-White für maximalen Kontrast */
-.theme-sunlight .bg-slate-950,
-.theme-sunlight .bg-slate-950\/90,
-.theme-sunlight .bg-slate-950\/80,
-.theme-sunlight .bg-slate-950\/70,
-.theme-sunlight .bg-slate-950\/60,
-.theme-sunlight .bg-slate-950\/50,
-.theme-sunlight .bg-slate-950\/40,
-.theme-sunlight .bg-slate-950\/30,
-.theme-sunlight .bg-slate-900,
-.theme-sunlight .bg-slate-900\/95,
-.theme-sunlight .bg-slate-900\/90,
-.theme-sunlight .bg-slate-900\/85,
-.theme-sunlight .bg-slate-900\/80,
-.theme-sunlight .bg-slate-900\/60,
-.theme-sunlight .bg-slate-900\/40,
 .theme-sunlight .bg-slate-850,
-.theme-sunlight .bg-amber-950\/20 {
+.theme-sunlight .bg-slate-850\/20,
+.theme-sunlight .bg-slate-850\/25,
+.theme-sunlight .bg-slate-850\/40,
+.theme-sunlight .bg-slate-850\/60,
+.theme-sunlight .hover\:bg-slate-850:hover,
+.theme-sunlight .hover\:bg-slate-850\/20:hover,
+.theme-sunlight .hover\:bg-slate-850\/25:hover,
+.theme-sunlight .hover\:bg-slate-850\/40:hover,
+.theme-sunlight .hover\:bg-slate-850\/60:hover {
+  background-color: #ededed !important;
+}
+.theme-sunlight .border-slate-850,
+.theme-sunlight .border-slate-850\/40,
+.theme-sunlight .border-slate-850\/50,
+.theme-sunlight .border-slate-850\/60,
+.theme-sunlight .border-slate-850\/70 {
+  border-color: #000000 !important;
+}
+
+.theme-sunlight .bg-slate-900,
+.theme-sunlight .bg-slate-900\/10,
+.theme-sunlight .bg-slate-900\/20,
+.theme-sunlight .bg-slate-900\/30,
+.theme-sunlight .bg-slate-900\/40,
+.theme-sunlight .bg-slate-900\/50,
+.theme-sunlight .bg-slate-900\/60,
+.theme-sunlight .bg-slate-900\/75,
+.theme-sunlight .bg-slate-900\/80,
+.theme-sunlight .bg-slate-900\/85,
+.theme-sunlight .bg-slate-900\/90,
+.theme-sunlight .bg-slate-900\/95,
+.theme-sunlight .bg-slate-900\/98,
+.theme-sunlight .bg-slate-950,
+.theme-sunlight .bg-slate-950\/10,
+.theme-sunlight .bg-slate-950\/30,
+.theme-sunlight .bg-slate-950\/35,
+.theme-sunlight .bg-slate-950\/40,
+.theme-sunlight .bg-slate-950\/45,
+.theme-sunlight .bg-slate-950\/50,
+.theme-sunlight .bg-slate-950\/60,
+.theme-sunlight .bg-slate-950\/65,
+.theme-sunlight .bg-slate-950\/70,
+.theme-sunlight .bg-slate-950\/75,
+.theme-sunlight .bg-slate-950\/80,
+.theme-sunlight .bg-slate-950\/85,
+.theme-sunlight .bg-slate-950\/90,
+.theme-sunlight .bg-slate-950\/98,
+.theme-sunlight .hover\:bg-slate-900:hover,
+.theme-sunlight .hover\:bg-slate-900\/40:hover,
+.theme-sunlight .hover\:bg-slate-900\/50:hover,
+.theme-sunlight .hover\:bg-slate-900\/60:hover,
+.theme-sunlight .hover\:bg-slate-900\/95:hover,
+.theme-sunlight .hover\:bg-slate-950:hover {
   background-color: #ffffff !important;
 }
-
-/* Kräftige, satte Textfarben statt gedämpfter Akzenttöne */
-.theme-sunlight .text-emerald-300 { color: #065F46 !important; }
-.theme-sunlight .text-emerald-400 { color: #065F46 !important; }
-.theme-sunlight .text-emerald-450 { color: #064E3B !important; }
-.theme-sunlight .text-amber-300 { color: #92400E !important; }
-.theme-sunlight .text-amber-400 { color: #78350F !important; }
-.theme-sunlight .text-rose-300 { color: #B91C1C !important; }
-.theme-sunlight .text-rose-400 { color: #7F1D1D !important; }
-.theme-sunlight .text-cyan-400 { color: #164E63 !important; }
-.theme-sunlight .text-orange-400 { color: #9A3412 !important; }
-.theme-sunlight .text-indigo-300 { color: #3730A3 !important; }
-
-/* Statistik-Kacheln: kräftige Flächenfarbe + dicker, satter Rahmen statt Pastellton */
-.theme-sunlight #stat-conflicts {
-  background-color: #FFD9D9 !important;
-  border: 2px solid #DC2626 !important;
-  color: #7F1D1D !important;
-}
-.theme-sunlight #stat-conflicts p,
-.theme-sunlight #stat-conflicts span {
-  color: #7F1D1D !important;
+.theme-sunlight .border-slate-900,
+.theme-sunlight .border-slate-900\/40,
+.theme-sunlight .border-slate-900\/60,
+.theme-sunlight .border-slate-950 {
+  border-color: #000000 !important;
 }
 
-.theme-sunlight #stat-open-shifts {
-  background-color: #FFE4A8 !important;
-  border: 2px solid #D97706 !important;
-}
-.theme-sunlight #stat-understaffed {
-  background-color: #FFE4A8 !important;
-  border: 2px solid #D97706 !important;
-}
-.theme-sunlight #stat-total-people {
-  background-color: #C9EBB0 !important;
-  border: 2px solid #16A34A !important;
-}
-.theme-sunlight #stat-total-shifts {
-  background-color: #A9EEFA !important;
-  border: 2px solid #0891B2 !important;
-}
-.theme-sunlight #stat-communities {
-  background-color: #C9EBB0 !important;
-  border: 2px solid #16A34A !important;
-}
-.theme-sunlight #stat-communities:hover {
-  background-color: #B8E39B !important;
-  border-color: #15803D !important;
-}
-.theme-sunlight #stat-participants {
-  background-color: #A9EEFA !important;
-  border: 2px solid #0891B2 !important;
-}
-.theme-sunlight #stat-participants:hover {
-  background-color: #8FE6F5 !important;
-  border-color: #0E7490 !important;
+.theme-sunlight h1, .theme-sunlight h2, .theme-sunlight h3,
+.theme-sunlight h4, .theme-sunlight h5, .theme-sunlight h6 {
+  color: #000000;
 }
 
-/* Hover mappings */
+/* Siehe Kommentar im Hell-Theme: "white" bzw. "slate-100/150/200" bewusst
+   nicht global umdefiniert (Druckvorschau-Komponenten brauchen echtes
+   helles Papier-Weiß unabhängig vom Theme). */
+.theme-sunlight .text-white,
+.theme-sunlight .text-slate-100,
+.theme-sunlight .text-slate-150,
+.theme-sunlight .text-slate-200 {
+  color: #000000;
+}
+
 .theme-sunlight .hover\:bg-slate-900:hover,
 .theme-sunlight .hover\:bg-slate-850\/25:hover,
 .theme-sunlight .hover\:bg-slate-800:hover,
 .theme-sunlight .hover\:bg-slate-850\/60:hover {
-  background-color: #F0F0F0 !important;
-  color: #000000 !important;
+  color: #000000;
 }
 
-/* Rahmen: durchgehend dicker (2px) und dunkler für klare Kachel-Grenzen */
-.theme-sunlight .border-slate-800,
-.theme-sunlight .border-slate-800\/80,
-.theme-sunlight .border-slate-800\/60,
-.theme-sunlight .border-slate-800\/40,
-.theme-sunlight .border-slate-900,
-.theme-sunlight .border-slate-850,
-.theme-sunlight .border-transparent {
-  border-color: #000000 !important;
-  border-width: 2px !important;
-}
-
-.theme-sunlight table {
-  background-color: #ffffff !important;
-}
 .theme-sunlight table thead {
-  background-color: #E5E5E5 !important;
-  border-bottom: 3px solid #000000 !important;
-}
-.theme-sunlight table thead th {
-  color: #000000 !important;
-  font-weight: 800 !important;
-}
-.theme-sunlight table tbody tr {
-  border-bottom: 2px solid #000000 !important;
+  border-bottom: 2px solid #000000;
 }
 
-.theme-sunlight .border-emerald-500\/10,
-.theme-sunlight .border-emerald-500\/25,
-.theme-sunlight .border-emerald-500\/20,
-.theme-sunlight .border-emerald-500\/30 {
-  border-color: #16A34A !important;
+.theme-sunlight table thead th {
+  font-weight: 700;
+}
+
+.theme-sunlight table tbody tr {
+  border-bottom: 2px solid #d9d9d9;
+}
+
+/* Kräftigere Rahmen für maximale Erkennbarkeit bei praller Sonne. */
+.theme-sunlight .border-cyan-500\/30,
+.theme-sunlight .border-cyan-500\/50,
+.theme-sunlight .border-emerald-500\/50,
+.theme-sunlight #dashboard-conflicts-section .border-rose-500\/20,
+.theme-sunlight #dashboard-conflicts-section .border-amber-500\/20,
+.theme-sunlight #feedback-overview-section .border-rose-500\/20,
+.theme-sunlight #feedback-overview-section .border-amber-500\/20 {
   border-width: 2px !important;
 }
 
 .theme-sunlight .tech-panel {
-  background: #ffffff !important;
-  border: 2px solid #16A34A !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 2px solid rgba(16, 185, 129, 0.5) !important;
   box-shadow: none !important;
 }
 
@@ -687,14 +784,14 @@ body:has(.theme-sunlight),
 .theme-sunlight textarea {
   background-color: #ffffff !important;
   color: #000000 !important;
-  border: 2px solid #000000 !important;
-  font-weight: 600 !important;
+  border-color: #000000 !important;
+  border-width: 2px !important;
 }
 
 .theme-sunlight select:focus,
 .theme-sunlight input:focus,
 .theme-sunlight textarea:focus {
-  border-color: #16A34A !important;
+  border-color: #10b981 !important;
 }
 
 .theme-sunlight .shadow-black\/25,
@@ -703,108 +800,30 @@ body:has(.theme-sunlight),
   box-shadow: none !important;
 }
 
-.theme-sunlight .bg-emerald-950\/30,
-.theme-sunlight .bg-emerald-950\/40 {
-  background-color: #C9EBB0 !important;
-}
-
-.theme-sunlight .bg-rose-950\/30 {
-  background-color: #FFD9D9 !important;
-  color: #7F1D1D !important;
-}
-.theme-sunlight .bg-rose-950\/10 {
-  background-color: #FFE9E9 !important;
-}
-.theme-sunlight .bg-rose-950\/50 {
-  background-color: #FFC9C9 !important;
-}
-.theme-sunlight .bg-rose-950\/20 {
-  background-color: #FFE9E9 !important;
-}
-
-.theme-sunlight .bg-amber-950\/10 {
-  background-color: #FFF1D6 !important;
-}
-.theme-sunlight .bg-amber-950\/50 {
-  background-color: #FFE4A8 !important;
-}
-
-.theme-sunlight .bg-cyan-950\/30,
-.theme-sunlight .bg-cyan-950\/40 {
-  background-color: #A9EEFA !important;
-}
-.theme-sunlight .border-cyan-500\/30,
-.theme-sunlight .border-cyan-500\/50 {
-  border-color: #0891B2 !important;
-  border-width: 2px !important;
-}
-.theme-sunlight .border-emerald-500\/50 {
-  border-color: #15803D !important;
-  border-width: 2px !important;
-}
-
-.theme-sunlight #dashboard-conflicts-section .bg-rose-950\/10 {
-  background-color: #FFE9E9 !important;
-  border-color: #DC2626 !important;
-}
-.theme-sunlight #dashboard-conflicts-section .border-rose-500\/20 {
-  border-color: #DC2626 !important;
-  border-width: 2px !important;
-}
-.theme-sunlight #dashboard-conflicts-section .bg-amber-950\/10 {
-  background-color: #FFF1D6 !important;
-  border-color: #D97706 !important;
-}
-.theme-sunlight #dashboard-conflicts-section .border-amber-500\/20 {
-  border-color: #D97706 !important;
-  border-width: 2px !important;
-}
-.theme-sunlight #dashboard-conflicts-section button {
+.theme-sunlight #dashboard-conflicts-section button,
+.theme-sunlight #feedback-overview-section button {
   background-color: #ffffff !important;
   color: #000000 !important;
   border: 2px solid #000000 !important;
 }
+
 .theme-sunlight #dashboard-conflicts-section button:hover {
-  background-color: #E5E5E5 !important;
+  background-color: #e5e5e5 !important;
 }
 
-.theme-sunlight #feedback-overview-section .bg-rose-950\/10 {
-  background-color: #FFE9E9 !important;
-  border-color: #DC2626 !important;
-}
-.theme-sunlight #feedback-overview-section .bg-amber-950\/10 {
-  background-color: #FFF1D6 !important;
-  border-color: #D97706 !important;
-}
-.theme-sunlight #feedback-overview-section .bg-rose-950\/50 {
-  background-color: #FFC9C9 !important;
-}
-.theme-sunlight #feedback-overview-section .bg-amber-950\/50 {
-  background-color: #FFE4A8 !important;
-}
-.theme-sunlight #feedback-overview-section .border-rose-500\/20 {
-  border-color: #DC2626 !important;
-  border-width: 2px !important;
-}
-.theme-sunlight #feedback-overview-section .border-amber-500\/20 {
-  border-color: #D97706 !important;
-  border-width: 2px !important;
-}
-
-/* Kartenhintergründe mit Tailwind-Farbverlauf - siehe Kommentar im Light-Theme-Block */
-.theme-sunlight #personal-schedule-widget {
+.theme-sunlight #personal-schedule-widget,
+.theme-sunlight #dashboard-next-shift,
+.theme-sunlight #dashboard-next-shift-empty,
+.theme-sunlight #pwa-setup-overlay .bg-gradient-to-b,
+.theme-sunlight .bg-gradient-to-r.from-emerald-950\/90 {
   background-image: none !important;
   background-color: #ffffff !important;
 }
+
 .theme-sunlight #pwa-install-alert-banner {
   background-image: none !important;
-  background-color: #C9EBB0 !important;
+  background-color: #c9ebb0 !important;
 }
-.theme-sunlight .bg-gradient-to-r.from-emerald-950\/90 {
-  background-image: none !important;
-  background-color: #C9EBB0 !important;
-}
-
 
 /* Modern custom scrollbar styling */
 ::-webkit-scrollbar {
@@ -832,22 +851,3 @@ body:has(.theme-sunlight),
   scrollbar-width: thin;
   scrollbar-color: rgba(16, 185, 129, 0.25) rgba(15, 23, 42, 0.3);
 }
-
-/* Light theme overrides for scrollbars */
-.theme-light ::-webkit-scrollbar-track {
-  background: rgba(226, 232, 240, 0.6) !important;
-}
-
-.theme-light ::-webkit-scrollbar-thumb {
-  background: rgba(16, 185, 129, 0.35) !important;
-}
-
-.theme-light ::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.55) !important;
-}
-
-.theme-light {
-  scrollbar-color: rgba(16, 185, 129, 0.35) rgba(226, 232, 240, 0.6) !important;
-}
-
-
