@@ -25,6 +25,7 @@ interface CalendarCardProps {
   onToggleAssignmentAccepted?: (assignmentId: string, accepted: boolean) => Promise<void>;
   selectedPersonId?: string;
   currentUserId?: string | null;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
   suggestions: Array<{ user_id: string; year: number; camp_title: string }>;
   loadingSuggestions: boolean;
   calculateShiftDurationHours: (start: string, end: string) => number;
@@ -53,6 +54,7 @@ function CalendarCard({
   onToggleAssignmentAccepted,
   selectedPersonId,
   currentUserId,
+  accessRole,
   suggestions,
   loadingSuggestions,
   calculateShiftDurationHours,
@@ -207,22 +209,29 @@ function CalendarCard({
                   if (!userObj) return null;
 
                   const isUserAccepted = ass.accepted;
+                  const canToggle = ass.user_id === currentUserId || accessRole === "lagerleitung";
 
                   return (
                     <div
                       key={ass.id}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onToggleAssignmentAccepted) {
+                        if (canToggle && onToggleAssignmentAccepted) {
                           onToggleAssignmentAccepted(ass.id, !ass.accepted);
                         }
                       }}
-                      className={`flex items-center space-x-1.5 rounded-lg py-1 px-2.5 border transition-all text-xs font-bold cursor-pointer select-none ${
+                      className={`flex items-center space-x-1.5 rounded-lg py-1 px-2.5 border transition-all text-xs font-bold select-none ${canToggle ? "cursor-pointer" : "cursor-default"} ${
                         isUserAccepted
                           ? "bg-emerald-950/30 hover:bg-emerald-900/40 border-emerald-500/30 text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.05)]"
                           : "bg-slate-950 hover:bg-slate-900 border-slate-800/60 text-slate-400"
                       }`}
-                      title={isUserAccepted ? "Bestätigter Dienst (Klicken zum Ändern)" : "Offener Dienst - unbestätigt (Klicken zum Bestätigen)"}
+                      title={
+                        !canToggle
+                          ? "Nur die Lagerleitung kann Schichten für andere bestätigen."
+                          : isUserAccepted
+                          ? "Bestätigter Dienst (Klicken zum Ändern)"
+                          : "Offener Dienst - unbestätigt (Klicken zum Bestätigen)"
+                      }
                     >
                       <span className="flex items-center">
                         {isUserAccepted ? (
@@ -251,10 +260,13 @@ function CalendarCard({
               )}
             </div>
 
-            {/* Direct confirmation for selected filter person */}
+            {/* Direct confirmation for selected filter person - Status für eine
+                andere Person ändern darf nur die Lagerleitung (siehe
+                isSelfOrLagerleitung im Backend) */}
             {(() => {
               const myAss = selectedPersonId ? assigned.find((a) => a.user_id === selectedPersonId) : null;
               if (!myAss || !onToggleAssignmentAccepted) return null;
+              if (selectedPersonId !== currentUserId && accessRole !== "lagerleitung") return null;
               return (
                 <div className="mt-3 p-2.5 bg-slate-950/70 border border-slate-800 rounded-xl flex items-center justify-between" id={`personal-accept-area-${s.id}`}>
                   <span className="text-[11px] text-slate-400 font-mono font-medium">Status für {users.find(u => u.id === selectedPersonId)?.display_name}:</span>
@@ -331,7 +343,13 @@ function CalendarCard({
                       </button>
                     </div>
                   ) : (
-                    assignedCount < maxPersons ? (
+                    <div className="flex flex-col items-end gap-1">
+                      {assignedCount >= maxPersons && (
+                        <span className="text-[9px] text-amber-400 font-semibold flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3 shrink-0" />
+                          Schicht ist bereits gut ausgelastet ({assignedCount}/{maxPersons})
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleAssign(currentUserId!)}
@@ -339,9 +357,7 @@ function CalendarCard({
                       >
                         <span>Mich für diesen Dienst eintragen 🤝</span>
                       </button>
-                    ) : (
-                      <span className="text-[10px] text-slate-500 italic shrink-0">Schicht voll belegt</span>
-                    )
+                    </div>
                   )}
                 </div>
               );

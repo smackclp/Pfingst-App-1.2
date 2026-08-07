@@ -3,7 +3,7 @@ import { readDB, writeDB, timeToMinutes } from "../db";
 import { computeConflicts } from "../conflicts";
 import { sendNotificationToUser } from "../notifications";
 import { Service, Shift, ShiftAssignment, Camp, DB } from "../types";
-import { requireMinRole, isSelfOrManager } from "../auth";
+import { requireMinRole, isSelfOrManager, isSelfOrLagerleitung } from "../auth";
 
 const router = Router();
 
@@ -407,7 +407,7 @@ router.put("/assignments/:id/accepted", (req, res) => {
   if (!assignment) {
     return res.status(404).json({ error: "Zuordnung nicht gefunden." });
   }
-  if (!isSelfOrManager(req, assignment.user_id)) {
+  if (!isSelfOrLagerleitung(req, assignment.user_id)) {
     return res.status(403).json({ error: "Du kannst nur deinen eigenen Status ändern." });
   }
   const isAccepted = !!req.body.accepted;
@@ -424,7 +424,7 @@ router.put("/assignments/:id/status", (req, res) => {
   if (!assignment) {
     return res.status(404).json({ error: "Zuordnung nicht gefunden." });
   }
-  if (!isSelfOrManager(req, assignment.user_id)) {
+  if (!isSelfOrLagerleitung(req, assignment.user_id)) {
     return res.status(403).json({ error: "Du kannst nur deinen eigenen Status ändern." });
   }
   const { status, decline_reason } = req.body;

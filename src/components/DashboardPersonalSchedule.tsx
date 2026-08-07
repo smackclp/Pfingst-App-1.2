@@ -22,6 +22,8 @@ interface DashboardPersonalScheduleProps {
   setShowPersonalSelector: (show: boolean) => void;
   showToast: (msg: string) => void;
   onUpdateAssignmentStatus: (assignmentId: string, status: "pending" | "accepted" | "declined" | "maybe", declineReason?: string) => Promise<void>;
+  currentUserId?: string | null;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
 }
 
 /**
@@ -43,6 +45,8 @@ export default function DashboardPersonalSchedule({
   setShowPersonalSelector,
   showToast,
   onUpdateAssignmentStatus,
+  currentUserId,
+  accessRole = "helfer",
 }: DashboardPersonalScheduleProps) {
   const handleCopyPersonalSchedule = (userName: string, details: { assignment: ShiftAssignment; shift: Shift }[]) => {
     if (details.length === 0) return;
@@ -197,6 +201,12 @@ export default function DashboardPersonalSchedule({
             const matchedUser = users.find((u) => u.id === selectedUserPlanId);
             if (!matchedUser) return null;
             const uStats = getUserWorkloadStats(matchedUser.id);
+            // Status-Änderungen (Zusagen/Absagen) für eine andere Person darf
+            // nur die Lagerleitung vornehmen - siehe isSelfOrLagerleitung im
+            // Backend, das dies serverseitig ohnehin durchsetzt. Hier zusätzlich
+            // in der UI verbergen, damit keine scheinbar funktionsfähigen,
+            // serverseitig aber abgelehnten Buttons angezeigt werden.
+            const canManageSelected = matchedUser.id === currentUserId || accessRole === "lagerleitung";
 
             return (
               <div className="mt-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch" id="personal-schedule-details">
@@ -273,7 +283,7 @@ export default function DashboardPersonalSchedule({
                   <div className="text-xs font-semibold uppercase text-slate-450 text-slate-400 border-b border-slate-800 pb-2 mb-3 tracking-wider font-mono flex flex-wrap justify-between items-center gap-2">
                     <span>📅 Deine Schichten & Belegungsstatus:</span>
                     <div className="flex items-center space-x-2">
-                      {uStats.shiftsDetails.some(({ assignment }) => assignment.status !== "accepted") && (
+                      {canManageSelected && uStats.shiftsDetails.some(({ assignment }) => assignment.status !== "accepted") && (
                         <button
                           type="button"
                           onClick={() => handleBulkAcceptAssignments(matchedUser.id)}
@@ -287,6 +297,12 @@ export default function DashboardPersonalSchedule({
                       <span className="bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-[10px]">{uStats.assignmentsCount} Slots</span>
                     </div>
                   </div>
+
+                  {!canManageSelected && (
+                    <p className="text-[10px] text-slate-500 italic mb-2 font-sans">
+                      Nur zur Ansicht - Status ändern kann nur die Lagerleitung.
+                    </p>
+                  )}
 
                   {uStats.shiftsDetails.length === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
@@ -335,31 +351,37 @@ export default function DashboardPersonalSchedule({
                                 {assignment.status === "accepted" ? "ZUGESAGT ✓" : assignment.status === "maybe" ? "VIELLEICHT ?" : "PENDING"}
                               </span>
 
-                              {/* Dropdown status update buttons */}
-                              <div className="flex items-center space-x-1">
-                                <button
-                                  onClick={() => handlePersonalStatusChange(assignment.id, "accepted")}
-                                  title="Zusagen"
-                                  className={`p-1 border rounded-lg transition cursor-pointer ${
-                                    assignment.status === "accepted"
-                                      ? "bg-emerald-500 border-emerald-500 text-slate-950"
-                                      : "bg-slate-950 hover:bg-slate-850 border-slate-800 text-slate-400 hover:text-white"
-                                  }`}
-                                >
-                                  <Check className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() => handlePersonalStatusChange(assignment.id, "maybe")}
-                                  title="Vielleicht / Unsicher"
-                                  className={`p-1 border rounded-lg transition cursor-pointer ${
-                                    assignment.status === "maybe"
-                                      ? "bg-amber-500 border-amber-500 text-slate-950"
-                                      : "bg-slate-950 hover:bg-slate-850 border-slate-800 text-slate-400 hover:text-white"
-                                  }`}
-                                >
-                                  <span className="text-[9px] font-bold font-mono px-0.5">?</span>
-                                </button>
-                              </div>
+                              {/* Dropdown status update buttons - nur für sich selbst oder als Lagerleitung */}
+                              {canManageSelected ? (
+                                <div className="flex items-center space-x-1">
+                                  <button
+                                    onClick={() => handlePersonalStatusChange(assignment.id, "accepted")}
+                                    title="Zusagen"
+                                    className={`p-1 border rounded-lg transition cursor-pointer ${
+                                      assignment.status === "accepted"
+                                        ? "bg-emerald-500 border-emerald-500 text-slate-950"
+                                        : "bg-slate-950 hover:bg-slate-850 border-slate-800 text-slate-400 hover:text-white"
+                                    }`}
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => handlePersonalStatusChange(assignment.id, "maybe")}
+                                    title="Vielleicht / Unsicher"
+                                    className={`p-1 border rounded-lg transition cursor-pointer ${
+                                      assignment.status === "maybe"
+                                        ? "bg-amber-500 border-amber-500 text-slate-950"
+                                        : "bg-slate-950 hover:bg-slate-850 border-slate-800 text-slate-400 hover:text-white"
+                                    }`}
+                                  >
+                                    <span className="text-[9px] font-bold font-mono px-0.5">?</span>
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[9px] text-slate-500 italic font-sans" title="Nur die Lagerleitung kann Schichten für andere bestätigen.">
+                                  nur Ansicht
+                                </span>
+                              )}
                             </div>
                           </div>
                         );

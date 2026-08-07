@@ -12,6 +12,7 @@ interface ShiftRowProps {
   users: User[];
   isAdmin: boolean;
   currentUserId?: string | null;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
   activeShiftWizardId: string | null;
   onUpdateShift?: (id: string, shift: Partial<Shift>) => Promise<void>;
   onDeleteShift: (id: string, label: string) => Promise<void>;
@@ -33,6 +34,7 @@ function ShiftRow({
   users,
   isAdmin,
   currentUserId,
+  accessRole,
   activeShiftWizardId,
   onUpdateShift,
   onDeleteShift,
@@ -231,21 +233,31 @@ function ShiftRow({
                 if (!helperObj) return null;
 
                 const isUserAccepted = a.accepted;
+                // Status für andere bestätigen/ändern darf nur die Lagerleitung
+                // (siehe isSelfOrLagerleitung im Backend) - für die eigene
+                // Zuordnung bleibt es weiterhin möglich.
+                const canToggle = a.user_id === currentUserId || accessRole === "lagerleitung";
 
                 return (
-                  <div 
-                    key={a.id} 
+                  <div
+                    key={a.id}
                     onClick={() => {
-                      if (onToggleAssignmentAccepted) {
+                      if (canToggle && onToggleAssignmentAccepted) {
                         onToggleAssignmentAccepted(a.id, !a.accepted);
                       }
                     }}
-                    className={`p-2 border rounded-lg flex items-center justify-between cursor-pointer select-none transition-all ${
+                    className={`p-2 border rounded-lg flex items-center justify-between select-none transition-all ${canToggle ? "cursor-pointer" : "cursor-default"} ${
                       isUserAccepted
                         ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-300"
                         : "bg-slate-950 border-slate-800 text-slate-400"
                     }`}
-                    title={isUserAccepted ? "Bestätigter Dienst (Klicken zum Ändern)" : "Dienst noch nicht bestätigt (Klicken zum Bestätigen)"}
+                    title={
+                      !canToggle
+                        ? "Nur die Lagerleitung kann Schichten für andere bestätigen."
+                        : isUserAccepted
+                        ? "Bestätigter Dienst (Klicken zum Ändern)"
+                        : "Dienst noch nicht bestätigt (Klicken zum Bestätigen)"
+                    }
                   >
                     <div className="truncate pr-1.5 flex items-center">
                       {isUserAccepted ? (
@@ -279,30 +291,31 @@ function ShiftRow({
 
         {/* Quick 1-click Join for Active Helper if not assigned */}
         {currentUserId && !userAssignment && (
-          <div className="pt-2">
-            {assignedCount < maxPersons ? (
-              <button
-                type="button"
-                onClick={() => handleAssignUser(s.id, currentUserId)}
-                className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-400/50 rounded-xl text-xs font-extrabold transition-all shadow-lg shadow-emerald-950/60 hover:shadow-emerald-600/30 flex items-center justify-between cursor-pointer group"
-                id={`quick-join-shift-${s.id}`}
-              >
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
-                    <Plus className="h-4 w-4 text-white stroke-[3]" />
-                  </div>
-                  <span className="tracking-wide">Ich helfe bei dieser Schicht aus!</span>
-                </div>
-                <span className="text-[10px] font-mono font-bold bg-slate-950/60 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-emerald-300/40 text-emerald-200">
-                  {maxPersons - assignedCount} {maxPersons - assignedCount === 1 ? "Platz frei" : "Plätze frei"}
-                </span>
-              </button>
-            ) : (
-              <div className="py-2.5 px-3 bg-slate-950 border border-slate-800 text-slate-500 rounded-xl text-xs text-center font-semibold flex items-center justify-center space-x-1.5">
-                <span>✓ Voll besetzt</span>
-                <span className="font-mono text-[11px]">({assignedCount}/{maxPersons} Helfer)</span>
+          <div className="pt-2 space-y-1.5">
+            {assignedCount >= maxPersons && (
+              <div className="flex items-center gap-1.5 text-[10px] text-amber-400 font-semibold">
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                <span>Schicht ist bereits gut ausgelastet ({assignedCount}/{maxPersons}) - du kannst dich trotzdem eintragen.</span>
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => handleAssignUser(s.id, currentUserId)}
+              className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-400/50 rounded-xl text-xs font-extrabold transition-all shadow-lg shadow-emerald-950/60 hover:shadow-emerald-600/30 flex items-center justify-between cursor-pointer group"
+              id={`quick-join-shift-${s.id}`}
+            >
+              <div className="flex items-center space-x-2.5">
+                <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
+                  <Plus className="h-4 w-4 text-white stroke-[3]" />
+                </div>
+                <span className="tracking-wide">Ich helfe bei dieser Schicht aus!</span>
+              </div>
+              <span className="text-[10px] font-mono font-bold bg-slate-950/60 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-emerald-300/40 text-emerald-200">
+                {assignedCount < maxPersons
+                  ? `${maxPersons - assignedCount} ${maxPersons - assignedCount === 1 ? "Platz frei" : "Plätze frei"}`
+                  : `${assignedCount}/${maxPersons} belegt`}
+              </span>
+            </button>
           </div>
         )}
 

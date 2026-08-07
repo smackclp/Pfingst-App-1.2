@@ -16,6 +16,7 @@ import CalendarPersonStats from "./CalendarPersonStats";
 import CalendarTableView from "./CalendarTableView";
 import CalendarQuickFilters from "./CalendarQuickFilters";
 import PrintView from "./PrintView";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface CalendarViewProps {
   users: UserType[];
@@ -25,7 +26,8 @@ interface CalendarViewProps {
   conflicts: Conflict[];
   currentUserId: string;
   isAdmin: boolean;
-  onAddAssignment: (shiftId: string, userId: string) => Promise<void>;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
+  onAddAssignment: (shiftId: string, userId: string, force?: boolean) => Promise<void>;
   onRemoveAssignment: (shiftId: string, userId: string) => Promise<void>;
   onToggleAssignmentAccepted?: (assignmentId: string, accepted: boolean) => Promise<void>;
   onSelectShiftId?: string | null;
@@ -43,6 +45,7 @@ export default function CalendarView({
   conflicts,
   currentUserId,
   isAdmin,
+  accessRole,
   onAddAssignment,
   onRemoveAssignment,
   onToggleAssignmentAccepted,
@@ -70,6 +73,42 @@ export default function CalendarView({
   const [assignPopoverShiftId, setAssignPopoverShiftId] = React.useState<string | null>(null);
   const [expandedShifts, setExpandedShifts] = React.useState<Record<string, boolean>>({});
   const { suggestions, loadingSuggestions } = useShiftSuggestions(assignPopoverShiftId);
+
+  // Konflikt-Übersteuern (z.B. Schicht bereits voll besetzt): eigenes Eintragen
+  // soll trotz voller Belegung möglich bleiben, mit einer Rückfrage statt
+  // stillem Scheitern - gleiches Muster wie in ShiftsView.tsx für die
+  // Schichtplanung, hier für den Selbst-Eintragen-Weg (Kalenderkarten).
+  const [overrideModal, setOverrideModal] = React.useState<{ isOpen: boolean; shiftId: string; userId: string; message: string }>({
+    isOpen: false,
+    shiftId: "",
+    userId: "",
+    message: "",
+  });
+
+  const handleAssignUser = React.useCallback(
+    async (shiftId: string, userId: string, force = false) => {
+      try {
+        await onAddAssignment(shiftId, userId, force);
+      } catch (err: any) {
+        if (err?.status === 409) {
+          setOverrideModal({ isOpen: true, shiftId, userId, message: err.message || "Es liegt ein Konflikt für diese Schicht vor." });
+        } else {
+          showToast(err?.message || "Zuordnung fehlgeschlagen.");
+        }
+      }
+    },
+    [onAddAssignment, showToast]
+  );
+
+  const handleConfirmOverride = async () => {
+    const { shiftId, userId } = overrideModal;
+    setOverrideModal({ isOpen: false, shiftId: "", userId: "", message: "" });
+    try {
+      await onAddAssignment(shiftId, userId, true);
+    } catch (err: any) {
+      showToast(err?.message || "Zuordnung fehlgeschlagen.");
+    }
+  };
 
   // Stabile Referenzen statt Neu-Erzeugung bei jedem Render, damit
   // CalendarCard (React.memo) beim Öffnen einer einzelnen Karte/eines
@@ -479,11 +518,12 @@ export default function CalendarView({
                   onOpenPopover={handleOpenPopover}
                   onClosePopover={handleClosePopover}
                   onRemoveAssignment={onRemoveAssignment}
-                  onAddAssignment={onAddAssignment}
+                  onAddAssignment={handleAssignUser}
                   onAssignError={showToast}
                   onToggleAssignmentAccepted={onToggleAssignmentAccepted}
                   selectedPersonId={selectedPersonId}
                   currentUserId={currentUserId}
+                  accessRole={accessRole}
                   suggestions={suggestions}
                   loadingSuggestions={loadingSuggestions}
                   calculateShiftDurationHours={calculateShiftDurationHours}
@@ -500,11 +540,24 @@ export default function CalendarView({
             users={users}
             activeCamp={activeCamp}
             onToggleAssignmentAccepted={onToggleAssignmentAccepted}
+            currentUserId={currentUserId}
+            accessRole={accessRole}
           />
         )}
       </div>
 
       <Toast message={toastMessage} />
+
+      <ConfirmDialog
+        id="calendar-assign-override-dialog"
+        isOpen={overrideModal.isOpen}
+        variant="info"
+        title="Hinweis"
+        message={overrideModal.message}
+        confirmLabel="Ja, trotzdem eintragen"
+        onConfirm={handleConfirmOverride}
+        onCancel={() => setOverrideModal({ isOpen: false, shiftId: "", userId: "", message: "" })}
+      />
     </div>
   );
 }

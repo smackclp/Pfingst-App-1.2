@@ -224,6 +224,7 @@ export default function TabContentManager({
           activeCamp={activeCamp}
           isAdmin={canManage}
           currentUserId={currentUserId}
+          accessRole={accessRole}
           pwaInstallable={pwaInstallable}
           onTriggerPwaInstall={onTriggerPwaInstall}
           onOpenPwaOnboarding={onOpenPwaOnboarding}
@@ -247,6 +248,7 @@ export default function TabContentManager({
           onClearSelectShiftId={() => setSelectShiftId(null)}
           onOpenAddShiftModal={() => setCurrentTab("shifts")}
           activeCamp={activeCamp}
+          accessRole={accessRole}
         />
       )}
 

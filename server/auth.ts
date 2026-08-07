@@ -177,6 +177,19 @@ export function isSelfOrManager(req: Request, targetUserId: string): boolean {
   return isAtLeast(req.authUser.accessRole, "bereichsleiter");
 }
 
+/**
+ * Wie isSelfOrManager, aber enger: den Zusage-/Absage-Status EINER
+ * bestehenden Zuordnung darf außer der Person selbst nur die Lagerleitung
+ * ändern (nicht bereits die Bereichsleitung) - das Zu-/Einteilen einer
+ * Schicht (POST /assignments, Schichtplanung) bleibt davon unberührt und
+ * nutzt weiterhin isSelfOrManager.
+ */
+export function isSelfOrLagerleitung(req: Request, targetUserId: string): boolean {
+  if (!req.authUser) return false;
+  if (req.authUser.id === targetUserId) return true;
+  return isAtLeast(req.authUser.accessRole, "lagerleitung");
+}
+
 /** Entfernt sensible Felder (PIN-Hash), bevor ein User-Objekt an den Client geht. */
 export function sanitizeUser<T extends Record<string, any>>(u: T): Omit<T, "pin_hash"> {
   const { pin_hash, ...rest } = u;

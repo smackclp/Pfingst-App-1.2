@@ -349,6 +349,7 @@ export default function ShiftsView({
                 users={users}
                 isAdmin={isAdmin}
                 currentUserId={currentUserId}
+                accessRole={accessRole}
                 activeShiftWizardId={activeShiftWizardId}
                 onUpdateShift={onUpdateShift}
                 onDeleteShift={handleDeleteShift}

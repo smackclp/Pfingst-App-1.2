@@ -33,6 +33,7 @@ interface DashboardViewProps {
   activeCamp?: Camp;
   isAdmin: boolean;
   currentUserId?: string | null;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
   pwaInstallable?: boolean;
   onTriggerPwaInstall?: () => void;
   onOpenPwaOnboarding?: () => void;
@@ -54,6 +55,7 @@ export default function DashboardView({
   activeCamp,
   isAdmin,
   currentUserId,
+  accessRole = "helfer",
   pwaInstallable = false,
   onTriggerPwaInstall,
   onOpenPwaOnboarding,
@@ -281,6 +283,8 @@ export default function DashboardView({
         setShowPersonalSelector={setShowPersonalSelector}
         showToast={showToast}
         onUpdateAssignmentStatus={onUpdateAssignmentStatus}
+        currentUserId={currentUserId}
+        accessRole={accessRole}
       />
 
       {/* Hauptbereich: Warnungen & Schnellprüfung */}
