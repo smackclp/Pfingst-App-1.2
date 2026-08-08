@@ -173,7 +173,7 @@ export default function Navigation({
       <header className="lg:hidden bg-slate-900 text-white flex items-center justify-between px-4 py-3 sticky top-0 z-40 border-b border-emerald-500/10 print:hidden">
         <div className="flex items-center space-x-2">
           <Compass className="h-6 w-6 text-emerald-400" />
-          <span className="font-display font-bold text-lg tracking-tight text-white">Pfingstfestival</span>
+          <span className="font-display font-bold text-lg tracking-tight text-white">{__APP_BRANCH_LABEL__}</span>
         </div>
 
         {onToggleTheme && (

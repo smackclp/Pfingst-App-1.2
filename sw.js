@@ -92,30 +92,49 @@ self.addEventListener('fetch', (event) => {
         // Post/Put/Delete should pass straight to network
         event.respondWith(fetch(request));
       }
-    } else {
-      // Static assets: Network-First with Cache-Fallback
+    } else if (request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
+      // App-Huelle (index.html): Stale-While-Revalidate. Sofort aus dem Cache
+      // antworten, falls vorhanden - echtes App-Gefuehl ohne Warten auf das
+      // Netzwerk. Gleichzeitig im Hintergrund neu laden und den Cache
+      // aktualisieren; eine neue Version wird dadurch erst beim naechsten
+      // Start/Reload sichtbar (kein abruptes Umschalten mitten in der Nutzung).
       event.respondWith(
-        fetch(request)
-          .then((response) => {
-            if (response.status === 200) {
-              const responseCopy = response.clone();
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(request, responseCopy);
-              });
-            }
-            return response;
+        caches.open(CACHE_NAME).then((cache) =>
+          cache.match(request).then((cachedResponse) => {
+            const networkFetch = fetch(request)
+              .then((response) => {
+                if (response.status === 200) {
+                  cache.put(request, response.clone());
+                }
+                return response;
+              })
+              .catch(() => cachedResponse || cache.match('/'));
+            return cachedResponse || networkFetch;
           })
-          .catch(() => {
-            return caches.match(request).then((cachedResponse) => {
-              if (cachedResponse) {
-                return cachedResponse;
+        )
+      );
+    } else {
+      // Gebaute JS/CSS-Dateien (/assets/...) tragen durch Vite bereits einen
+      // Inhalts-Hash im Dateinamen - ein Treffer im Cache ist also per
+      // Definition aktuell (bei Aenderung aendert sich der Dateiname selbst).
+      // Cache-First spart hier den kompletten Netzwerk-Roundtrip.
+      event.respondWith(
+        caches.match(request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return fetch(request)
+            .then((response) => {
+              if (response.status === 200) {
+                const responseCopy = response.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                  cache.put(request, responseCopy);
+                });
               }
-              // Fallback to entry root for direct SPA routing if offline
-              if (request.mode === 'navigate') {
-                return caches.match('/');
-              }
-            });
-          })
+              return response;
+            })
+            .catch(() => caches.match('/'));
+        })
       );
     }
   }

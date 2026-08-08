@@ -19,6 +19,7 @@ import { useRolesData } from "./useRolesData";
 import { useCommunitiesData } from "./useCommunitiesData";
 import { useTalentActsData } from "./useTalentActsData";
 import { useSogData } from "./useSogData";
+import { useTabHistory } from "./useTabHistory";
 import { throwIfNotOk } from "../lib/apiMutations";
 import { safeStorage } from "../utils";
 import { STORAGE_KEYS } from "../constants";
@@ -89,7 +90,7 @@ function clearSnapshot() {
  * loadDatabase als Parameter bekommen und danach ein Neuladen auslösen.
  */
 export function useZeltlagerData(onDataUpdated?: () => void) {
-  const [currentTab, setCurrentTab] = React.useState<string>("dashboard");
+  const [currentTab, setCurrentTab] = useTabHistory("dashboard");
 
   // --- Auth-Status: kommt ausschließlich vom Server (kein clientseitiger Bypass mehr) ---
   const [authStatus, setAuthStatus] = React.useState<"checking" | "unauthenticated" | "authenticated">("checking");
