@@ -515,6 +515,31 @@ bewerten, dann erst installieren:
    informieren statt eigenmächtig zu entscheiden (siehe Abschnitt 14, "Bei
    Unsicherheit nachfragen").
 
+---
+
+17. Änderungsprotokoll (CHANGELOG.md)
+
+Im Projekt-Root liegt CHANGELOG.md mit einem knappen, chronologischen
+Überblick über jeden nennenswerten Commit auf `beta` (Datum, Commit-Hash,
+1-2 Sätze). Dient als Referenz für spätere Projekte (welche Muster/
+Techniken wurden wo eingesetzt) - für Details verweist jeder Eintrag auf
+`git show <Hash>`.
+
+Regeln:
+
+- Nach jedem committeten Update (egal wie klein) einen entsprechenden
+  Eintrag in CHANGELOG.md ergänzen - im selben oder einem unmittelbar
+  folgenden Commit, nicht erst gesammelt am Sitzungsende oder nur auf
+  Nachfrage.
+- Sehr knapp halten: 1-2 Sätze pro Commit, chronologisch unter dem
+  passenden Datum einsortiert, ältester Eintrag zuerst.
+- Reine Merge-Commits und wiederholte AUDIT.md-Historie-Buchungscommits
+  nicht einzeln auflisten, sondern kurz im zugehörigen Fach-Commit
+  erwähnen.
+- Bei besonders wiederverwendbaren Mustern (z. B. eine clevere technische
+  Lösung, ein vermiedener Fallstrick) zusätzlich einen Satz im Abschnitt
+  "Übergreifende Muster" am Ende der Datei ergänzen.
+
 # Technologie-Stack
 
 Die Anwendung basiert ausschließlich auf:
