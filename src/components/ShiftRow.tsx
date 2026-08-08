@@ -56,6 +56,9 @@ function ShiftRow({
   const maxPersons = s.max_persons !== undefined ? s.max_persons : svc.max_persons;
   const assignedCount = assigned.length;
   const userAssignment = currentUserId ? assigned.find((a) => a.user_id === currentUserId) : undefined;
+  // Löschen einer Schicht darf nur die Lagerleitung - Anlegen/Bearbeiten
+  // bleibt für die Bereichsleitung über "isAdmin" weiterhin möglich.
+  const canDelete = accessRole === "lagerleitung";
 
   const [isEditingInline, setIsEditingInline] = React.useState(false);
   const [editDate, setEditDate] = React.useState(s.date);
@@ -140,28 +143,32 @@ function ShiftRow({
           })()}
         </div>
 
-        {isAdmin && (
+        {(isAdmin || canDelete) && (
           <div className="flex items-center space-x-2 justify-end md:justify-start pt-2 flex-wrap gap-2">
-            <button
-              onClick={toggleEditInline}
-              className={`hover:bg-cyan-950/30 px-2.5 py-1.5 rounded-lg border flex items-center space-x-1 text-[11px] font-bold transition-all cursor-pointer ${
-                isEditingInline
-                  ? "text-cyan-400 border-cyan-800/60 bg-cyan-950/20"
-                  : "text-slate-400 border-transparent hover:border-cyan-900/50"
-              }`}
-              title="Schicht bearbeiten"
-            >
-              <Edit className="h-3.5 w-3.5" />
-              <span>{isEditingInline ? "Schließen" : "Bearbeiten"}</span>
-            </button>
-            <button
-              onClick={() => onDeleteShift(s.id, `${svc.title} am ${formatDateGerman(s.date)}`)}
-              className="text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 px-2 py-1.5 rounded-lg border border-transparent hover:border-rose-900/50 flex items-center space-x-1 text-[11px] font-bold transition-all cursor-pointer"
-              title="Schicht löschen"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span>Schicht löschen</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={toggleEditInline}
+                className={`hover:bg-cyan-950/30 px-2.5 py-1.5 rounded-lg border flex items-center space-x-1 text-[11px] font-bold transition-all cursor-pointer ${
+                  isEditingInline
+                    ? "text-cyan-400 border-cyan-800/60 bg-cyan-950/20"
+                    : "text-slate-400 border-transparent hover:border-cyan-900/50"
+                }`}
+                title="Schicht bearbeiten"
+              >
+                <Edit className="h-3.5 w-3.5" />
+                <span>{isEditingInline ? "Schließen" : "Bearbeiten"}</span>
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={() => onDeleteShift(s.id, `${svc.title} am ${formatDateGerman(s.date)}`)}
+                className="text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 px-2 py-1.5 rounded-lg border border-transparent hover:border-rose-900/50 flex items-center space-x-1 text-[11px] font-bold transition-all cursor-pointer"
+                title="Schicht löschen"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Schicht löschen</span>
+              </button>
+            )}
           </div>
         )}
       </div>

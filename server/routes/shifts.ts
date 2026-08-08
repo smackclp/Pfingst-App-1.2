@@ -63,7 +63,7 @@ router.put("/services/:id", requireMinRole("bereichsleiter"), (req, res) => {
   res.json(db.services[index]);
 });
 
-router.delete("/services/:id", requireMinRole("bereichsleiter"), (req, res) => {
+router.delete("/services/:id", requireMinRole("lagerleitung"), (req, res) => {
   const db = readDB();
   const serviceShifts = db.shifts.filter((s) => s.service_id === req.params.id);
   const sids = serviceShifts.map((s) => s.id);
@@ -220,7 +220,7 @@ router.put("/shifts/:id", requireMinRole("bereichsleiter"), (req, res) => {
   res.json(newShift);
 });
 
-router.delete("/shifts/:id", requireMinRole("bereichsleiter"), (req, res) => {
+router.delete("/shifts/:id", requireMinRole("lagerleitung"), (req, res) => {
   const db = readDB();
   db.assignments = db.assignments.filter((a) => a.shift_id !== req.params.id);
   db.shifts = db.shifts.filter((s) => s.id !== req.params.id);

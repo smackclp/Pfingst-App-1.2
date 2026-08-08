@@ -21,6 +21,7 @@ interface ServiceCardProps {
   users: User[];
   shifts: Shift[];
   isAdmin: boolean;
+  accessRole?: "helfer" | "bereichsleiter" | "lagerleitung";
   startDate: string;
   sunDate: string;
   endDate: string;
@@ -36,6 +37,7 @@ export default function ServiceCard({
   users,
   shifts,
   isAdmin,
+  accessRole,
   startDate,
   sunDate,
   endDate,
@@ -51,6 +53,11 @@ export default function ServiceCard({
   const [quickEnd, setQuickEnd] = React.useState("12:00");
   const [quickNotes, setQuickNotes] = React.useState("");
   const [showSuccessToast, setShowSuccessToast] = React.useState(false);
+
+  // Löschen von Dienst/Schichten darf nur die Lagerleitung - Anlegen
+  // (Schnellerstellung) und Bearbeiten bleiben für die Bereichsleitung
+  // über "isAdmin" weiterhin möglich.
+  const canDelete = accessRole === "lagerleitung";
 
   const responsiblePerson = users.find(u => u.id === svc.responsible_id);
   const cardColor = svc.color || "#3b82f6";
@@ -187,7 +194,7 @@ export default function ServiceCard({
                         className="inline-flex items-center space-x-1 pl-2 pr-1.5 py-1 bg-slate-950 border border-slate-850 text-slate-100 rounded-lg font-mono text-[11px] font-bold"
                       >
                         <span>{dayLabel} {sh.start_time}-{sh.end_time}</span>
-                        {isAdmin && (
+                        {canDelete && (
                           <Tooltip content={`Arbeitsschicht ${sh.start_time}-${sh.end_time} löschen`} position="top" delay={155}>
                             <button
                               onClick={() => onDeleteShiftClick(sh.id, `${svc.title} (${dayLabel} ${sh.start_time}-${sh.end_time})`)}
@@ -312,24 +319,28 @@ export default function ServiceCard({
           </button>
         </Tooltip>
 
-        {isAdmin && (
+        {(isAdmin || canDelete) && (
           <div className="flex items-center space-x-1">
-            <Tooltip content="Dienst-Metadaten wie Name, Ort, Dauer & Personenanzahl bearbeiten" position="top" delay={150}>
-              <button
-                onClick={() => onEditServiceClick(svc)}
-                className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition cursor-pointer"
-              >
-                <Edit3 className="h-4 w-4" />
-              </button>
-            </Tooltip>
-            <Tooltip content="Dienst und alle verknüpften Schichten endgültig löschen" position="top" delay={150}>
-              <button
-                onClick={() => onDeleteServiceClick(svc.id, svc.title)}
-                className="p-1.5 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 rounded-lg transition cursor-pointer"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </Tooltip>
+            {isAdmin && (
+              <Tooltip content="Dienst-Metadaten wie Name, Ort, Dauer & Personenanzahl bearbeiten" position="top" delay={150}>
+                <button
+                  onClick={() => onEditServiceClick(svc)}
+                  className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition cursor-pointer"
+                >
+                  <Edit3 className="h-4 w-4" />
+                </button>
+              </Tooltip>
+            )}
+            {canDelete && (
+              <Tooltip content="Dienst und alle verknüpften Schichten endgültig löschen" position="top" delay={150}>
+                <button
+                  onClick={() => onDeleteServiceClick(svc.id, svc.title)}
+                  className="p-1.5 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 rounded-lg transition cursor-pointer"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </Tooltip>
+            )}
           </div>
         )}
       </div>

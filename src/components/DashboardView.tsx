@@ -246,10 +246,10 @@ export default function DashboardView({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 p-6 rounded-2xl border border-emerald-500/15 shadow-xl shadow-black/30">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4 bg-slate-900 p-3.5 md:p-6 rounded-2xl border border-emerald-500/15 shadow-xl shadow-black/30">
         <div>
-          <h2 className="text-2xl font-bold font-display text-white tracking-tight">Lager-Feeds & Leitstand</h2>
-          <p className="text-sm text-slate-400 mt-1 font-sans">Echtzeit-Statistik aller Schichtbelegungen, Personalabdeckungen und Doppelbelegungen.</p>
+          <h2 className="text-base md:text-2xl font-bold font-display text-white tracking-tight">Lager-Feeds & Leitstand</h2>
+          <p className="text-xs md:text-sm text-slate-400 mt-0.5 md:mt-1 font-sans">Echtzeit-Statistik aller Schichtbelegungen, Personalabdeckungen und Doppelbelegungen.</p>
         </div>
       </div>
 
