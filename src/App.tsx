@@ -18,6 +18,16 @@ import { useUndoableDelete } from "./hooks/useUndoableDelete";
 import UndoToast from "./components/UndoToast";
 
 export default function App() {
+  // Vorgezogen (statt bei den übrigen useToast-Aufrufen weiter unten), damit
+  // useZeltlagerData einen Hinweis anzeigen kann, sobald nach einem
+  // optimistisch aus dem lokalen Schnappschuss angezeigten Stand wirklich
+  // neue Serverdaten eintreffen (z.B. nach dem Aufwecken eines eingeschlafenen
+  // Gratis-Hosting-Servers).
+  const { toastMessage: queueToastMessage, showToast: showQueueToast } = useToast();
+  const handleDataUpdated = React.useCallback(() => {
+    showQueueToast("🔄 Aktualisiert - neue Daten geladen.");
+  }, [showQueueToast]);
+
   const {
     currentTab,
     setCurrentTab,
@@ -83,7 +93,7 @@ export default function App() {
     handleUpdateSogSettings,
     handleResetDatabase,
     handleRestoreLastReset,
-  } = useZeltlagerData();
+  } = useZeltlagerData(handleDataUpdated);
 
   // Jemanden von einer Schicht abmelden ist häufig und leicht aus Versehen
   // ausgelöst (ein Klick, keine Rückfrage) - deshalb hier zentral mit dem
@@ -148,9 +158,9 @@ export default function App() {
 
   // Offline-Warteschlange: Anzahl wartender Aktionen fürs Banner + Toast-
   // Hinweise beim Einreihen bzw. bei endgültigem Fehlschlagen (siehe CLAUDE.md
-  // Abschnitt 8 "Offline First").
+  // Abschnitt 8 "Offline First"). toastMessage/showToast kommen von ganz oben
+  // (werden auch von useZeltlagerData für den "neue Daten"-Hinweis genutzt).
   const [offlineQueueLength, setOfflineQueueLength] = React.useState(0);
-  const { toastMessage: queueToastMessage, showToast: showQueueToast } = useToast();
   const prevOfflineQueueLengthRef = React.useRef(0);
 
   React.useEffect(() => {

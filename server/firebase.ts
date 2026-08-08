@@ -423,15 +423,23 @@ function saveLocalDBFallback(data: DB) {
 // Trigger metadata stamp to communicate update between multiple server containers.
 // Wird zentral EINMAL pro writeDB()-Aufruf in server/db.ts aufgerufen (nicht
 // mehr pro einzelnem Dokument-Write), um Firestore-Schreibkosten zu sparen.
+// Der In-Memory-Stempel (lastChangeTimestamp) wird IMMER aktualisiert, auch
+// ohne Firestore (lokaler db.json-Fallback) - GET /api/sync-check und damit
+// sowohl das 5-Minuten-Polling als auch der "neue Daten"-Hinweis beim
+// App-Start (siehe useZeltlagerData.ts) hängen daran und müssen auch ohne
+// aktives Firestore funktionieren. Der Firestore-Schreibvorgang selbst
+// (für die Synchronisation zwischen mehreren Server-Instanzen) bleibt
+// weiterhin nur bei aktivem Firestore relevant.
 export async function triggerGlobalMetadataUpdate() {
+  const stamp = Date.now();
+  lastChangeTimestamp = stamp;
+  if (!isFirebaseEnabled()) return;
   try {
-    const stamp = Date.now();
     const docRef = db!.collection("settings").doc("global");
     await docRef.set({
       lastChange: stamp
     }, { merge: true });
     recordFirestoreWrite();
-    lastChangeTimestamp = stamp;
   } catch (err) {
     console.warn("Could not trigger metadata stamp:", err);
   }
