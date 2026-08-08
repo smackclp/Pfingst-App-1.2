@@ -153,6 +153,14 @@ export function writeDB(newData: DB) {
         console.error("Asynchronous incremental cloud sync failed:", syncErr);
       }
     });
+  } else {
+    // Kein Firestore aktiv (lokaler db.json-Fallback): der In-Memory-
+    // lastChange-Stempel muss trotzdem bei jeder echten Mutation
+    // aktualisiert werden, sonst bleibt GET /api/sync-check dauerhaft auf
+    // dem Wert vom Serverstart stehen - sowohl das 5-Minuten-Polling als
+    // auch der "neue Daten"-Hinweis beim App-Start (siehe
+    // useZeltlagerData.ts) würden dann nie etwas erkennen.
+    triggerGlobalMetadataUpdate();
   }
 }
 
