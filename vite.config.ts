@@ -18,14 +18,35 @@ function getLastCommitInfo() {
   }
 }
 
+// Name in der Top-Leiste hängt am tatsächlich ausgecheckten Git-Branch, nicht
+// an gemerged/committetem Text - so muss beim Mergen von beta nach main
+// nichts manuell zurückgeändert werden, main zeigt automatisch wieder
+// "Pfingstfestival". RENDER_GIT_BRANCH (von Render automatisch gesetzt) hat
+// Vorrang vor dem lokalen Git-Kommando, da Render-Builds gelegentlich einen
+// Detached-HEAD-Checkout ohne auslesbaren Branch-Namen verwenden.
+function getAppBranchLabel() {
+  const branch =
+    process.env.RENDER_GIT_BRANCH ||
+    (() => {
+      try {
+        return execSync('git rev-parse --abbrev-ref HEAD').toString().trim();
+      } catch {
+        return 'main';
+      }
+    })();
+  return branch === 'main' ? 'Pfingstfestival' : 'Beta-Test';
+}
+
 export default defineConfig(() => {
   const { date: lastCommitDate, hash: lastCommitHash } = getLastCommitInfo();
+  const appBranchLabel = getAppBranchLabel();
 
   return {
     plugins: [react(), tailwindcss()],
     define: {
       __LAST_COMMIT_DATE__: JSON.stringify(lastCommitDate),
       __LAST_COMMIT_HASH__: JSON.stringify(lastCommitHash),
+      __APP_BRANCH_LABEL__: JSON.stringify(appBranchLabel),
     },
     resolve: {
       alias: {
