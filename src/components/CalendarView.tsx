@@ -63,11 +63,10 @@ export default function CalendarView({
   const [showOnlyConflicts, setShowOnlyConflicts] = React.useState<boolean>(false);
   const [showOnlyPending, setShowOnlyPending] = React.useState<boolean>(false);
   const [selectedDay, setSelectedDay] = React.useState<string>("All"); // "All", "startDate", "sunDate", "endDate"
-  // Rollenabhängige Standardansicht (Entscheidung #4): Helfer sehen die
-  // touch-freundlichen Karten, Bereichsleitung/Lagerleitung die kompaktere
-  // Tabelle (praktischer für Massen-Zuteilung). "isAdmin" bedeutet hier
-  // bereits "Bereichsleitung oder höher" (siehe TabContentManager).
-  const [viewMode, setViewMode] = React.useState<"list" | "days" | "print">(isAdmin ? "list" : "days");
+  // Standardansicht für alle Rollen: Karten (touch-freundlich, übersichtlich).
+  // Die kompakte Liste bleibt für Bereichsleitung/Lagerleitung über den
+  // Umschalter weiterhin erreichbar, ist aber nicht mehr die Voreinstellung.
+  const [viewMode, setViewMode] = React.useState<"list" | "days" | "print">("days");
   const [searchTerm, setSearchTerm] = React.useState<string>("");
   const { toastMessage, showToast } = useToast();
   const [assignPopoverShiftId, setAssignPopoverShiftId] = React.useState<string | null>(null);
@@ -303,7 +302,7 @@ export default function CalendarView({
         users={users}
         assignments={assignments}
         activeCamp={activeCamp}
-        onBackToDashboard={() => setViewMode(isAdmin ? "list" : "days")}
+        onBackToDashboard={() => setViewMode("days")}
       />
     );
   }

@@ -367,7 +367,7 @@ export default function TabContentManager({
         />
       )}
 
-      {currentTab === "lager" && <LagerHubView setCurrentTab={setCurrentTab} />}
+      {currentTab === "lager" && <LagerHubView setCurrentTab={setCurrentTab} onOpenPwaOnboarding={onOpenPwaOnboarding} />}
 
       {currentTab === "verwaltung" && (
         <VerwaltungHubView setCurrentTab={setCurrentTab} accessRole={accessRole} />
