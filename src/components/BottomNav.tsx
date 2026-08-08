@@ -51,7 +51,7 @@ export default function BottomNav({ currentTab, setCurrentTab, accessRole, curre
   const items = [
     { id: "dashboard", label: "Start", icon: LayoutDashboard },
     { id: "calendar", label: "Mein Plan", icon: Calendar },
-    { id: "lager", label: "Lager", icon: Compass },
+    { id: "lager", label: "Festival", icon: Compass },
     { id: "alerts", label: "Mitteilungen", icon: Bell },
   ];
 

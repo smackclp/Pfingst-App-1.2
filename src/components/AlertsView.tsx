@@ -89,7 +89,7 @@ export default function AlertsView({ currentUser, users }: AlertsViewProps) {
   // Select initial target user
   React.useEffect(() => {
     if (users && users.length > 0 && !targetUserId) {
-      const defaultUser = users.find((u) => u.role !== "admin") || users[0];
+      const defaultUser = users.find((u) => u.access_role !== "lagerleitung") || users[0];
       if (defaultUser) {
         setTargetUserId(defaultUser.id);
       }
@@ -341,7 +341,7 @@ export default function AlertsView({ currentUser, users }: AlertsViewProps) {
 
           <AlertsTestTriggerSection browserPermission={browserPermission} testingStatus={testingStatus} onTriggerTest={handleTriggerTestNotification} />
 
-          {currentUser && currentUser.role === "admin" && (
+          {currentUser && currentUser.access_role === "lagerleitung" && (
             <AlertsAdminComposer
               users={users}
               targetUserId={targetUserId}

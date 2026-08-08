@@ -22,8 +22,8 @@ export default function LagerHubView({ setCurrentTab, onOpenPwaOnboarding }: Lag
   return (
     <div className="space-y-4 animate-fade-in">
       <div>
-        <h2 className="text-lg font-bold font-display">Lager</h2>
-        <p className="text-xs text-slate-400 mt-0.5">Programm, Bestellungen und alles rund ums Lagerleben.</p>
+        <h2 className="text-lg font-bold font-display">Festival</h2>
+        <p className="text-xs text-slate-400 mt-0.5">Programm, Bestellungen und alles rund ums Festivalleben.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
