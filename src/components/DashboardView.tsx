@@ -246,10 +246,10 @@ export default function DashboardView({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 p-6 rounded-2xl border border-emerald-500/15 shadow-xl shadow-black/30">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4 bg-slate-900 p-3.5 md:p-6 rounded-2xl border border-emerald-500/15 shadow-xl shadow-black/30">
         <div>
-          <h2 className="text-2xl font-bold font-display text-white tracking-tight">Lager-Feeds & Leitstand</h2>
-          <p className="text-sm text-slate-400 mt-1 font-sans">Echtzeit-Statistik aller Schichtbelegungen, Personalabdeckungen und Doppelbelegungen.</p>
+          <h2 className="text-base md:text-2xl font-bold font-display text-white tracking-tight">Lager-Feeds & Leitstand</h2>
+          <p className="text-xs md:text-sm text-slate-400 mt-0.5 md:mt-1 font-sans">Echtzeit-Statistik aller Schichtbelegungen, Personalabdeckungen und Doppelbelegungen.</p>
         </div>
       </div>
 
@@ -266,10 +266,11 @@ export default function DashboardView({
         onOpenPwaOnboarding={onOpenPwaOnboarding}
       />
 
-      {/* Grid für Statistiken */}
-      <DashboardStatsGrid stats={stats} communities={communities} isAdmin={isAdmin} onNavigateToTab={onNavigateToTab} />
-
-      {/* --- PROPOSAL 3 / VORSCHLAG 3: MEIN PERSÖNLICHER DIENSTPLAN --- */}
+      {/* --- PROPOSAL 3 / VORSCHLAG 3: MEIN PERSÖNLICHER DIENSTPLAN ---
+          Bewusst VOR dem Statistik-Raster: das Persönliche (eigene Schicht,
+          eigener Dienstplan) soll für jeden Nutzer sofort erreichbar sein,
+          auch für Bereichsleitung/Lagerleitung, die sonst erst am großen
+          Monitoring-Raster vorbeiscrollen müsste. */}
       <DashboardPersonalSchedule
         users={users}
         services={services}
@@ -286,6 +287,9 @@ export default function DashboardView({
         currentUserId={currentUserId}
         accessRole={accessRole}
       />
+
+      {/* Grid für Statistiken */}
+      <DashboardStatsGrid stats={stats} communities={communities} isAdmin={isAdmin} onNavigateToTab={onNavigateToTab} />
 
       {/* Hauptbereich: Warnungen & Schnellprüfung */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

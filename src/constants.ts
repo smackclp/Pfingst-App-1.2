@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
   OFFLINE_QUEUE: "zeltlager_offline_queue_v1",
   ALERTED_IDS_PREFIX: "zeltlager_alerted_ids_",
   CURRENT_USER_ID: "zeltlager_current_user_id",
+  APP_SNAPSHOT: "zeltlager_app_snapshot_v1",
 };
 
 // Date & Time Constants

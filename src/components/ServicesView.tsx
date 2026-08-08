@@ -253,6 +253,7 @@ export default function ServicesView({
               users={users}
               shifts={visibleShifts}
               isAdmin={isAdmin}
+              accessRole={accessRole}
               startDate={startDate}
               sunDate={sunDate}
               endDate={endDate}
