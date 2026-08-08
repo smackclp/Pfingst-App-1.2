@@ -266,10 +266,11 @@ export default function DashboardView({
         onOpenPwaOnboarding={onOpenPwaOnboarding}
       />
 
-      {/* Grid für Statistiken */}
-      <DashboardStatsGrid stats={stats} communities={communities} isAdmin={isAdmin} onNavigateToTab={onNavigateToTab} />
-
-      {/* --- PROPOSAL 3 / VORSCHLAG 3: MEIN PERSÖNLICHER DIENSTPLAN --- */}
+      {/* --- PROPOSAL 3 / VORSCHLAG 3: MEIN PERSÖNLICHER DIENSTPLAN ---
+          Bewusst VOR dem Statistik-Raster: das Persönliche (eigene Schicht,
+          eigener Dienstplan) soll für jeden Nutzer sofort erreichbar sein,
+          auch für Bereichsleitung/Lagerleitung, die sonst erst am großen
+          Monitoring-Raster vorbeiscrollen müsste. */}
       <DashboardPersonalSchedule
         users={users}
         services={services}
@@ -286,6 +287,9 @@ export default function DashboardView({
         currentUserId={currentUserId}
         accessRole={accessRole}
       />
+
+      {/* Grid für Statistiken */}
+      <DashboardStatsGrid stats={stats} communities={communities} isAdmin={isAdmin} onNavigateToTab={onNavigateToTab} />
 
       {/* Hauptbereich: Warnungen & Schnellprüfung */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
