@@ -134,6 +134,15 @@ export default function App() {
     document.documentElement.classList.toggle("theme-sunlight", theme === "sunlight");
   }, [theme]);
 
+  // Beim Wechsel zwischen den Menüs/Tabs immer an den Seitenanfang scrollen,
+  // statt an der Scroll-Position der vorherigen Seite (z.B. aus einer langen
+  // Liste) hängen zu bleiben. <main> hat keinen eigenen Scroll-Container,
+  // nimmt also am Dokument-Scroll teil - window.scrollTo() genügt für Mobile
+  // und Desktop gleichermaßen.
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentTab]);
+
   const [statusEditingAssignmentId, setStatusEditingAssignmentId] = React.useState<string | null>(null);
   const [isOnline, setIsOnline] = React.useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
 
