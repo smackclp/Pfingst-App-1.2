@@ -15,7 +15,7 @@ interface AlertsAdminComposerProps {
   onTriggerAdminTest: () => void;
 }
 
-/** Abschnitt 5 (nur Admin): manuelle Test-/Live-Benachrichtigung an einen beliebigen Helfer senden. */
+/** Abschnitt 5 (nur Lagerleitung): manuelle Test-/Live-Benachrichtigung an einen beliebigen Helfer senden. */
 export default function AlertsAdminComposer({
   users,
   targetUserId,
@@ -55,7 +55,7 @@ export default function AlertsAdminComposer({
             <option value="" disabled>-- Empfänger auswählen --</option>
             {users.map((u) => (
               <option key={`admin-notif-user-${u.id}`} value={u.id}>
-                {u.display_name} ({u.role === "admin" ? "Admin-Leitung" : "Helfer*in"}) {u.active ? "• Aktiv ✓" : "• Inaktiv 💤"}
+                {u.display_name} ({u.access_role === "lagerleitung" ? "Lagerleitung" : u.access_role === "bereichsleiter" ? "Bereichsleitung" : "Helfer*in"}) {u.active ? "• Aktiv ✓" : "• Inaktiv 💤"}
               </option>
             ))}
           </select>
