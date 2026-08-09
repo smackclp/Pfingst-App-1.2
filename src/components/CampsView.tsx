@@ -266,7 +266,10 @@ export default function CampsView({ camps, activeCampId, onSetActiveCamp, onCrea
                 onChange={(e) => handleSetActive(e.target.value)}
                 className="flex-1 text-xs p-2.5 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-300 bg-slate-950 font-medium"
               >
-                {camps.map((c) => (
+                {/* Chronologisch statt alphabetisch: bei Lagerjahren ist die
+                    zeitliche Reihenfolge sinnvoller als eine Buchstaben-
+                    sortierung des Titels. */}
+                {[...camps].sort((a, b) => b.year - a.year).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.title} {c.id === activeCampId ? "(Aktiv)" : ""}
                   </option>

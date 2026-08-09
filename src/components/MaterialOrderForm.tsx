@@ -2,6 +2,7 @@ import React from "react";
 import { Plus, CheckCircle2 } from "lucide-react";
 import { User, MaterialItem } from "../types";
 import FieldError from "./FieldError";
+import { sortByFirstName } from "../utils";
 
 interface MaterialOrderFormProps {
   users: User[];
@@ -103,7 +104,7 @@ export default function MaterialOrderForm({ users, currentUserId, onAddMaterial,
             }`}
           >
             <option value="">-- Wer bestellt das Material? --</option>
-            {users.map((u) => (
+            {sortByFirstName(users).map((u) => (
               <option key={`opt-usr-${u.id}`} value={u.id}>
                 {u.display_name} ({u.role || "Helfer"})
               </option>

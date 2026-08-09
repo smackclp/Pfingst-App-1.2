@@ -23,6 +23,14 @@ export function useUndoableDelete(delayMs: number = UNDO_DELAY_MS) {
   const [pendingIds, setPendingIds] = React.useState<Set<string>>(new Set());
   const [activeToast, setActiveToast] = React.useState<ActiveToast | null>(null);
   const entriesRef = React.useRef<Map<string, PendingEntry>>(new Map());
+  const isMountedRef = React.useRef(true);
+
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const scheduleDelete = React.useCallback(
     (id: string, label: string, commit: () => void | Promise<void>) => {
@@ -34,12 +42,18 @@ export function useUndoableDelete(delayMs: number = UNDO_DELAY_MS) {
 
       const timer = setTimeout(() => {
         entriesRef.current.delete(id);
-        setPendingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-        setActiveToast((cur) => (cur?.id === id ? null : cur));
+        // Nur noch React-State schützen, falls die Komponente inzwischen
+        // unmounted ist (z.B. Tab-Wechsel) - der eigentliche commit() MUSS
+        // trotzdem laufen, sonst wirkt die Löschung nur lokal erfolgreich,
+        // kommt aber nie beim Server an und taucht nach Rückkehr wieder auf.
+        if (isMountedRef.current) {
+          setPendingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          setActiveToast((cur) => (cur?.id === id ? null : cur));
+        }
         commit();
       }, delayMs);
 
@@ -63,12 +77,6 @@ export function useUndoableDelete(delayMs: number = UNDO_DELAY_MS) {
   }, []);
 
   const isPending = React.useCallback((id: string) => pendingIds.has(id), [pendingIds]);
-
-  React.useEffect(() => {
-    return () => {
-      entriesRef.current.forEach((entry) => clearTimeout(entry.timer));
-    };
-  }, []);
 
   return { isPending, scheduleDelete, undo, activeToast };
 }

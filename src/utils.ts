@@ -93,6 +93,24 @@ export const PFINGSTEN_DATES: Record<number, { start_date: string; end_date: str
 };
 
 /**
+ * Sortiert Helfer*innen alphabetisch nach Vorname (nicht Anzeigename/Nachname) -
+ * einheitliche Reihenfolge für alle Personen-Dropdowns/-Listen in der App.
+ * Gibt bewusst eine neue Kopie zurück statt in-place zu sortieren.
+ */
+export function sortByFirstName<T extends { first_name: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => a.first_name.localeCompare(b.first_name, "de"));
+}
+
+/**
+ * Sortiert eine beliebige Liste (Dienste, Gemeinden, ...) alphabetisch anhand
+ * eines pro Eintrag ermittelten Anzeigetexts - einheitliche Reihenfolge für
+ * Dropdowns/Listen, die keine Personen sind.
+ */
+export function sortAlphabetically<T>(items: T[], getLabel: (item: T) => string): T[] {
+  return [...items].sort((a, b) => getLabel(a).localeCompare(getLabel(b), "de"));
+}
+
+/**
  * Wandelt "HH:MM" in Minuten seit Mitternacht um, für Sortierung/Vergleich von Uhrzeiten.
  */
 export function timeToMinutes(timeStr: string): number {

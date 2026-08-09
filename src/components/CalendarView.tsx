@@ -7,7 +7,7 @@ import {
   Calendar
 } from "lucide-react";
 import { User as UserType, Service, Shift, ShiftAssignment, Conflict, Camp } from "../types";
-import { addDays, getDayName, formatDateWithDayPrefix } from "../utils";
+import { addDays, getDayName, formatDateWithDayPrefix, sortByFirstName } from "../utils";
 import { useShiftSuggestions } from "../hooks/useShiftSuggestions";
 import { useToast } from "../hooks/useToast";
 import Toast from "./Toast";
@@ -375,9 +375,7 @@ export default function CalendarView({
                 id="person-filter-select"
               >
                 <option value="" className="bg-slate-900 text-slate-300">-- Alle Personen filtern --</option>
-                {users
-                  .filter(u => u.active)
-                  .sort((a, b) => a.display_name.localeCompare(b.display_name))
+                {sortByFirstName(users.filter(u => u.active))
                   .map(user => (
                     <option key={user.id} value={user.id} className="bg-slate-900 text-slate-300">
                       {user.display_name}

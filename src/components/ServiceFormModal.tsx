@@ -4,6 +4,7 @@ import { Service, User } from "../types";
 import FieldError from "./FieldError";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { sortByFirstName } from "../utils";
 
 interface ServiceFormModalProps {
   isOpen: boolean;
@@ -251,9 +252,7 @@ export default function ServiceFormModal({
               className="w-full text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:outline-none focus:border-cyan-500/40 text-white font-medium font-mono"
             >
               <option value="" className="bg-slate-950 text-slate-300">-- Keiner festgelegt (Offen) --</option>
-              {users
-                .filter(u => u.active)
-                .sort((a, b) => a.display_name.localeCompare(b.display_name))
+              {sortByFirstName(users.filter(u => u.active))
                 .map(u => (
                   <option key={u.id} value={u.id} className="bg-slate-950 text-white">{u.display_name}</option>
                 ))}

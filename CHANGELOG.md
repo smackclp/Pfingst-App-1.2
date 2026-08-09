@@ -95,6 +95,12 @@ Für Details: `git show <Hash>`. Chronologisch, ältester zuerst.
 - `0843599` Lagerleitung erhält dieselben Rechte wie der Admin-Zugang: Admin-Testbenachrichtigungs-Panel hing an einem faktisch nie zutreffenden Rollenfeld-Check, jetzt korrekt an der Berechtigungsstufe (`access_role === "lagerleitung"`).
 - `c34a11e` Zurück-Button/Wisch-Geste geht jetzt einen Schritt in der App zurück statt sie zu beenden (zentraler Verlaufs-Hook, `history.pushState`/`popstate`); Service Worker lädt die App-Hülle jetzt per Stale-While-Revalidate (`index.html`) und Cache-First (gehashte Assets) statt Network-First - echtes App-Gefühl ohne Netzwerk-Wartezeit.
 - `c9d7b47` Top-Bar-Name hängt jetzt am tatsächlichen Git-Branch statt an gemergtem Text ("beta" → "Beta-Test", "main" → "Pfingstfestival"), automatisch korrekt nach jedem Merge, kein manuelles Zurücksetzen nötig.
+- `486dd42` CHANGELOG.md nachgeholt, Pflegepflicht als neuer Abschnitt 17 in CLAUDE.md ergänzt.
+- `da7a3b7` Bugfix (gemeldet: Mitteilungen "Leeren" + Tab-Wechsel ließ die Liste wieder auftauchen): das Rückgängig-Sicherheitsnetz (`useUndoableDelete.ts`) brach die geplante Server-Löschung ab, sobald die anzeigende Ansicht durch einen Tab-Wechsel unmounted wurde - betraf alle 9 Views mit Lösch-Undo (Schichten, Dienste, Personen, Gemeinden, Lager, Material, Talentshow, SoG-Stationen, Mitteilungen). commit() läuft jetzt immer zu Ende, nur die begleitenden React-State-Updates werden per isMountedRef geschützt.
+
+## 2026-08-09 – Dropdown-Konsistenz
+
+- `064b75c` Alle Personen-/Dienst-/Gemeinden-Dropdowns in der App alphabetisch sortiert (Helfer nach Vorname, Rest nach Titel/Name); neue gemeinsame Sortier-Helfer `sortByFirstName`/`sortAlphabetically` in `utils.ts` statt dupliziertem `.sort()` in jeder Komponente. Lagerjahre-Auswahl bewusst chronologisch statt alphabetisch belassen.
 
 ---
 
@@ -139,3 +145,10 @@ Für Details: `git show <Hash>`. Chronologisch, ältester zuerst.
   `define`, analog zum Commit-Hash-Mechanismus) - dadurch ist der
   Quellcode auf allen Branches identisch und nach jedem Merge automatisch
   korrekt, ohne manuelles Zurücksetzen.
+- **Verzögerte Undo-Aktionen dürfen beim Unmount nicht den eigentlichen
+  Commit abbrechen**: ein `clearTimeout()` in der Cleanup-Funktion eines
+  `useEffect` killt bei zeitverzögerten Lösch-Mustern nicht nur das lokale
+  UI, sondern auch die geplante Server-Aktion selbst, sobald die Ansicht
+  wechselt (z. B. Tab-Wechsel). Sauberer: den Timer/`commit()` unabhängig
+  vom Komponenten-Lebenszyklus weiterlaufen lassen, nur begleitende
+  React-State-Updates per `isMountedRef`-Flag schützen.
