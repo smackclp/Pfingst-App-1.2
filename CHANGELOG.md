@@ -98,6 +98,10 @@ Für Details: `git show <Hash>`. Chronologisch, ältester zuerst.
 - `486dd42` CHANGELOG.md nachgeholt, Pflegepflicht als neuer Abschnitt 17 in CLAUDE.md ergänzt.
 - `da7a3b7` Bugfix (gemeldet: Mitteilungen "Leeren" + Tab-Wechsel ließ die Liste wieder auftauchen): das Rückgängig-Sicherheitsnetz (`useUndoableDelete.ts`) brach die geplante Server-Löschung ab, sobald die anzeigende Ansicht durch einen Tab-Wechsel unmounted wurde - betraf alle 9 Views mit Lösch-Undo (Schichten, Dienste, Personen, Gemeinden, Lager, Material, Talentshow, SoG-Stationen, Mitteilungen). commit() läuft jetzt immer zu Ende, nur die begleitenden React-State-Updates werden per isMountedRef geschützt.
 
+## 2026-08-09 – Dropdown-Konsistenz
+
+- `064b75c` Alle Personen-/Dienst-/Gemeinden-Dropdowns in der App alphabetisch sortiert (Helfer nach Vorname, Rest nach Titel/Name); neue gemeinsame Sortier-Helfer `sortByFirstName`/`sortAlphabetically` in `utils.ts` statt dupliziertem `.sort()` in jeder Komponente. Lagerjahre-Auswahl bewusst chronologisch statt alphabetisch belassen.
+
 ---
 
 ## Übergreifende Muster (für spätere Projekte direkt wiederverwendbar)
