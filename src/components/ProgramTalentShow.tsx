@@ -8,6 +8,7 @@ import FieldError from "./FieldError";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { sortAlphabetically } from "../utils";
 
 interface ProgramTalentShowProps {
   talentActs: TalentAct[];
@@ -393,7 +394,7 @@ export default function ProgramTalentShow({
                     onChange={(e) => setCommunityName(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-sans focus:border-emerald-500 focus:outline-none"
                   >
-                    {communities.map((c) => (
+                    {sortAlphabetically(communities, (c) => c.name).map((c) => (
                       <option key={c.id} value={c.name}>
                         {c.name}
                       </option>

@@ -1,7 +1,7 @@
 import React from "react";
 import { AlertCircle, UserCheck, UserPlus, X } from "lucide-react";
 import { Shift, Service, User, ShiftAssignment } from "../types";
-import { timeToMinutes } from "../utils";
+import { timeToMinutes, sortByFirstName } from "../utils";
 
 interface ShiftDeployWizardProps {
   s: Shift;
@@ -129,8 +129,7 @@ export default function ShiftDeployWizard({
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[160px] overflow-y-auto pr-1">
-        {users
-          .filter((u) => u.active && !assigned.some((a) => a.user_id === u.id))
+        {sortByFirstName(users.filter((u) => u.active && !assigned.some((a) => a.user_id === u.id)))
           .map((u) => {
             const { overlapping, overlappingServiceTitle } = getOverlapInfo(u.id, s, assignments, shifts, services);
 

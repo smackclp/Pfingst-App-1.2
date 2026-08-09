@@ -16,6 +16,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import UndoToast from "./UndoToast";
 import FieldError from "./FieldError";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
+import { sortByFirstName } from "../utils";
 
 interface PeopleViewProps {
   users: User[];
@@ -339,7 +340,7 @@ export default function PeopleView({
                     id="select-new-role-user"
                   >
                     <option value="" className="bg-slate-900 text-slate-300">-- Nicht zugewiesen --</option>
-                    {users.map(u => (
+                    {sortByFirstName(users).map(u => (
                       <option key={u.id} value={u.id} className="bg-slate-900 text-slate-200">
                         {u.first_name} {u.last_name} ({u.display_name})
                       </option>
@@ -439,7 +440,7 @@ export default function PeopleView({
                         }`}
                       >
                         <option value="">-- Nicht zugewiesen --</option>
-                        {users.map(u => (
+                        {sortByFirstName(users).map(u => (
                           <option key={u.id} value={u.id}>
                             {u.first_name} {u.last_name} ({u.display_name})
                           </option>

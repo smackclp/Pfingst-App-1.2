@@ -2,6 +2,7 @@ import React from "react";
 import { ShieldCheck, ShieldAlert, User as UserIcon, Search } from "lucide-react";
 import { User } from "../types";
 import ConfirmDialog from "./ConfirmDialog";
+import { sortByFirstName } from "../utils";
 
 type AccessRole = "helfer" | "bereichsleiter" | "lagerleitung";
 
@@ -40,9 +41,9 @@ export default function AccessRoleManager({ users, onUpdateAccessRole }: AccessR
 
   const filteredUsers = React.useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    return users
-      .filter((u) => !term || u.display_name.toLowerCase().includes(term) || (u.role || "").toLowerCase().includes(term))
-      .sort((a, b) => a.display_name.localeCompare(b.display_name, "de"));
+    return sortByFirstName(
+      users.filter((u) => !term || u.display_name.toLowerCase().includes(term) || (u.role || "").toLowerCase().includes(term))
+    );
   }, [users, searchTerm]);
 
   const lagerleitungCount = users.filter((u) => (u as any).access_role === "lagerleitung").length;

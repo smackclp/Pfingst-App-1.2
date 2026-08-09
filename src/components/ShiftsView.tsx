@@ -1,7 +1,7 @@
 import React from "react";
 import { Plus, Clock } from "lucide-react";
 import { Shift, Service, User, ShiftAssignment, Camp } from "../types";
-import { addDays, formatDateWithDayPrefix, getDayName, timeToMinutes } from "../utils";
+import { addDays, formatDateWithDayPrefix, getDayName, timeToMinutes, sortAlphabetically } from "../utils";
 import { useShiftSuggestions } from "../hooks/useShiftSuggestions";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import ShiftRow from "./ShiftRow";
@@ -290,7 +290,7 @@ export default function ShiftsView({
               id="shift-filter-service-select"
             >
               <option value="All" className="bg-slate-900 text-slate-350">Alle Dienste</option>
-              {services.map((s) => (
+              {sortAlphabetically(services, (s) => s.title).map((s) => (
                 <option key={s.id} value={s.id} className="bg-slate-900 text-slate-100">{s.title}</option>
               ))}
             </select>

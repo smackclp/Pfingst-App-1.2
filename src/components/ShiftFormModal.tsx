@@ -1,7 +1,7 @@
 import React from "react";
 import { X } from "lucide-react";
 import { Service, Shift } from "../types";
-import { formatDateGerman as formatDateGermanUtil } from "../utils";
+import { formatDateGerman as formatDateGermanUtil, sortAlphabetically } from "../utils";
 import FieldError from "./FieldError";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -109,7 +109,7 @@ export default function ShiftFormModal({
                 errors.shiftServiceId ? "border-rose-500/60" : "border-slate-800"
               }`}
             >
-              {services.map((svc) => (
+              {sortAlphabetically(services, (svc) => svc.title).map((svc) => (
                 <option key={svc.id} value={svc.id} className="bg-slate-950 text-white">{svc.title}</option>
               ))}
             </select>

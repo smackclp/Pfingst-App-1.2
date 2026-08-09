@@ -1,7 +1,7 @@
 import React from "react";
 import { CalendarCheck, Check, Download, Search, Share2, Sparkles } from "lucide-react";
 import { User, Service, Shift, ShiftAssignment } from "../types";
-import { getDayName, formatDateGerman, formatDateWithDayPrefix } from "../utils";
+import { getDayName, formatDateGerman, formatDateWithDayPrefix, sortByFirstName } from "../utils";
 
 interface WorkloadStats {
   assignmentsCount: number;
@@ -165,13 +165,14 @@ export default function DashboardPersonalSchedule({
                   schließen
                 </button>
               </div>
-              {users
-                .filter(
+              {sortByFirstName(
+                users.filter(
                   (u) =>
                     !personalPlanQuery ||
                     u.display_name.toLowerCase().includes(personalPlanQuery.toLowerCase()) ||
                     `${u.first_name || ""} ${u.last_name || ""}`.toLowerCase().includes(personalPlanQuery.toLowerCase())
                 )
+              )
                 .map((u) => (
                   <button
                     key={`personal-opt-${u.id}`}

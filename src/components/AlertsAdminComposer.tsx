@@ -1,6 +1,7 @@
 import React from "react";
 import { Check, RefreshCw, Send } from "lucide-react";
 import { User } from "../types";
+import { sortByFirstName } from "../utils";
 
 interface AlertsAdminComposerProps {
   users: User[];
@@ -53,7 +54,7 @@ export default function AlertsAdminComposer({
             className="w-full text-xs bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-sans focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
           >
             <option value="" disabled>-- Empfänger auswählen --</option>
-            {users.map((u) => (
+            {sortByFirstName(users).map((u) => (
               <option key={`admin-notif-user-${u.id}`} value={u.id}>
                 {u.display_name} ({u.access_role === "lagerleitung" ? "Lagerleitung" : u.access_role === "bereichsleiter" ? "Bereichsleitung" : "Helfer*in"}) {u.active ? "• Aktiv ✓" : "• Inaktiv 💤"}
               </option>
